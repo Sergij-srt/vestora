@@ -1,0 +1,21 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.idea/
+.vscode/
+
+# Flutter & Dart build caches
+**/build/
+**/.dart_tool/
+**/.pub/
+**/.pub-cache/
+**/.flutter-plugins-dependencies
+**/coverage/
+
+# Android Studio artifacts
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
