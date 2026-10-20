@@ -55,6 +55,11 @@ class ClothingItem {
   final String? sourceUrl;
   final String? storeName;
   final String? fabricComposition;
+  final String? size;
+  final String? countryOfOrigin;
+  final String? careInstructions;
+  final String? labelPhotoUrl;
+  final String? receiptPhotoUrl;
   final DateTime purchaseDate;
   int wearCount;
   final String? notes;
@@ -73,6 +78,11 @@ class ClothingItem {
     this.sourceUrl,
     this.storeName,
     this.fabricComposition,
+    this.size,
+    this.countryOfOrigin,
+    this.careInstructions,
+    this.labelPhotoUrl,
+    this.receiptPhotoUrl,
     DateTime? purchaseDate,
     this.wearCount = 0,
     this.notes,
@@ -100,6 +110,11 @@ class ClothingItem {
       'sourceUrl': sourceUrl,
       'storeName': storeName,
       'fabricComposition': fabricComposition,
+      'size': size,
+      'countryOfOrigin': countryOfOrigin,
+      'careInstructions': careInstructions,
+      'labelPhotoUrl': labelPhotoUrl,
+      'receiptPhotoUrl': receiptPhotoUrl,
       'purchaseDate': purchaseDate.toIso8601String(),
       'wearCount': wearCount,
       'notes': notes,
@@ -123,6 +138,11 @@ class ClothingItem {
       sourceUrl: map['sourceUrl'],
       storeName: map['storeName'],
       fabricComposition: map['fabricComposition'],
+      size: map['size'],
+      countryOfOrigin: map['countryOfOrigin'],
+      careInstructions: map['careInstructions'],
+      labelPhotoUrl: map['labelPhotoUrl'],
+      receiptPhotoUrl: map['receiptPhotoUrl'],
       purchaseDate: map['purchaseDate'] != null
           ? DateTime.tryParse(map['purchaseDate']) ?? DateTime.now()
           : DateTime.now(),

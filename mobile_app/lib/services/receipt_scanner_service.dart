@@ -47,6 +47,22 @@ class ScannedOrderReceipt {
 }
 
 class ReceiptScannerService {
+  static const String sampleKastaEmail = '''
+Дякуємо за замовлення на Kasta!
+Номер замовлення: KAS-99218
+Сума до сплати: 1 899.00 UAH
+Товари:
+1. Демісезонна куртка чорна - 1899 грн
+''';
+
+  static const String sampleZaraEmail = '''
+Підтвердження онлайн-замовлення ZARA
+Номер: ZAR-78192
+Сума: 3 099.00 UAH
+Товари:
+1. Структурний двобортний жакет бежевий M - 3099 грн
+''';
+
   /// Parses raw email confirmation text, receipt copy or order summary
   static ScannedOrderReceipt parseEmailReceiptText(String rawText) {
     final lower = rawText.toLowerCase();
