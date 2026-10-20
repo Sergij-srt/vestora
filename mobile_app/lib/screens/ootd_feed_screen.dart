@@ -191,6 +191,131 @@ class _OotdFeedScreenState extends State<OotdFeedScreen> {
     );
   }
 
+  void _showCreatePostSheet() {
+    final captionCtrl = TextEditingController(text: 'Мій сьогоднішній гармонійний лук з улюбленими речами з шафи Vestora ✨');
+    String selectedOccasion = 'Офіс / Діловий 💼';
+    final tag1Ctrl = TextEditingController(text: 'Massimo Dutti Блейзер');
+    final tag2Ctrl = TextEditingController(text: 'Zara Лляна сорочка');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Опублікувати образ в OOTD',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Поділіться щоденним луком із капсульною спільнотою Vestora та отримайте оцінку від ШІ-стиліста.',
+                  style: TextStyle(fontSize: 12, color: AppTheme.muted),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: captionCtrl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Опис вашого образу'),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedOccasion,
+                  decoration: const InputDecoration(labelText: 'Контекст / Подія'),
+                  items: const [
+                    DropdownMenuItem(value: 'Офіс / Діловий 💼', child: Text('Офіс / Діловий 💼')),
+                    DropdownMenuItem(value: 'Кав\'ярня / Прогулянка ☕', child: Text('Кав\'ярня / Прогулянка ☕')),
+                    DropdownMenuItem(value: 'Вечір / Театр ✨', child: Text('Вечір / Театр ✨')),
+                    DropdownMenuItem(value: 'Подорож / Дорога ✈️', child: Text('Подорож / Дорога ✈️')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setSheetState(() => selectedOccasion = val);
+                  },
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: tag1Ctrl,
+                        decoration: const InputDecoration(labelText: 'Тег речі #1'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: tag2Ctrl,
+                        decoration: const InputDecoration(labelText: 'Тег речі #2'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      final tags = <String>[];
+                      if (tag1Ctrl.text.trim().isNotEmpty) tags.add(tag1Ctrl.text.trim());
+                      if (tag2Ctrl.text.trim().isNotEmpty) tags.add(tag2Ctrl.text.trim());
+
+                      final newPost = OotdPost(
+                        id: DateTime.now().millisecondsSinceEpoch.toString(),
+                        authorName: 'Ви (Власник капсули)',
+                        authorHandle: '@you_capsule',
+                        authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+                        occasion: selectedOccasion,
+                        weatherTag: '+16°C · Стильний день',
+                        imageUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=800',
+                        caption: captionCtrl.text.trim(),
+                        styleScore: 9.7,
+                        taggedItems: tags.isNotEmpty ? tags : ['Massimo Dutti Блейзер', 'Zara Сорочка'],
+                        likesCount: 1,
+                        isLiked: true,
+                      );
+
+                      setState(() {
+                        _posts.insert(0, newPost);
+                      });
+
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Ваш образ опубліковано у спільноті Vestora! ШІ оцінив його на 9.7/10 💎'),
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: Color(0xFF16A34A),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.send_rounded, size: 18),
+                    label: const Text('Опублікувати для спільноти'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final filters = ['Усі', 'Офіс 💼', 'Кав\'ярня ☕', 'Вечірні ✨'];
@@ -199,6 +324,11 @@ class _OotdFeedScreenState extends State<OotdFeedScreen> {
       appBar: AppBar(
         title: const Text('OOTD & Спільнота'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add_photo_alternate_outlined, color: AppTheme.accent),
+            tooltip: 'Опублікувати лук в OOTD',
+            onPressed: _showCreatePostSheet,
+          ),
           IconButton(
             icon: const Icon(Icons.person_add_alt_1_outlined, color: AppTheme.primary),
             tooltip: 'Запросити стиліста (Crowd-Styling)',

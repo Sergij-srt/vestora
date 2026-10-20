@@ -18,6 +18,33 @@ class AnalyticsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Аналітика Гардероба'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share_outlined, color: AppTheme.accent),
+            tooltip: 'Поділитися звітом гардероба',
+            onPressed: () {
+              final topItem = wardrobe.mostWornItems.isNotEmpty ? wardrobe.mostWornItems.first : null;
+              final reportText = '''
+VESTORA · Звіт про Гардероб ✨
+🔥 Стрік активності: ${wardrobe.streakDays} днів
+🌿 Індекс здоров'я шафи: ${health.healthScore}/100 (${health.healthStatus})
+💎 Сукупна вартість: ${wardrobe.totalWardrobeValue.toStringAsFixed(0)} ₴ (${wardrobe.totalItemsCount} речей)
+🎯 Найкраща окупність: ${topItem != null ? '${topItem.title} (${topItem.costPerWear.toStringAsFixed(0)} ₴/вихід)' : 'Немає'}
+🎨 Базова капсула: ${wardrobe.neutralColorPercentage.toStringAsFixed(0)}% нейтральних позачасових кольорів
+
+Створено у розумному гардеробі Vestora.
+''';
+              Clipboard.setData(ClipboardData(text: reportText));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Звіт про гардероб скопійовано! Поділіться ним з друзями.'),
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: Color(0xFF16A34A),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -446,10 +473,124 @@ class AnalyticsScreen extends StatelessWidget {
               }).toList(),
             ),
           ),
+          const SizedBox(height: 20),
+
+          // Section 4: Color Palette & Capsule Harmony
+          const Text(
+            'КОЛІРНА ПАЛІТРА ТА КАПСУЛЬНА ГАРМОНІЯ',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+              color: AppTheme.muted,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Позачасова база (Quiet Luxury):',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${wardrobe.neutralColorPercentage.toStringAsFixed(0)}% шафи',
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Color(0xFF92400E)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: wardrobe.colorDistribution.entries.map((entry) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF4F4F5),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppTheme.border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _getColorFromName(entry.key),
+                              border: Border.all(color: Colors.black26),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${entry.key} (${entry.value})',
+                            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.palette_outlined, color: Color(0xFF16A34A), size: 18),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Гармонія палітри відмінна: кольори легко поєднуються за правилом трьох відтінків.',
+                          style: TextStyle(fontSize: 11.5, color: Color(0xFF166534), height: 1.35),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 32),
         ],
       ),
     );
+  }
+
+  Color _getColorFromName(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('беж') || lower.contains('крем')) return const Color(0xFFE5D3B3);
+    if (lower.contains('біл')) return Colors.white;
+    if (lower.contains('чорн')) return const Color(0xFF18181B);
+    if (lower.contains('денім') || lower.contains('синій')) return const Color(0xFF2563EB);
+    if (lower.contains('смарагд') || lower.contains('зелен')) return const Color(0xFF047857);
+    if (lower.contains('сір')) return const Color(0xFF9CA3AF);
+    if (lower.contains('коричн')) return const Color(0xFF78350F);
+    if (lower.contains('червон') || lower.contains('бордо')) return const Color(0xFF991B1B);
+    return const Color(0xFFD4D4D8);
   }
 
   Widget _buildItemRow({

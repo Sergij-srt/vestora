@@ -27,10 +27,25 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
   final TextEditingController _promptController = TextEditingController();
 
   // Weather & Context settings
-  final WeatherCondition _weatherCondition = WeatherCondition.cloudy;
-  final Occasion _occasion = Occasion.casual;
-  final int _temperature = 16;
+  WeatherCondition _weatherCondition = WeatherCondition.cloudy;
+  Occasion _occasion = Occasion.casual;
+  int _temperature = 16;
   CuratedDailyOutfit? _lastCurated;
+
+  void _selectWeatherPreset(WeatherCondition condition, int temp) {
+    setState(() {
+      _weatherCondition = condition;
+      _temperature = temp;
+    });
+    _curateWithAI();
+  }
+
+  void _selectOccasion(Occasion occasion) {
+    setState(() {
+      _occasion = occasion;
+    });
+    _curateWithAI();
+  }
 
   @override
   void initState() {
@@ -451,6 +466,36 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                 ),
                 const SizedBox(height: 8),
 
+                // Interactive Weather Selector Row
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildWeatherPill('☀️ +22°C Сонячно', WeatherCondition.sunny, 22),
+                      _buildWeatherPill('⛅ +16°C Хмарно', WeatherCondition.cloudy, 16),
+                      _buildWeatherPill('🌧️ +13°C Дощ', WeatherCondition.rainy, 13),
+                      _buildWeatherPill('💨 +8°C Вітряно', WeatherCondition.coldWindy, 8),
+                      _buildWeatherPill('❄️ -2°C Мороз', WeatherCondition.snowy, -2),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                // Interactive Occasion Selector Row
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildOccasionPill('💼 Офіс', Occasion.work),
+                      _buildOccasionPill('☕ Прогулянка', Occasion.casual),
+                      _buildOccasionPill('✨ Побачення', Occasion.dateNight),
+                      _buildOccasionPill('🏃 Спорт', Occasion.sport),
+                      _buildOccasionPill('✈️ Подорож', Occasion.travel),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+
                 // Quick Prompt Chips
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -588,7 +633,23 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.bookmark_add_outlined, color: AppTheme.accent),
+                  tooltip: 'Зберегти в улюблені капсули',
+                  onPressed: () {
+                    final items = _currentOutfitItems;
+                    if (items.isEmpty) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Образ збережено до улюблених капсул!'),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: Color(0xFF16A34A),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: _wearThisOutfit,
@@ -600,6 +661,65 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildWeatherPill(String label, WeatherCondition condition, int temp) {
+    final isSelected = _weatherCondition == condition && _temperature == temp;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: InkWell(
+        onTap: () => _selectWeatherPreset(condition, temp),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFFFEF3C7) : const Color(0xFFF4F4F5),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? AppTheme.accent : AppTheme.border,
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+              color: isSelected ? const Color(0xFF92400E) : AppTheme.secondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOccasionPill(String label, Occasion occasion) {
+    final isSelected = _occasion == occasion;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: InkWell(
+        onTap: () => _selectOccasion(occasion),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.primary : const Color(0xFFF4F4F5),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? AppTheme.primary : AppTheme.border,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected ? Colors.white : AppTheme.secondary,
+            ),
+          ),
+        ),
       ),
     );
   }

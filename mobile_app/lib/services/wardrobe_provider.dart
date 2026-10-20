@@ -62,6 +62,29 @@ class WardrobeProvider with ChangeNotifier {
     return list.take(5).toList();
   }
 
+  // Color distribution for palette analysis
+  Map<String, int> get colorDistribution {
+    final map = <String, int>{};
+    for (final it in _items) {
+      final c = it.color.trim();
+      if (c.isNotEmpty) {
+        map[c] = (map[c] ?? 0) + 1;
+      }
+    }
+    return map;
+  }
+
+  // Percentage of timeless neutrals (Quiet Luxury metric)
+  double get neutralColorPercentage {
+    if (_items.isEmpty) return 0.0;
+    const neutrals = ['бежевий', 'білий', 'чорний', 'сірий', 'синій денім', 'синій', 'коричневий', 'молочний', 'кремовий'];
+    final neutralCount = _items.where((i) {
+      final c = i.color.toLowerCase();
+      return neutrals.any((n) => c.contains(n));
+    }).length;
+    return (neutralCount / _items.length) * 100;
+  }
+
   void setCategoryFilter(ClothingCategory? category) {
     _selectedCategory = category;
     notifyListeners();
@@ -96,6 +119,15 @@ class WardrobeProvider with ChangeNotifier {
     _items.insertAll(0, newItems);
     notifyListeners();
     await _saveToStorage();
+  }
+
+  Future<void> updateItem(ClothingItem updatedItem) async {
+    final index = _items.indexWhere((item) => item.id == updatedItem.id);
+    if (index != -1) {
+      _items[index] = updatedItem;
+      notifyListeners();
+      await _saveToStorage();
+    }
   }
 
   Future<void> removeItem(String id) async {
@@ -179,6 +211,10 @@ class WardrobeProvider with ChangeNotifier {
         currency: 'UAH',
         storeName: 'Massimo Dutti',
         fabricComposition: '100% Натуральна вовна',
+        size: 'EUR 38 / US S',
+        countryOfOrigin: 'Made in Portugal',
+        careInstructions: 'Хімчистка дозволена · Не прати у воді',
+        labelPhotoUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400',
         wearCount: 14,
       ),
       ClothingItem(
@@ -193,6 +229,10 @@ class WardrobeProvider with ChangeNotifier {
         currency: 'UAH',
         storeName: 'Zara',
         fabricComposition: '100% Льон',
+        size: 'EUR 38 / M',
+        countryOfOrigin: 'Made in Morocco',
+        careInstructions: 'Делікатне прання 30°C · Прасування при помірній t°',
+        labelPhotoUrl: 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=400',
         wearCount: 22,
       ),
       ClothingItem(
@@ -207,6 +247,9 @@ class WardrobeProvider with ChangeNotifier {
         currency: 'UAH',
         storeName: 'COS',
         fabricComposition: '100% Органічна бавовна',
+        size: 'W30 / L32',
+        countryOfOrigin: 'Made in Turkey',
+        careInstructions: 'Прання 40°C з вивороту · Не відбілювати',
         wearCount: 31,
       ),
       ClothingItem(
@@ -221,6 +264,9 @@ class WardrobeProvider with ChangeNotifier {
         currency: 'UAH',
         storeName: 'Intertop',
         fabricComposition: '100% Натуральна шкіра',
+        size: 'EUR 39 / US 7',
+        countryOfOrigin: 'Made in Vietnam',
+        careInstructions: 'Чищення вологою серветкою · Водовідштовхувальний спрей',
         wearCount: 45,
       ),
       ClothingItem(
@@ -234,7 +280,10 @@ class WardrobeProvider with ChangeNotifier {
         price: 2800,
         currency: 'UAH',
         storeName: 'Arket',
-        fabricComposition: 'Шкіра',
+        fabricComposition: '100% Шкіра рослинного дублення',
+        size: 'One Size (22×16 см)',
+        countryOfOrigin: 'Made in Italy',
+        careInstructions: 'Кондиціонер для шкіри · Зберігати у пильовику',
         wearCount: 19,
       ),
       ClothingItem(
@@ -248,7 +297,10 @@ class WardrobeProvider with ChangeNotifier {
         price: 2400,
         currency: 'UAH',
         storeName: 'Mango',
-        fabricComposition: '100% Шовк',
+        fabricComposition: '100% Натуральний шовк Mulberry',
+        size: 'EUR 36 / S',
+        countryOfOrigin: 'Made in Spain',
+        careInstructions: 'Сухе чищення (Dry Clean Only) · Не віджимати',
         wearCount: 3,
       ),
     ];

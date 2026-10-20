@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/clothing_item.dart';
 import '../services/wardrobe_provider.dart';
+import '../services/gamification_service.dart';
 import '../theme/app_theme.dart';
 import 'purchase_advisor_screen.dart';
 import 'brand_story_dialog.dart';
@@ -542,6 +544,328 @@ class _ItemDetailBottomSheet extends StatefulWidget {
 class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
   double _extraWears = 5;
 
+  void _showImagePreview(BuildContext context, String imageUrl, String title) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.8),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+            ),
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.contain,
+                placeholder: (context, url) => Container(
+                  height: 250,
+                  color: Colors.black26,
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  height: 200,
+                  color: Colors.white,
+                  child: const Center(child: Icon(Icons.broken_image, size: 40)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showResaleDialog(BuildContext context, ClothingItem item) {
+    final listingText = GamificationService.generateResaleListing(item);
+    final suggestedPrice = (item.price * 0.6).round();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.storefront_rounded, color: AppTheme.accent),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ШІ-Оголошення для Shafa / OLX',
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                      ),
+                      Text(
+                        'Згенеровано на основі етикетки та вартості',
+                        style: TextStyle(fontSize: 11.5, color: AppTheme.muted),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.savings_outlined, color: Color(0xFF16A34A), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Рекомендована ціна продажу: $suggestedPrice ₴ (Знижка 40% від початкових ${item.price.toStringAsFixed(0)} ₴)',
+                      style: const TextStyle(
+                        color: Color(0xFF166534),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 180),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF4F4F5),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: SingleChildScrollView(
+                child: SelectableText(
+                  listingText,
+                  style: const TextStyle(fontSize: 12, height: 1.45, color: Color(0xFF27272A)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: listingText));
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Оголошення для "${item.title}" скопійовано в буфер обміну!'),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: const Color(0xFF16A34A),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.copy_rounded, size: 18),
+                label: const Text('Скопіювати оголошення (1 клік)'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditDialog(BuildContext context, ClothingItem item) {
+    final titleCtrl = TextEditingController(text: item.title);
+    final brandCtrl = TextEditingController(text: item.brand);
+    final priceCtrl = TextEditingController(text: item.price.toStringAsFixed(0));
+    final sizeCtrl = TextEditingController(text: item.size ?? '');
+    final fabricCtrl = TextEditingController(text: item.fabricComposition ?? '');
+    final colorCtrl = TextEditingController(text: item.color);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Редагувати річ',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: titleCtrl,
+                decoration: const InputDecoration(labelText: 'Назва товару'),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: brandCtrl,
+                      decoration: const InputDecoration(labelText: 'Бренд'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: priceCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Ціна (₴)'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: sizeCtrl,
+                      decoration: const InputDecoration(labelText: 'Розмір (EUR / US)'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: colorCtrl,
+                      decoration: const InputDecoration(labelText: 'Колір'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: fabricCtrl,
+                decoration: const InputDecoration(labelText: 'Склад тканини (з етикетки)'),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final updated = ClothingItem(
+                      id: item.id,
+                      title: titleCtrl.text.trim().isNotEmpty ? titleCtrl.text.trim() : item.title,
+                      brand: brandCtrl.text.trim().isNotEmpty ? brandCtrl.text.trim() : item.brand,
+                      price: double.tryParse(priceCtrl.text.trim()) ?? item.price,
+                      currency: item.currency,
+                      imageUrl: item.imageUrl,
+                      category: item.category,
+                      season: item.season,
+                      color: colorCtrl.text.trim().isNotEmpty ? colorCtrl.text.trim() : item.color,
+                      size: sizeCtrl.text.trim().isNotEmpty ? sizeCtrl.text.trim() : item.size,
+                      fabricComposition: fabricCtrl.text.trim().isNotEmpty ? fabricCtrl.text.trim() : item.fabricComposition,
+                      countryOfOrigin: item.countryOfOrigin,
+                      careInstructions: item.careInstructions,
+                      storeName: item.storeName,
+                      labelPhotoUrl: item.labelPhotoUrl,
+                      receiptPhotoUrl: item.receiptPhotoUrl,
+                      wearCount: item.wearCount,
+                    );
+                    context.read<WardrobeProvider>().updateItem(updated);
+                    Navigator.pop(ctx);
+                    Navigator.pop(context); // Close bottom sheet
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Дані речі успішно оновлено!'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  child: const Text('Зберегти зміни'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSpecItem(IconData icon, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppTheme.accent),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 10, color: AppTheme.muted, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
@@ -549,166 +873,291 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
     final simulatedCPW = simulatedWears > 0 ? (item.price / simulatedWears) : item.price;
     final percentSavings = item.costPerWear > 0 ? (((item.costPerWear - simulatedCPW) / item.costPerWear) * 100) : 0;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppTheme.border,
-                borderRadius: BorderRadius.circular(2),
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.88,
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: CachedNetworkImage(
-                  imageUrl: item.imageUrl,
-                  width: 95,
-                  height: 115,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.brand.toUpperCase(),
-                      style: const TextStyle(
-                        color: AppTheme.muted,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Ціна: ${item.price.toStringAsFixed(0)} ${item.currency}',
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                    if (item.fabricComposition != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Тканина: ${item.fabricComposition}',
-                        style: const TextStyle(color: AppTheme.muted, fontSize: 11),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 14),
 
-          // Predictive Cost-Per-Wear Simulator Box
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.border),
-            ),
-            child: Column(
+            // Top Header: Image, Title, Price and Edit Button
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'СИМУЛЯТОР ОКУПНОСТІ (CPW)',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1,
-                        color: AppTheme.accent,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: CachedNetworkImage(
+                    imageUrl: item.imageUrl,
+                    width: 95,
+                    height: 115,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.brand.toUpperCase(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppTheme.muted,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 11,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 18, color: AppTheme.accent),
+                            tooltip: 'Редагувати',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => _showEditDialog(context, item),
+                          ),
+                        ],
                       ),
-                    ),
-                    Text(
-                      '+${_extraWears.round()} виходів',
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                    ),
-                  ],
-                ),
-                Slider(
-                  value: _extraWears,
-                  min: 0,
-                  max: 30,
-                  divisions: 30,
-                  activeColor: AppTheme.accent,
-                  onChanged: (v) => setState(() => _extraWears = v),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Зараз: ${item.costPerWear.toStringAsFixed(0)} ₴ / носіння',
-                      style: const TextStyle(fontSize: 11, color: AppTheme.muted),
-                    ),
-                    Text(
-                      'Прогноз: ${simulatedCPW.toStringAsFixed(0)} ₴ (-${percentSavings.toStringAsFixed(0)}%)',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Text(
+                        item.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Text(
+                            '${item.price.toStringAsFixed(0)} ${item.currency}',
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppTheme.primary),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${item.wearCount} носінь',
+                              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF92400E)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.check_circle_outline_rounded),
-                  label: const Text('Вдягнути сьогодні (+1)'),
+            // Luxury Specification Grid (Data read from Labels & Receipts)
+            const Text(
+              'ХАРАКТЕРИСТИКИ ТА ЕТИКЕТКА',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1,
+                color: AppTheme.muted,
+              ),
+            ),
+            const SizedBox(height: 8),
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: 2.5,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              children: [
+                _buildSpecItem(Icons.straighten_rounded, 'Розмір', item.size ?? 'EUR 38 / M'),
+                _buildSpecItem(Icons.public_rounded, 'Походження', item.countryOfOrigin ?? 'Made in Portugal'),
+                _buildSpecItem(Icons.texture_rounded, 'Склад тканини', item.fabricComposition ?? '100% Вовна'),
+                _buildSpecItem(Icons.local_laundry_service_outlined, 'Правила догляду', item.careInstructions ?? 'Делікатне прання'),
+                _buildSpecItem(Icons.palette_outlined, 'Колір & Сезон', '${item.color} · ${item.season.label}'),
+                _buildSpecItem(Icons.storefront_outlined, 'Місце покупки', item.storeName ?? item.brand),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // Photos from Tag & Receipt if present
+            if (item.labelPhotoUrl != null || item.receiptPhotoUrl != null) ...[
+              Row(
+                children: [
+                  const Text(
+                    'ФОТО-ПІДТВЕРДЖЕННЯ: ',
+                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppTheme.muted),
+                  ),
+                  const Spacer(),
+                  if (item.labelPhotoUrl != null)
+                    InkWell(
+                      onTap: () => _showImagePreview(context, item.labelPhotoUrl!, 'Фото етикетки'),
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFBBF7D0)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Text('🏷️', style: TextStyle(fontSize: 11)),
+                            SizedBox(width: 4),
+                            Text('Етикетка', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF166534))),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (item.receiptPhotoUrl != null)
+                    InkWell(
+                      onTap: () => _showImagePreview(context, item.receiptPhotoUrl!, 'Фото чека'),
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFAF5FF),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFE9D5FF)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Text('🧾', style: TextStyle(fontSize: 11)),
+                            SizedBox(width: 4),
+                            Text('Чек покупки', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF6B21A8))),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+            ],
+
+            // Predictive Cost-Per-Wear Simulator Box
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F9FA),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'СИМУЛЯТОР ОКУПНОСТІ (CPW)',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                          color: AppTheme.accent,
+                        ),
+                      ),
+                      Text(
+                        '+${_extraWears.round()} виходів',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  Slider(
+                    value: _extraWears,
+                    min: 0,
+                    max: 30,
+                    divisions: 30,
+                    activeColor: AppTheme.accent,
+                    onChanged: (v) => setState(() => _extraWears = v),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Зараз: ${item.costPerWear.toStringAsFixed(0)} ₴ / носіння',
+                        style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+                      ),
+                      Text(
+                        'Прогноз: ${simulatedCPW.toStringAsFixed(0)} ₴ (-${percentSavings.toStringAsFixed(0)}%)',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                    label: const Text('Вдягнути (+1)'),
+                    onPressed: () {
+                      context.read<WardrobeProvider>().recordWear(item.id);
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Образ зараховано для "${item.title}"!'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.sell_outlined, size: 16),
+                  label: const Text('Продати'),
+                  onPressed: () => _showResaleDialog(context, item),
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                  tooltip: 'Видалити',
                   onPressed: () {
-                    context.read<WardrobeProvider>().recordWear(item.id);
+                    context.read<WardrobeProvider>().removeItem(item.id);
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Образ зараховано для "${item.title}"!'),
+                      const SnackBar(
+                        content: Text('Річ видалено з гардероба'),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
                   },
                 ),
-              ),
-              const SizedBox(width: 12),
-              IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
-                onPressed: () {
-                  context.read<WardrobeProvider>().removeItem(item.id);
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Річ видалено з гардероба'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
