@@ -5,12 +5,51 @@ class AppTheme {
   static const Color primary = Color(0xFF121214); // Obsidian Slate
   static const Color secondary = Color(0xFF27272A); // Charcoal Charcoal
   static const Color accent = Color(0xFFD97706); // Champagne Gold
+  static const Color accentLight = Color(0xFFFEF3C7); // Warm Amber Glow
   static const Color background = Color(0xFFF8F9FA); // Warm Ivory
   static const Color surface = Colors.white;
   static const Color muted = Color(0xFF71717A);
   static const Color border = Color(0xFFE4E4E7);
+  static const Color glassBorder = Color(0x26000000); // Subtle 15% hairline
   static const Color success = Color(0xFF16A34A); // Emerald
   static const Color danger = Color(0xFFDC2626); // Ruby Shield
+
+  // Modern 2025/2026 Elevation & Shadows
+  static const List<BoxShadow> softShadow = [
+    BoxShadow(
+      color: Color(0x0A000000),
+      blurRadius: 16,
+      offset: Offset(0, 4),
+    ),
+  ];
+
+  static const List<BoxShadow> floatingShadow = [
+    BoxShadow(
+      color: Color(0x14000000),
+      blurRadius: 24,
+      offset: Offset(0, 8),
+    ),
+  ];
+
+  // Bento Card decoration helper
+  static BoxDecoration bentoCardDecoration({Color? color, Border? border}) {
+    return BoxDecoration(
+      color: color ?? surface,
+      borderRadius: BorderRadius.circular(20),
+      border: border ?? Border.all(color: AppTheme.border, width: 1),
+      boxShadow: softShadow,
+    );
+  }
+
+  // Glassmorphic decoration helper
+  static BoxDecoration glassDecoration({Color? color, double opacity = 0.85}) {
+    return BoxDecoration(
+      color: (color ?? surface).withValues(alpha: opacity),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1),
+      boxShadow: floatingShadow,
+    );
+  }
 
   static ThemeData get lightTheme {
     return ThemeData(

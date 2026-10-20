@@ -95,5 +95,17 @@ void main() {
       expect(outfit.allItems.isEmpty, isTrue);
       expect(outfit.weatherRationale.contains('Додайте'), isTrue);
     });
+
+    test('curates outfit via natural language prompt successfully', () {
+      final outfit = WeatherStylistService.curateByNaturalPrompt(
+        prompt: 'Ділова зустріч під дощем в офісі',
+        wardrobe: sampleWardrobe,
+      );
+
+      expect(outfit.outerwear, isNotNull);
+      expect(outfit.outerwear!.title.toLowerCase().contains('тренч'), isTrue);
+      expect(outfit.occasionRationale.contains('ШІ розпізнав запит'), isTrue);
+      expect(outfit.comfortScore, greaterThan(80));
+    });
   });
 }

@@ -107,11 +107,16 @@ class WeatherStylistService {
     if (occasion == Occasion.dateNight && dresses.isNotEmpty && !isCold) {
       selectedDress = dresses.first;
     } else {
-      // Top selection
+      // Pick top and bottom
       if (tops.isNotEmpty) {
         if (isHot) {
           selectedTop = tops.firstWhere(
-            (i) => (i.fabricComposition ?? '').toLowerCase().contains('льон') || i.title.toLowerCase().contains('футболк'),
+            (i) => i.title.toLowerCase().contains('футболк') || i.title.toLowerCase().contains('топ'),
+            orElse: () => tops.first,
+          );
+        } else if (occasion == Occasion.work) {
+          selectedTop = tops.firstWhere(
+            (i) => i.title.toLowerCase().contains('сорочк') || i.title.toLowerCase().contains('блуз'),
             orElse: () => tops.first,
           );
         } else {
@@ -119,9 +124,15 @@ class WeatherStylistService {
         }
       }
 
-      // Bottom selection
       if (bottoms.isNotEmpty) {
-        selectedBottom = bottoms.first;
+        if (occasion == Occasion.work) {
+          selectedBottom = bottoms.firstWhere(
+            (i) => i.title.toLowerCase().contains('штани') || i.title.toLowerCase().contains('брюк'),
+            orElse: () => bottoms.first,
+          );
+        } else {
+          selectedBottom = bottoms.first;
+        }
       }
     }
 
@@ -166,6 +177,63 @@ class WeatherStylistService {
       weatherRationale: weatherRationale,
       occasionRationale: occasionRationale,
       comfortScore: isRainy ? 92 : 98,
+    );
+  }
+
+  /// Generative AI Natural Language Prompt interpreter for free-form user intents
+  static CuratedDailyOutfit curateByNaturalPrompt({
+    required String prompt,
+    required List<ClothingItem> wardrobe,
+  }) {
+    final lower = prompt.toLowerCase();
+
+    // 1. Weather detection from text
+    WeatherCondition condition = WeatherCondition.cloudy;
+    int temp = 17;
+
+    if (lower.contains('дощ') || lower.contains('лив') || lower.contains('rain')) {
+      condition = WeatherCondition.rainy;
+      temp = 14;
+    } else if (lower.contains('сонц') || lower.contains('жар') || lower.contains('літ') || lower.contains('тепло') || lower.contains('sun')) {
+      condition = WeatherCondition.sunny;
+      temp = 24;
+    } else if (lower.contains('сніг') || lower.contains('мороз') || lower.contains('зим') || lower.contains('холод') || lower.contains('cold')) {
+      condition = WeatherCondition.snowy;
+      temp = -1;
+    } else if (lower.contains('віт') || lower.contains('wind')) {
+      condition = WeatherCondition.coldWindy;
+      temp = 12;
+    }
+
+    // 2. Occasion detection from text
+    Occasion occasion = Occasion.casual;
+    if (lower.contains('офіс') || lower.contains('робот') || lower.contains('зустріч') || lower.contains('ділов') || lower.contains('work')) {
+      occasion = Occasion.work;
+    } else if (lower.contains('побачен') || lower.contains('вечір') || lower.contains('ресторан') || lower.contains('театр') || lower.contains('date')) {
+      occasion = Occasion.dateNight;
+    } else if (lower.contains('спорт') || lower.contains('трен') || lower.contains('пробіжк') || lower.contains('sport')) {
+      occasion = Occasion.sport;
+    } else if (lower.contains('подорож') || lower.contains('дорог') || lower.contains('літак') || lower.contains('travel')) {
+      occasion = Occasion.travel;
+    }
+
+    final base = curateOutfit(
+      wardrobe: wardrobe,
+      temperatureCelsius: temp,
+      condition: condition,
+      occasion: occasion,
+    );
+
+    return CuratedDailyOutfit(
+      outerwear: base.outerwear,
+      top: base.top,
+      bottom: base.bottom,
+      dress: base.dress,
+      shoes: base.shoes,
+      accessory: base.accessory,
+      weatherRationale: base.weatherRationale,
+      occasionRationale: 'ШІ розпізнав запит: «$prompt». Формат: ${occasion.label}.',
+      comfortScore: base.comfortScore,
     );
   }
 }

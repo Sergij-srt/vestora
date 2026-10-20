@@ -6,6 +6,7 @@ import '../models/clothing_item.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/weather_stylist_service.dart';
 import '../services/style_check_service.dart';
+import '../widgets/outfit_moodboard.dart';
 import '../theme/app_theme.dart';
 
 class OutfitBuilderScreen extends StatefulWidget {
@@ -21,10 +22,14 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
   ClothingItem? _selectedBottom;
   ClothingItem? _selectedShoes;
 
+  // Modern UI & View toggles
+  bool _isMoodboardMode = true;
+  final TextEditingController _promptController = TextEditingController();
+
   // Weather & Context settings
-  WeatherCondition _weatherCondition = WeatherCondition.cloudy;
-  Occasion _occasion = Occasion.casual;
-  int _temperature = 16;
+  final WeatherCondition _weatherCondition = WeatherCondition.cloudy;
+  final Occasion _occasion = Occasion.casual;
+  final int _temperature = 16;
   CuratedDailyOutfit? _lastCurated;
 
   @override
@@ -33,6 +38,12 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _curateWithAI();
     });
+  }
+
+  @override
+  void dispose() {
+    _promptController.dispose();
+    super.dispose();
   }
 
   List<ClothingItem> get _currentOutfitItems {
@@ -62,6 +73,27 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
       _selectedBottom = curated.bottom;
       _selectedShoes = curated.shoes;
     });
+  }
+
+  void _curateWithNaturalPrompt(String prompt) {
+    if (prompt.trim().isEmpty) return;
+    final wardrobe = context.read<WardrobeProvider>();
+    if (wardrobe.items.isEmpty) return;
+
+    final curated = WeatherStylistService.curateByNaturalPrompt(
+      prompt: prompt,
+      wardrobe: wardrobe.items,
+    );
+
+    setState(() {
+      _lastCurated = curated;
+      _selectedOuterwear = curated.outerwear;
+      _selectedTop = curated.top;
+      _selectedBottom = curated.bottom;
+      _selectedShoes = curated.shoes;
+    });
+
+    FocusScope.of(context).unfocus();
   }
 
   void _randomizeOutfit() {
@@ -231,7 +263,6 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Progress bars
               _buildMetricBar('Гармонія кольорів', eval.colorHarmonyScore, const Color(0xFF2563EB)),
               const SizedBox(height: 10),
               _buildMetricBar('Баланс пропорцій', eval.proportionScore, const Color(0xFF16A34A)),
@@ -240,7 +271,6 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
               const Divider(color: AppTheme.border),
               const SizedBox(height: 12),
 
-              // Positive highlights
               ...eval.positiveHighlights.map((hl) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Row(
@@ -256,7 +286,6 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                   )),
 
               const SizedBox(height: 12),
-              // Actionable tip
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -322,9 +351,37 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
 
     if (wardrobe.items.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Стиліст Vestora')),
-        body: const Center(
-          child: Text('Додайте спочатку декілька речей у гардероб'),
+        appBar: AppBar(title: const Text('AI Стиліст Vestora')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.style_outlined, size: 64, color: AppTheme.muted),
+                const SizedBox(height: 16),
+                const Text(
+                  'Додайте спочатку декілька речей у гардероб',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Або завантажте готову демо-капсулу на головному екрані',
+                  style: TextStyle(fontSize: 13, color: AppTheme.muted),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    context.read<WardrobeProvider>().loadDemoCapsule();
+                  },
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text('Завантажити демо-капсулу'),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }
@@ -333,9 +390,15 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
       appBar: AppBar(
         title: const Text('AI Стиліст Vestora'),
         actions: [
+          // View mode toggle button
+          IconButton(
+            icon: Icon(_isMoodboardMode ? Icons.view_agenda_outlined : Icons.dashboard_outlined),
+            tooltip: _isMoodboardMode ? 'Перемкнути на слоти' : 'Перемкнути на колаж',
+            onPressed: () => setState(() => _isMoodboardMode = !_isMoodboardMode),
+          ),
           IconButton(
             icon: const Icon(Icons.auto_awesome, color: AppTheme.accent),
-            tooltip: 'Оцінити стиль образу (AI Check)',
+            tooltip: 'Оцінити стиль образу (Style Check)',
             onPressed: _showStyleCheckDialog,
           ),
           IconButton(
@@ -347,111 +410,67 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
       ),
       body: Column(
         children: [
-          // Weather & Context Selector
+          // Natural Language AI Prompt & Context Bar
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
             color: Colors.white,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Natural Language Search Bar
                 Row(
                   children: [
-                    InkWell(
-                      borderRadius: BorderRadius.circular(8),
-                      onTap: () {
-                        setState(() {
-                          if (_temperature == 16) {
-                            _temperature = 22;
-                          } else if (_temperature == 22) {
-                            _temperature = 8;
-                          } else {
-                            _temperature = 16;
-                          }
-                        });
-                        _curateWithAI();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF3C7),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.thermostat_rounded, size: 16, color: AppTheme.accent),
-                            const SizedBox(width: 4),
-                            Text('$_temperature°C', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                          ],
+                    Expanded(
+                      child: TextField(
+                        controller: _promptController,
+                        onSubmitted: _curateWithNaturalPrompt,
+                        style: const TextStyle(fontSize: 13),
+                        decoration: InputDecoration(
+                          hintText: 'Запитайте ШІ: "Ділова зустріч у дощ"...',
+                          hintStyle: const TextStyle(fontSize: 12, color: AppTheme.muted),
+                          prefixIcon: const Icon(Icons.auto_awesome, size: 18, color: AppTheme.accent),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          filled: true,
+                          fillColor: const Color(0xFFF8F9FA),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppTheme.border),
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: WeatherCondition.values.map((cond) {
-                            final isSel = cond == _weatherCondition;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 6),
-                              child: ChoiceChip(
-                                label: Text(cond.label, style: TextStyle(fontSize: 11, color: isSel ? Colors.white : AppTheme.primary)),
-                                selected: isSel,
-                                selectedColor: AppTheme.primary,
-                                backgroundColor: AppTheme.background,
-                                onSelected: (sel) {
-                                  if (sel) {
-                                    setState(() => _weatherCondition = cond);
-                                    _curateWithAI();
-                                  }
-                                },
-                              ),
-                            );
-                          }).toList(),
-                        ),
+                    ElevatedButton(
+                      onPressed: () => _curateWithNaturalPrompt(_promptController.text),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
+                      child: const Icon(Icons.send_rounded, size: 16),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Text('Подія:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.muted)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: Occasion.values.map((occ) {
-                            final isSel = occ == _occasion;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 6),
-                              child: ChoiceChip(
-                                label: Text(occ.label, style: TextStyle(fontSize: 11, color: isSel ? Colors.white : AppTheme.primary)),
-                                selected: isSel,
-                                selectedColor: AppTheme.accent,
-                                backgroundColor: AppTheme.background,
-                                onSelected: (sel) {
-                                  if (sel) {
-                                    setState(() => _occasion = occ);
-                                    _curateWithAI();
-                                  }
-                                },
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ),
-                  ],
+
+                // Quick Prompt Chips
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildQuickPromptChip('🌧️ Дощовий офіс'),
+                      _buildQuickPromptChip('☕ Затишна кав\'ярня'),
+                      _buildQuickPromptChip('✨ Вечірнє побачення'),
+                      _buildQuickPromptChip('🏃 Спортивний вихід'),
+                    ],
+                  ),
                 ),
+
                 if (_lastCurated != null) ...[
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF4F4F5),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
                       children: [
@@ -474,41 +493,74 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
           ),
           const Divider(height: 1, color: AppTheme.border),
 
-          // Outfit Canvas
+          // Main View: Moodboard Canvas or Classical Slots
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              children: [
-                _buildOutfitSlot(
-                  title: 'Верхній одяг',
-                  item: _selectedOuterwear,
-                  category: ClothingCategory.outerwear,
-                  onSelect: (item) => setState(() => _selectedOuterwear = item),
-                ),
-                const SizedBox(height: 10),
-                _buildOutfitSlot(
-                  title: 'Верх / Топ',
-                  item: _selectedTop,
-                  category: ClothingCategory.tops,
-                  onSelect: (item) => setState(() => _selectedTop = item),
-                ),
-                const SizedBox(height: 10),
-                _buildOutfitSlot(
-                  title: 'Низ / Брюки',
-                  item: _selectedBottom,
-                  category: ClothingCategory.bottoms,
-                  onSelect: (item) => setState(() => _selectedBottom = item),
-                ),
-                const SizedBox(height: 10),
-                _buildOutfitSlot(
-                  title: 'Взуття',
-                  item: _selectedShoes,
-                  category: ClothingCategory.shoes,
-                  onSelect: (item) => setState(() => _selectedShoes = item),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
+            child: _isMoodboardMode
+                ? ListView(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    children: [
+                      OutfitMoodboardWidget(
+                        outerwear: _selectedOuterwear,
+                        top: _selectedTop,
+                        bottom: _selectedBottom,
+                        shoes: _selectedShoes,
+                        onShuffle: _randomizeOutfit,
+                        onSelectCategory: (cat) {
+                          final available = wardrobe.items.where((i) => i.category == cat).toList();
+                          _showCategoryPicker(cat, available, (item) {
+                            setState(() {
+                              if (cat == ClothingCategory.outerwear) _selectedOuterwear = item;
+                              if (cat == ClothingCategory.tops) _selectedTop = item;
+                              if (cat == ClothingCategory.bottoms) _selectedBottom = item;
+                              if (cat == ClothingCategory.shoes) _selectedShoes = item;
+                            });
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Text(
+                          'Натисніть на будь-яку річ у колажі, щоб замінити її на іншу з гардероба.',
+                          style: TextStyle(fontSize: 11, color: AppTheme.muted.withValues(alpha: 0.9)),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    children: [
+                      _buildOutfitSlot(
+                        title: 'Верхній одяг',
+                        item: _selectedOuterwear,
+                        category: ClothingCategory.outerwear,
+                        onSelect: (item) => setState(() => _selectedOuterwear = item),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildOutfitSlot(
+                        title: 'Верх / Топ',
+                        item: _selectedTop,
+                        category: ClothingCategory.tops,
+                        onSelect: (item) => setState(() => _selectedTop = item),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildOutfitSlot(
+                        title: 'Низ / Брюки',
+                        item: _selectedBottom,
+                        category: ClothingCategory.bottoms,
+                        onSelect: (item) => setState(() => _selectedBottom = item),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildOutfitSlot(
+                        title: 'Взуття',
+                        item: _selectedShoes,
+                        category: ClothingCategory.shoes,
+                        onSelect: (item) => setState(() => _selectedShoes = item),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
           ),
 
           // Action Bottom Bar
@@ -541,6 +593,21 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildQuickPromptChip(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: ActionChip(
+        label: Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+        backgroundColor: const Color(0xFFF4F4F5),
+        side: const BorderSide(color: AppTheme.border),
+        onPressed: () {
+          _promptController.text = text;
+          _curateWithNaturalPrompt(text);
+        },
       ),
     );
   }

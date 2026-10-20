@@ -72,6 +72,20 @@ class WardrobeProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> loadDemoCapsule() async {
+    _items.clear();
+    _items.addAll(_sampleItems());
+    _streakDays = 14;
+    notifyListeners();
+    await _saveToStorage();
+  }
+
+  Future<void> clearWardrobe() async {
+    _items.clear();
+    notifyListeners();
+    await _saveToStorage();
+  }
+
   Future<void> addItem(ClothingItem item) async {
     _items.insert(0, item);
     notifyListeners();
