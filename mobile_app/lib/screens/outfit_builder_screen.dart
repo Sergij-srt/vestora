@@ -465,23 +465,30 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                 ),
 
                 if (_lastCurated != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF4F4F5),
-                      borderRadius: BorderRadius.circular(10),
+                      color: const Color(0xFFF8F9FA),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.border),
                     ),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.psychology, size: 16, color: AppTheme.primary),
-                        const SizedBox(width: 6),
+                        const Padding(
+                          padding: EdgeInsets.only(top: 2),
+                          child: Icon(Icons.auto_awesome, size: 15, color: AppTheme.accent),
+                        ),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             '${_lastCurated!.weatherRationale} ${_lastCurated!.occasionRationale}',
-                            style: const TextStyle(fontSize: 11, color: AppTheme.secondary),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: AppTheme.secondary,
+                              height: 1.35,
+                            ),
                           ),
                         ),
                       ],
@@ -599,15 +606,29 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
 
   Widget _buildQuickPromptChip(String text) {
     return Padding(
-      padding: const EdgeInsets.only(right: 6),
-      child: ActionChip(
-        label: Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-        backgroundColor: const Color(0xFFF4F4F5),
-        side: const BorderSide(color: AppTheme.border),
-        onPressed: () {
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        onTap: () {
           _promptController.text = text;
           _curateWithNaturalPrompt(text);
         },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF4F4F5),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.border),
+          ),
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.primary,
+            ),
+          ),
+        ),
       ),
     );
   }

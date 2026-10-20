@@ -213,7 +213,7 @@ class WardrobeProvider with ChangeNotifier {
         id: uuid.v4(),
         title: 'Шкіряні білі кросівки Club C',
         brand: 'Reebok',
-        imageUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=600&auto=format&fit=crop&q=80',
+        imageUrl: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&auto=format&fit=crop&q=80',
         category: ClothingCategory.shoes,
         season: Season.allSeason,
         color: 'Білий',
