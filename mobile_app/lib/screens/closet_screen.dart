@@ -8,6 +8,9 @@ import '../services/gamification_service.dart';
 import '../theme/app_theme.dart';
 import 'purchase_advisor_screen.dart';
 import 'brand_story_dialog.dart';
+import 'travel_capsule_screen.dart';
+import 'color_analysis_dialog.dart';
+import 'declutter_hub_screen.dart';
 
 class ClosetScreen extends StatelessWidget {
   const ClosetScreen({super.key});
@@ -38,6 +41,21 @@ class ClosetScreen extends StatelessWidget {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.flight_takeoff_rounded, color: AppTheme.accent),
+            tooltip: 'AI Капсула у подорож',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TravelCapsuleScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.palette_outlined, color: AppTheme.accent),
+            tooltip: 'Персональний кольоротип',
+            onPressed: () => showColorAnalysisDialog(context),
+          ),
           IconButton(
             icon: const Icon(Icons.shield_outlined, color: AppTheme.accent),
             tooltip: 'Should I Buy This? (Радник)',
@@ -227,6 +245,50 @@ class ClosetScreen extends StatelessWidget {
                   ),
                 ),
 
+                // 3b. Smart Assistant Quick Pills (Travel Capsule, Color Season, Declutter Hub)
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 38,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      children: [
+                        _buildAssistPill(
+                          label: '🧳 Капсула у подорож',
+                          color: const Color(0xFFFEF3C7),
+                          textColor: const Color(0xFF92400E),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const TravelCapsuleScreen()),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _buildAssistPill(
+                          label: '🎨 Мій кольоротип',
+                          color: const Color(0xFFF3E8FF),
+                          textColor: const Color(0xFF6B21A8),
+                          onTap: () => showColorAnalysisDialog(context),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildAssistPill(
+                          label: '♻️ Розхламлення & Еко',
+                          color: const Color(0xFFDCFCE7),
+                          textColor: const Color(0xFF166534),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const DeclutterHubScreen()),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 6)),
+
                 // 4. Category Filter Pills
                 SliverToBoxAdapter(
                   child: SizedBox(
@@ -358,6 +420,31 @@ class ClosetScreen extends StatelessWidget {
                 const SliverToBoxAdapter(child: SizedBox(height: 32)),
               ],
             ),
+    );
+  }
+
+  Widget _buildAssistPill({
+    required String label,
+    required Color color,
+    required Color textColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(color: textColor, fontWeight: FontWeight.w700, fontSize: 11.5),
+          ),
+        ),
+      ),
     );
   }
 

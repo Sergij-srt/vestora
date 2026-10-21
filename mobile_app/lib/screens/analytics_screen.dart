@@ -6,6 +6,8 @@ import '../services/wardrobe_provider.dart';
 import '../services/gamification_service.dart';
 import '../models/clothing_item.dart';
 import '../theme/app_theme.dart';
+import 'declutter_hub_screen.dart';
+import 'color_analysis_dialog.dart';
 
 class AnalyticsScreen extends StatelessWidget {
   const AnalyticsScreen({super.key});
@@ -19,6 +21,21 @@ class AnalyticsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Аналітика Гардероба'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.recycling_rounded, color: AppTheme.accent),
+            tooltip: 'Розхламлення & Еко-Хаб',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DeclutterHubScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.palette_outlined, color: AppTheme.accent),
+            tooltip: 'Персональний кольоротип',
+            onPressed: () => showColorAnalysisDialog(context),
+          ),
           IconButton(
             icon: const Icon(Icons.share_outlined, color: AppTheme.accent),
             tooltip: 'Поділитися звітом гардероба',

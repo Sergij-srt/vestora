@@ -7,6 +7,7 @@ import '../services/wardrobe_provider.dart';
 import '../services/weather_stylist_service.dart';
 import '../services/style_check_service.dart';
 import '../widgets/outfit_moodboard.dart';
+import '../widgets/editorial_look_card.dart';
 import '../theme/app_theme.dart';
 
 class OutfitBuilderScreen extends StatefulWidget {
@@ -196,6 +197,28 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
           ),
         );
       },
+    );
+  }
+
+  void _openEditorialLook() {
+    final items = _currentOutfitItems;
+    if (items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Складіть спочатку образ для журнального експорту'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final eval = StyleCheckService.evaluateOutfit(outfitItems: items);
+    showEditorialLookDialog(
+      context,
+      items: items,
+      occasion: _occasion.label,
+      temperatureText: '$_temperature°C ${_weatherCondition.label}',
+      styleScore: eval.overallScore.toDouble(),
     );
   }
 
@@ -410,6 +433,11 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
             icon: Icon(_isMoodboardMode ? Icons.view_agenda_outlined : Icons.dashboard_outlined),
             tooltip: _isMoodboardMode ? 'Перемкнути на слоти' : 'Перемкнути на колаж',
             onPressed: () => setState(() => _isMoodboardMode = !_isMoodboardMode),
+          ),
+          IconButton(
+            icon: const Icon(Icons.auto_stories_outlined, color: AppTheme.accent),
+            tooltip: 'Журнальний експорт (Vogue Editorial)',
+            onPressed: _openEditorialLook,
           ),
           IconButton(
             icon: const Icon(Icons.auto_awesome, color: AppTheme.accent),
@@ -634,6 +662,12 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.photo_camera_back_outlined, color: AppTheme.accent),
+                  tooltip: 'Журнальний експорт для Instagram Stories',
+                  onPressed: _openEditorialLook,
+                ),
+                const SizedBox(width: 4),
                 IconButton(
                   icon: const Icon(Icons.bookmark_add_outlined, color: AppTheme.accent),
                   tooltip: 'Зберегти в улюблені капсули',
