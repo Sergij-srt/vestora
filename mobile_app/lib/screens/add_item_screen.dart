@@ -8,8 +8,11 @@ import '../services/url_parser_service.dart';
 import '../services/receipt_scanner_service.dart';
 import '../services/clothing_ocr_service.dart';
 import '../services/wardrobe_provider.dart';
+import '../services/ai_config_service.dart';
+import '../services/gemini_vision_service.dart';
 import '../theme/app_theme.dart';
 import 'photo_verification_screen.dart';
+import 'settings_ai_screen.dart';
 
 class AddItemScreen extends StatefulWidget {
   final VoidCallback onSaved;
@@ -51,6 +54,9 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    AiConfigService.initialize().then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -159,63 +165,48 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
 
   Future<void> _runAiOcrAnalysis() async {
     setState(() => _isOcrProcessing = true);
-    await Future.delayed(const Duration(milliseconds: 600)); // Smooth AI thinking effect
 
-    // Parse label data
-    ParsedLabelData? labelData;
-    if (_labelRawOcrText.isNotEmpty) {
-      labelData = ClothingOcrService.parseLabelText(_labelRawOcrText);
-    } else {
-      // Default extraction heuristic for test
-      labelData = ClothingOcrService.parseLabelText('''
-MASSIMO DUTTI
-SIZE EUR 38 / US S
-100% PURE WOOL / 100% ВОВНА
-MADE IN PORTUGAL
-30°C GENTLE WASH / DRY CLEAN ONLY
-''');
-    }
-
-    // Parse receipt data
-    ParsedReceiptData? receiptData;
-    if (_receiptRawOcrText.isNotEmpty) {
-      receiptData = ClothingOcrService.parseReceiptText(_receiptRawOcrText);
-    } else if (_receiptPhotoUrl != null) {
-      receiptData = ClothingOcrService.parseReceiptText('''
-ТОВ "МАССІМО ДУТТІ УКРАЇНА" ТРЦ OCEAN PLAZA
-ФІСКАЛЬНИЙ ЧЕК
-ЖАКЕТ ВОВНЯНИЙ БЕЖ
-СУМА: 4 499.00 UAH
-''');
-    }
-
-    final combined = ClothingOcrService.mergeInsights(
-      labelData: labelData,
-      receiptData: receiptData,
-      itemPhotoUrl: _clothingPhotoUrl ?? 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=700&auto=format&fit=crop&q=80',
-      labelPhotoUrl: _labelPhotoUrl ?? 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600&auto=format&fit=crop&q=80',
-      receiptPhotoUrl: _receiptPhotoUrl ?? 'https://images.unsplash.com/photo-1554415707-9e49017a1430?w=600&auto=format&fit=crop&q=80',
+    final result = await GeminiVisionService.analyzePhotos(
+      clothingPhotoUrl: _clothingPhotoUrl,
+      labelPhotoUrl: _labelPhotoUrl,
+      receiptPhotoUrl: _receiptPhotoUrl,
+      rawLabelText: _labelRawOcrText,
+      rawReceiptText: _receiptRawOcrText,
     );
 
     setState(() => _isOcrProcessing = false);
 
     if (!mounted) return;
 
-    final saved = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PhotoVerificationScreen(initialData: combined),
-      ),
-    );
+    if (result.data != null) {
+      final saved = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PhotoVerificationScreen(
+            initialData: result.data!,
+            isAiVision: result.usedGemini,
+            engineName: result.modelUsed,
+          ),
+        ),
+      );
 
-    if (saved == true && mounted) {
+      if (saved == true && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🎉 Річ успішно розпізнано та додано у ваш гардероб!'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        widget.onSaved();
+      }
+    } else if (result.errorMessage != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('🎉 Річ успішно розпізнано та додано у ваш гардероб!'),
+        SnackBar(
+          content: Text(result.errorMessage!),
+          backgroundColor: const Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
       );
-      widget.onSaved();
     }
   }
 
@@ -340,6 +331,19 @@ MADE IN PORTUGAL
     return Scaffold(
       appBar: AppBar(
         title: const Text('Додати в Гардероб'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.tune_rounded, color: AppTheme.accent),
+            tooltip: 'Налаштування ШІ & API Ключ',
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsAiScreen()),
+              );
+              if (mounted) setState(() {});
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppTheme.primary,
@@ -371,6 +375,98 @@ MADE IN PORTUGAL
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
+        // AI Engine Mode & BYOK Status Pill
+        Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(
+            color: AiConfigService.hasCustomKey
+                ? const Color(0xFFF0FDF4)
+                : (AiConfigService.adCredits > 0
+                    ? const Color(0xFFFEF3C7)
+                    : const Color(0xFFF4F4F5)),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AiConfigService.hasCustomKey
+                  ? const Color(0xFFBBF7D0)
+                  : (AiConfigService.adCredits > 0
+                      ? const Color(0xFFFDE68A)
+                      : const Color(0xFFE4E4E7)),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                AiConfigService.hasCustomKey
+                    ? Icons.verified_user_rounded
+                    : (AiConfigService.adCredits > 0
+                        ? Icons.stars_rounded
+                        : Icons.memory_rounded),
+                color: AiConfigService.hasCustomKey
+                    ? const Color(0xFF16A34A)
+                    : (AiConfigService.adCredits > 0
+                        ? const Color(0xFFB45309)
+                        : const Color(0xFF71717A)),
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AiConfigService.hasCustomKey
+                          ? 'Google Gemini Vision · Власний ключ'
+                          : (AiConfigService.adCredits > 0
+                              ? 'Gemini Vision · ${AiConfigService.adCredits} сканувань за рекламу'
+                              : 'Локальний парсер · Без нейромережі'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AiConfigService.hasCustomKey
+                            ? const Color(0xFF166534)
+                            : (AiConfigService.adCredits > 0
+                                ? const Color(0xFF92400E)
+                                : const Color(0xFF27272A)),
+                      ),
+                    ),
+                    Text(
+                      AiConfigService.hasCustomKey
+                          ? '1 500 безкоштовних Vision-запитів на добу'
+                          : (AiConfigService.adCredits > 0
+                              ? 'Поповнити за рекламу або ввести ключ'
+                              : 'Натисніть, щоб додати безкоштовний ключ Gemini'),
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: AiConfigService.hasCustomKey
+                            ? const Color(0xFF15803D)
+                            : (AiConfigService.adCredits > 0
+                                ? const Color(0xFFB45309)
+                                : const Color(0xFF71717A)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettingsAiScreen()),
+                  );
+                  if (mounted) setState(() {});
+                },
+                child: const Text('Змінити ⚙️', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+
         // Intro banner
         Container(
           padding: const EdgeInsets.all(16),

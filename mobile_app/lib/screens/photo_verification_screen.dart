@@ -9,10 +9,14 @@ import '../theme/app_theme.dart';
 
 class PhotoVerificationScreen extends StatefulWidget {
   final OcrCombinedResult initialData;
+  final bool isAiVision;
+  final String engineName;
 
   const PhotoVerificationScreen({
     super.key,
     required this.initialData,
+    this.isAiVision = false,
+    this.engineName = 'Локальний парсер',
   });
 
   @override
@@ -117,6 +121,45 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // AI Verification Engine Status Pill
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: widget.isAiVision
+                    ? [const Color(0xFF064E3B), const Color(0xFF047857)]
+                    : [const Color(0xFF27272A), const Color(0xFF3F3F46)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: AppTheme.softShadow,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  widget.isAiVision ? Icons.auto_awesome : Icons.memory_rounded,
+                  color: widget.isAiVision ? const Color(0xFFFDE68A) : Colors.white70,
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    widget.isAiVision
+                        ? '✨ Проаналізовано через ${widget.engineName}'
+                        : '⚙️ ${widget.engineName} · Налаштувати Gemini у вкладці Налаштування',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // 1. Photo Previews Carousel / Row
           Container(
             padding: const EdgeInsets.all(14),

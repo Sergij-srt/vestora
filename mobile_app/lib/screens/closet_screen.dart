@@ -11,6 +11,7 @@ import 'brand_story_dialog.dart';
 import 'travel_capsule_screen.dart';
 import 'color_analysis_dialog.dart';
 import 'declutter_hub_screen.dart';
+import 'settings_ai_screen.dart';
 
 class ClosetScreen extends StatelessWidget {
   const ClosetScreen({super.key});
@@ -63,6 +64,16 @@ class ClosetScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const PurchaseAdvisorScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_suggest_rounded, color: AppTheme.accent),
+            tooltip: 'Налаштування ШІ та Vision API',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsAiScreen()),
               );
             },
           ),
