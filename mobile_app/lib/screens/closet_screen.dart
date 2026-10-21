@@ -417,7 +417,100 @@ class ClosetScreen extends StatelessWidget {
                   ),
                 ),
 
-                const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                const SliverToBoxAdapter(child: SizedBox(height: 6)),
+
+                // 4b. Usability Toolbar: Items counter, Season, Sorting & Reset
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${wardrobe.filteredItems.length} з ${wardrobe.items.length} речей',
+                          style: const TextStyle(fontSize: 12, color: AppTheme.muted, fontWeight: FontWeight.w600),
+                        ),
+                        Row(
+                          children: [
+                            // Season Chip
+                            InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () => _showSeasonFilterDialog(context),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: wardrobe.selectedSeason != null ? const Color(0xFFFEF3C7) : const Color(0xFFF4F4F5),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: wardrobe.selectedSeason != null ? AppTheme.accent : AppTheme.border),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.cloud_outlined, size: 13, color: AppTheme.secondary),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      wardrobe.selectedSeason != null ? wardrobe.selectedSeason!.label : 'Всі сезони',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: wardrobe.selectedSeason != null ? const Color(0xFF92400E) : AppTheme.secondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            // Sort Chip
+                            InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () => _showSortDialog(context),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: wardrobe.sortOption != WardrobeSortOption.newest ? const Color(0xFFEFF6FF) : const Color(0xFFF4F4F5),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: wardrobe.sortOption != WardrobeSortOption.newest ? const Color(0xFF3B82F6) : AppTheme.border),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.sort_rounded, size: 13, color: AppTheme.secondary),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      wardrobe.sortOption.label.split(' ')[0],
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: wardrobe.sortOption != WardrobeSortOption.newest ? const Color(0xFF1D4ED8) : AppTheme.secondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (wardrobe.selectedCategory != null ||
+                                wardrobe.selectedSeason != null ||
+                                wardrobe.searchQuery.isNotEmpty ||
+                                wardrobe.sortOption != WardrobeSortOption.newest) ...[
+                              const SizedBox(width: 4),
+                              IconButton(
+                                constraints: const BoxConstraints(),
+                                padding: const EdgeInsets.all(4),
+                                icon: const Icon(Icons.close_rounded, size: 18, color: Colors.redAccent),
+                                tooltip: 'Скинути всі фільтри',
+                                onPressed: () {
+                                  HapticFeedback.lightImpact();
+                                  wardrobe.resetAllFilters();
+                                },
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
                 // 5. Grid or Zero Dead-Ends Setup Hero Card
                 wardrobe.items.isEmpty
@@ -481,21 +574,46 @@ class ClosetScreen extends StatelessWidget {
                         ? SliverFillRemaining(
                             hasScrollBody: false,
                             child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: const [
-                                  Icon(Icons.search_off_rounded, size: 54, color: AppTheme.muted),
-                                  SizedBox(height: 12),
-                                  Text(
-                                    'Нічого не знайдено',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                                  ),
-                                  SizedBox(height: 6),
-                                  Text(
-                                    'Спробуйте змінити фільтри або пошуковий запит',
-                                    style: TextStyle(color: AppTheme.muted, fontSize: 13),
-                                  ),
-                                ],
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: 64,
+                                      height: 64,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFF4F4F5),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Center(
+                                        child: Icon(Icons.search_off_rounded, size: 32, color: AppTheme.muted),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    const Text(
+                                      'Нічого не знайдено',
+                                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      wardrobe.searchQuery.isNotEmpty
+                                          ? 'За запитом "${wardrobe.searchQuery}" немає збігів серед речей.'
+                                          : 'Спробуйте змінити обрані категорію чи сезон.',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(color: AppTheme.muted, fontSize: 13, height: 1.3),
+                                    ),
+                                    const SizedBox(height: 18),
+                                    ElevatedButton.icon(
+                                      onPressed: () {
+                                        HapticFeedback.lightImpact();
+                                        wardrobe.resetAllFilters();
+                                      },
+                                      icon: const Icon(Icons.filter_alt_off_rounded, size: 18),
+                                      label: const Text('Скинути фільтри та показати все'),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           )
@@ -571,6 +689,117 @@ class ClosetScreen extends StatelessWidget {
           color: isSelected ? AppTheme.primary : AppTheme.border,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+    );
+  }
+
+  void _showSortDialog(BuildContext context) {
+    final wardrobe = context.read<WardrobeProvider>();
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text('Сортування гардеробу', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            ...WardrobeSortOption.values.map((opt) {
+              final isSel = wardrobe.sortOption == opt;
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  isSel ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                  color: isSel ? AppTheme.accent : AppTheme.muted,
+                ),
+                title: Text(
+                  opt.label,
+                  style: TextStyle(
+                    fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
+                    color: isSel ? AppTheme.primary : AppTheme.secondary,
+                  ),
+                ),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  wardrobe.setSortOption(opt);
+                  Navigator.pop(ctx);
+                },
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSeasonFilterDialog(BuildContext context) {
+    final wardrobe = context.read<WardrobeProvider>();
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text('Фільтр за сезоном', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                wardrobe.selectedSeason == null ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                color: wardrobe.selectedSeason == null ? AppTheme.accent : AppTheme.muted,
+              ),
+              title: const Text('Всі сезони (Повний гардероб)', style: TextStyle(fontWeight: FontWeight.w700)),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                wardrobe.setSeasonFilter(null);
+                Navigator.pop(ctx);
+              },
+            ),
+            ...Season.values.map((s) {
+              final isSel = wardrobe.selectedSeason == s;
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  isSel ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                  color: isSel ? AppTheme.accent : AppTheme.muted,
+                ),
+                title: Text(
+                  s.label,
+                  style: TextStyle(
+                    fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
+                    color: isSel ? AppTheme.primary : AppTheme.secondary,
+                  ),
+                ),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  wardrobe.setSeasonFilter(s);
+                  Navigator.pop(ctx);
+                },
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
@@ -1299,7 +1528,39 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
+
+            // Smart Shortcut Buttons: Try-On & Style Outfit
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                      side: const BorderSide(color: Color(0xFFD4AF37)),
+                      backgroundColor: const Color(0xFFFFFBEB),
+                    ),
+                    icon: const Icon(Icons.face_retouching_natural_rounded, size: 17, color: Color(0xFFB45309)),
+                    label: const Text('Приміряти (Virtual Try-On)', style: TextStyle(color: Color(0xFFB45309), fontSize: 12, fontWeight: FontWeight.w700)),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => VirtualFittingScreen(
+                            initialOuterwear: item.category == ClothingCategory.outerwear ? item : null,
+                            initialTop: item.category == ClothingCategory.tops ? item : null,
+                            initialBottom: item.category == ClothingCategory.bottoms ? item : null,
+                            initialShoes: item.category == ClothingCategory.shoes ? item : null,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
 
             // Action Buttons
             Row(

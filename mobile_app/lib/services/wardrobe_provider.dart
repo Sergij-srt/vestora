@@ -5,6 +5,18 @@ import 'package:uuid/uuid.dart';
 import '../models/clothing_item.dart';
 import 'gamification_service.dart';
 
+enum WardrobeSortOption {
+  newest('Найновіші спочатку 🕒'),
+  mostWorn('Найчастіше ношені 🔥'),
+  leastWorn('Забуті речі (Dead stock) 💤'),
+  priceDesc('Ціна: від найдорожчих 💎'),
+  priceAsc('Ціна: від доступних 🏷️'),
+  bestCpw('Найкращий Cost-Per-Wear 📊');
+
+  final String label;
+  const WardrobeSortOption(this.label);
+}
+
 class WardrobeProvider with ChangeNotifier {
   static const _storageKey = 'smart_wardrobe_items_v2';
   static const _streakKey = 'vestora_streak_days';
@@ -12,12 +24,16 @@ class WardrobeProvider with ChangeNotifier {
   final List<ClothingItem> _items = [];
   bool _isLoading = true;
   ClothingCategory? _selectedCategory;
+  Season? _selectedSeason;
+  WardrobeSortOption _sortOption = WardrobeSortOption.newest;
   String _searchQuery = '';
   int _streakDays = 14; // Demo baseline streak
 
   List<ClothingItem> get items => List.unmodifiable(_items);
   bool get isLoading => _isLoading;
   ClothingCategory? get selectedCategory => _selectedCategory;
+  Season? get selectedSeason => _selectedSeason;
+  WardrobeSortOption get sortOption => _sortOption;
   String get searchQuery => _searchQuery;
   int get streakDays => _streakDays;
 
@@ -28,16 +44,41 @@ class WardrobeProvider with ChangeNotifier {
     _loadFromStorage();
   }
 
-  // Filtered items based on active category & search query
+  // Filtered items based on active category, season, search query, and sort option
   List<ClothingItem> get filteredItems {
-    return _items.where((item) {
+    final list = _items.where((item) {
       final matchesCategory = _selectedCategory == null || item.category == _selectedCategory;
+      final matchesSeason = _selectedSeason == null || item.season == _selectedSeason || item.season == Season.allSeason;
       final matchesQuery = _searchQuery.isEmpty ||
           item.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           item.brand.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          item.color.toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchesCategory && matchesQuery;
+          item.color.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          (item.fabricComposition != null && item.fabricComposition!.toLowerCase().contains(_searchQuery.toLowerCase()));
+      return matchesCategory && matchesSeason && matchesQuery;
     }).toList();
+
+    switch (_sortOption) {
+      case WardrobeSortOption.newest:
+        // default storage order
+        break;
+      case WardrobeSortOption.mostWorn:
+        list.sort((a, b) => b.wearCount.compareTo(a.wearCount));
+        break;
+      case WardrobeSortOption.leastWorn:
+        list.sort((a, b) => a.wearCount.compareTo(b.wearCount));
+        break;
+      case WardrobeSortOption.priceDesc:
+        list.sort((a, b) => b.price.compareTo(a.price));
+        break;
+      case WardrobeSortOption.priceAsc:
+        list.sort((a, b) => a.price.compareTo(b.price));
+        break;
+      case WardrobeSortOption.bestCpw:
+        list.sort((a, b) => a.costPerWear.compareTo(b.costPerWear));
+        break;
+    }
+
+    return list;
   }
 
   // Total wardrobe valuation
@@ -90,8 +131,26 @@ class WardrobeProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void setSeasonFilter(Season? season) {
+    _selectedSeason = season;
+    notifyListeners();
+  }
+
+  void setSortOption(WardrobeSortOption option) {
+    _sortOption = option;
+    notifyListeners();
+  }
+
   void setSearchQuery(String query) {
     _searchQuery = query;
+    notifyListeners();
+  }
+
+  void resetAllFilters() {
+    _selectedCategory = null;
+    _selectedSeason = null;
+    _searchQuery = '';
+    _sortOption = WardrobeSortOption.newest;
     notifyListeners();
   }
 
