@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_wardrobe/models/clothing_item.dart';
 import 'package:smart_wardrobe/services/travel_capsule_service.dart';
@@ -98,6 +99,35 @@ void main() {
       expect(report.alignmentPercentage, greaterThan(0));
       expect(report.verdict.isNotEmpty, isTrue);
       expect(report.personalTip.isNotEmpty, isTrue);
+      // Verify raw Color(...) string bug is completely fixed
+      expect(report.personalTip.contains('Color('), isFalse);
+      // Verify system prepares variants of clothes from wardrobe using palette
+      expect(report.curatedOutfits.isNotEmpty, isTrue);
+      expect(report.curatedOutfits.first.items.isNotEmpty, isTrue);
+    });
+
+    test('ColorAnalysisService supports creating custom color groups and curating tailored outfits', () async {
+      final customPalette = ColorPaletteGroup(
+        id: 'custom_paris',
+        title: 'Паризький Шик',
+        description: 'Стримані бежеві та білі тони',
+        swatches: const [
+          NamedColorSwatch(name: 'Теплий беж', color: Color(0xFFD7C4B7)),
+          NamedColorSwatch(name: 'Сніжно-білий', color: Color(0xFFFFFFFF)),
+        ],
+        matchingKeywords: ['бежевий', 'білий', 'беж'],
+        isCustom: true,
+      );
+
+      final report = ColorAnalysisService.evaluateAlignment(
+        wardrobe: sampleWardrobe,
+        palette: customPalette,
+      );
+
+      expect(report.palette.title, equals('Паризький Шик'));
+      expect(report.matchingCount, greaterThanOrEqualTo(2)); // Blazer + shirt
+      expect(report.curatedOutfits.isNotEmpty, isTrue);
+      expect(report.personalTip.contains('Color('), isFalse);
     });
 
     test('DeclutterService identifies dormant clothes, calculates 60% resale cash and fabric care', () {
