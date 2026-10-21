@@ -3,15 +3,18 @@ import 'package:provider/provider.dart';
 import 'services/wardrobe_provider.dart';
 import 'services/ai_config_service.dart';
 import 'services/user_profile_service.dart';
+import 'services/auth_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/closet_screen.dart';
 import 'screens/add_item_screen.dart';
 import 'screens/outfit_builder_screen.dart';
 import 'screens/ootd_feed_screen.dart';
 import 'screens/analytics_screen.dart';
+import 'screens/auth_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AuthService.initialize();
   await AiConfigService.initialize();
   await UserProfileService.initialize();
   runApp(const SmartWardrobeApp());
@@ -22,13 +25,24 @@ class SmartWardrobeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => WardrobeProvider(),
-      child: MaterialApp(
-        title: 'Vestora · Smart Wardrobe',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        home: const ResponsiveAppWrapper(child: MainNavigationScreen()),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => WardrobeProvider()),
+        ChangeNotifierProvider.value(value: AuthService.instance),
+      ],
+      child: Consumer<AuthService>(
+        builder: (context, auth, _) {
+          return MaterialApp(
+            title: 'Vestora · Smart Wardrobe',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            home: ResponsiveAppWrapper(
+              child: auth.isLoggedIn
+                  ? const MainNavigationScreen()
+                  : const AuthScreen(),
+            ),
+          );
+        },
       ),
     );
   }

@@ -9,6 +9,8 @@ import 'settings_ai_screen.dart';
 import 'virtual_fitting_screen.dart';
 import 'capsule_matrix_screen.dart';
 import 'fabric_care_screen.dart';
+import '../services/auth_service.dart';
+import 'auth_screen.dart';
 
 class SettingsHubScreen extends StatefulWidget {
   const SettingsHubScreen({super.key});
@@ -34,6 +36,49 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
         _profile = UserProfileService.profile;
       });
     }
+  }
+
+  void _confirmSignOutDialog() {
+    final auth = AuthService.instance;
+    final email = auth.currentUser?.email ?? _profile.email;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.logout_rounded, color: Color(0xFFDC2626)),
+            SizedBox(width: 10),
+            Text('Вихід з акаунту', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          'Ви впевнені, що бажаєте вийти з акаунту $email?\nДля подальшого доступу потрібно буде увійти через Google або ввести Email та пароль.',
+          style: const TextStyle(fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Залишитися'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await AuthService.instance.signOut();
+              if (mounted) {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              }
+            },
+            child: const Text('Вийти'),
+          ),
+        ],
+      ),
+    );
   }
 
   // 1. Edit Profile Modal
@@ -507,6 +552,33 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                               Text(_profile.location, style: const TextStyle(color: Color(0xFFE4E4E7), fontSize: 11.5)),
                             ],
                           ),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF27272A),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFF3F3F46)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (AuthService.instance.currentMethod == AuthMethod.google) ...[
+                                  const GoogleLogoWidget(size: 13),
+                                  const SizedBox(width: 6),
+                                  const Text('Вхід через Google', style: TextStyle(color: Color(0xFF93C5FD), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                                ] else if (AuthService.instance.currentMethod == AuthMethod.email) ...[
+                                  const Icon(Icons.email_outlined, size: 13, color: Color(0xFFFDE68A)),
+                                  const SizedBox(width: 6),
+                                  const Text('Вхід через Email & Пароль', style: TextStyle(color: Color(0xFFFDE68A), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                                ] else ...[
+                                  const Icon(Icons.person_outline, size: 13, color: Color(0xFFA1A1AA)),
+                                  const SizedBox(width: 6),
+                                  const Text('Демо-режим гостя', style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                                ],
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -526,11 +598,11 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         icon: const Icon(Icons.edit_outlined, size: 16),
-                        label: const Text('Редагувати профіль', style: TextStyle(fontSize: 12)),
+                        label: const Text('Редагувати', style: TextStyle(fontSize: 12)),
                         onPressed: _showEditProfileDialog,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
@@ -540,9 +612,21 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         icon: const Icon(Icons.vpn_key_outlined, size: 16),
-                        label: const Text('Зміна паролю', style: TextStyle(fontSize: 12)),
+                        label: const Text('Пароль', style: TextStyle(fontSize: 12)),
                         onPressed: _showChangePasswordDialog,
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFF27272A),
+                        side: const BorderSide(color: Color(0xFF52525B)),
+                        padding: const EdgeInsets.all(10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: const Icon(Icons.logout_rounded, color: Color(0xFFF87171), size: 18),
+                      tooltip: 'Вийти з акаунту',
+                      onPressed: _confirmSignOutDialog,
                     ),
                   ],
                 ),
@@ -553,6 +637,21 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
 
           // 2. Settings Hub Menu Tiles
           const Text('КАТЕГОРІЇ НАЛАШТУВАНЬ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.muted, letterSpacing: 1)),
+          const SizedBox(height: 10),
+
+          // Tile 0: Account & Authentication (Google / Email)
+          _buildSettingsTile(
+            icon: Icons.account_circle_outlined,
+            iconColor: const Color(0xFF2563EB),
+            title: 'Акаунт та Авторизація',
+            subtitle: AuthService.instance.currentMethod == AuthMethod.google
+                ? 'Вхід через Google: ${_profile.email}'
+                : (AuthService.instance.currentMethod == AuthMethod.email
+                    ? 'Вхід через Email & Пароль: ${_profile.email}'
+                    : 'Демо-режим гостя'),
+            trailingBadge: AuthService.instance.currentMethod == AuthMethod.google ? 'Google 🌐' : 'Email ✉️',
+            onTap: _confirmSignOutDialog,
+          ),
           const SizedBox(height: 10),
 
           // Tile 1: AI & Gemini Vision Hub
