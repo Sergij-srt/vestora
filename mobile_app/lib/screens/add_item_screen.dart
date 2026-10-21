@@ -13,6 +13,7 @@ import '../services/gemini_vision_service.dart';
 import '../theme/app_theme.dart';
 import 'photo_verification_screen.dart';
 import 'settings_ai_screen.dart';
+import 'settings_hub_screen.dart';
 
 class AddItemScreen extends StatefulWidget {
   final VoidCallback onSaved;
@@ -333,12 +334,12 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
         title: const Text('Додати в Гардероб'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.tune_rounded, color: AppTheme.accent),
-            tooltip: 'Налаштування ШІ & API Ключ',
+            icon: const Icon(Icons.settings_outlined, color: AppTheme.accent),
+            tooltip: 'Налаштування та Мій Кабінет',
             onPressed: () async {
               await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const SettingsAiScreen()),
+                MaterialPageRoute(builder: (_) => const SettingsHubScreen()),
               );
               if (mounted) setState(() {});
             },

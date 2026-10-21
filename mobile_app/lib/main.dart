@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/wardrobe_provider.dart';
 import 'services/ai_config_service.dart';
+import 'services/user_profile_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/closet_screen.dart';
 import 'screens/add_item_screen.dart';
@@ -12,6 +13,7 @@ import 'screens/analytics_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AiConfigService.initialize();
+  await UserProfileService.initialize();
   runApp(const SmartWardrobeApp());
 }
 
