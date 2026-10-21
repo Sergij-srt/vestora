@@ -7,6 +7,8 @@ import '../services/wardrobe_provider.dart';
 import '../theme/app_theme.dart';
 import 'settings_ai_screen.dart';
 import 'virtual_fitting_screen.dart';
+import 'capsule_matrix_screen.dart';
+import 'fabric_care_screen.dart';
 
 class SettingsHubScreen extends StatefulWidget {
   const SettingsHubScreen({super.key});
@@ -596,6 +598,38 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
               setState(() {
                 _profile = UserProfileService.profile;
               });
+            },
+          ),
+          const SizedBox(height: 10),
+
+          // Tile 2c: 3x3 Capsule Matrix
+          _buildSettingsTile(
+            icon: Icons.grid_on_rounded,
+            iconColor: const Color(0xFF8B5CF6),
+            title: 'Капсульна Матриця 3x3',
+            subtitle: 'Математика гардероба: 9 базових речей генерують 18 луків',
+            trailingBadge: '96% Луків',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CapsuleMatrixScreen()),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+
+          // Tile 2d: Fabric Care Encyclopedia
+          _buildSettingsTile(
+            icon: Icons.dry_cleaning_outlined,
+            iconColor: const Color(0xFF0D9488),
+            title: 'Гід по догляду за тканинами та бірками',
+            subtitle: 'Розшифровка символів прання, порятунок плям, кашемір та шовк',
+            trailingBadge: 'Гід 🏷️',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FabricCareScreen()),
+              );
             },
           ),
           const SizedBox(height: 10),

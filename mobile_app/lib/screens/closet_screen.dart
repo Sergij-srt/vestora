@@ -14,6 +14,8 @@ import 'declutter_hub_screen.dart';
 import 'settings_hub_screen.dart';
 import 'outfit_calendar_screen.dart';
 import 'virtual_fitting_screen.dart';
+import 'capsule_matrix_screen.dart';
+import 'fabric_care_screen.dart';
 
 class ClosetScreen extends StatelessWidget {
   const ClosetScreen({super.key});
@@ -75,6 +77,18 @@ class ClosetScreen extends StatelessWidget {
                     MaterialPageRoute(builder: (_) => const VirtualFittingScreen()),
                   );
                   break;
+                case 'matrix':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CapsuleMatrixScreen()),
+                  );
+                  break;
+                case 'care':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const FabricCareScreen()),
+                  );
+                  break;
                 case 'travel':
                   Navigator.push(
                     context,
@@ -104,6 +118,26 @@ class ClosetScreen extends StatelessWidget {
                     Icon(Icons.face_retouching_natural_rounded, color: AppTheme.accent, size: 20),
                     SizedBox(width: 10),
                     Text('AI Примірочна (Try-On)'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'matrix',
+                child: Row(
+                  children: [
+                    Icon(Icons.grid_on_rounded, color: AppTheme.accent, size: 20),
+                    SizedBox(width: 10),
+                    Text('Капсульна Матриця 3x3'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'care',
+                child: Row(
+                  children: [
+                    Icon(Icons.dry_cleaning_outlined, color: AppTheme.accent, size: 20),
+                    SizedBox(width: 10),
+                    Text('Догляд за тканинами'),
                   ],
                 ),
               ),
@@ -337,6 +371,30 @@ class ClosetScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const VirtualFittingScreen()),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _buildAssistPill(
+                          label: '🔲 Матриця 3x3',
+                          color: const Color(0xFFF3E8FF),
+                          textColor: const Color(0xFF6B21A8),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const CapsuleMatrixScreen()),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _buildAssistPill(
+                          label: '🏷️ Догляд & Бірки',
+                          color: const Color(0xFFCCFBF1),
+                          textColor: const Color(0xFF0F766E),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const FabricCareScreen()),
                             );
                           },
                         ),

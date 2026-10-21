@@ -10,6 +10,7 @@ import '../services/outfit_calendar_service.dart';
 import '../services/weather_stylist_service.dart';
 import '../theme/app_theme.dart';
 import 'outfit_calendar_screen.dart';
+import 'editorial_story_screen.dart';
 
 class VirtualFittingScreen extends StatefulWidget {
   final ClothingItem? initialOuterwear;
@@ -889,11 +890,35 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                     const SizedBox(width: 8),
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                       ),
                       icon: const Icon(Icons.calendar_today_outlined, size: 16, color: AppTheme.accent),
-                      label: const Text('В календар'),
+                      label: const Text('Календар'),
                       onPressed: _currentOutfit.isNotEmpty ? _scheduleFittedOutfit : null,
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                        side: const BorderSide(color: Color(0xFFD4AF37)),
+                      ),
+                      icon: const Icon(Icons.auto_stories_outlined, size: 16, color: Color(0xFFD4AF37)),
+                      label: const Text('Постер', style: TextStyle(color: Color(0xFFD4AF37))),
+                      onPressed: _currentOutfit.isNotEmpty
+                          ? () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => EditorialStoryScreen(
+                                    items: _currentOutfit,
+                                    occasion: 'Virtual Try-On',
+                                    styleScore: _fittingResult?.overallFitScore ?? 9.5,
+                                    customQuote: _fittingResult?.stylistTip,
+                                  ),
+                                ),
+                              );
+                            }
+                          : null,
                     ),
                   ],
                 ),

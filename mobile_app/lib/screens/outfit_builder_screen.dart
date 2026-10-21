@@ -7,11 +7,12 @@ import '../services/wardrobe_provider.dart';
 import '../services/weather_stylist_service.dart';
 import '../services/style_check_service.dart';
 import '../widgets/outfit_moodboard.dart';
-import '../widgets/editorial_look_card.dart';
 import '../theme/app_theme.dart';
 import '../services/outfit_calendar_service.dart';
 import 'outfit_calendar_screen.dart';
 import 'virtual_fitting_screen.dart';
+import 'capsule_matrix_screen.dart';
+import 'editorial_story_screen.dart';
 
 class OutfitBuilderScreen extends StatefulWidget {
   const OutfitBuilderScreen({super.key});
@@ -216,12 +217,17 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
     }
 
     final eval = StyleCheckService.evaluateOutfit(outfitItems: items);
-    showEditorialLookDialog(
+    Navigator.push(
       context,
-      items: items,
-      occasion: _occasion.label,
-      temperatureText: '$_temperature°C ${_weatherCondition.label}',
-      styleScore: eval.overallScore.toDouble(),
+      MaterialPageRoute(
+        builder: (_) => EditorialStoryScreen(
+          items: items,
+          occasion: _occasion.label,
+          temperatureText: '$_temperature°C ${_weatherCondition.label}',
+          styleScore: eval.overallScore.toDouble(),
+          customQuote: eval.actionableTip,
+        ),
+      ),
     );
   }
 
@@ -576,6 +582,16 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                     initialShoes: _selectedShoes,
                   ),
                 ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.grid_on_rounded, color: AppTheme.accent),
+            tooltip: 'Капсульна матриця 3х3',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CapsuleMatrixScreen()),
               );
             },
           ),
