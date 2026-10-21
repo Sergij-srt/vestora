@@ -9,6 +9,8 @@ import '../services/style_check_service.dart';
 import '../widgets/outfit_moodboard.dart';
 import '../widgets/editorial_look_card.dart';
 import '../theme/app_theme.dart';
+import '../services/outfit_calendar_service.dart';
+import 'outfit_calendar_screen.dart';
 
 class OutfitBuilderScreen extends StatefulWidget {
   const OutfitBuilderScreen({super.key});
@@ -222,6 +224,137 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
     );
   }
 
+  void _scheduleCurrentOutfit() {
+    final items = _currentOutfitItems;
+    if (items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Складіть спочатку образ для планування'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final inTwoDays = today.add(const Duration(days: 2));
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Запланувати цей образ у календар', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              const Text('Оберіть день, на який закріпити даний лук:', style: TextStyle(fontSize: 12, color: AppTheme.muted)),
+              const SizedBox(height: 16),
+
+              _buildDateScheduleTile(ctx, 'Сьогодні', today, 'Сьогоднішній образ'),
+              _buildDateScheduleTile(ctx, 'Завтра', tomorrow, 'Образ на завтра'),
+              _buildDateScheduleTile(ctx, 'Післязавтра', inTwoDays, 'Запланований вихід'),
+
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.date_range_rounded, size: 18),
+                  label: const Text('Обрати іншу дату в календарі'),
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: today,
+                      firstDate: today.subtract(const Duration(days: 7)),
+                      lastDate: today.add(const Duration(days: 60)),
+                    );
+                    if (picked != null) {
+                      await _saveOutfitToDate(picked, 'Запланований образ');
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDateScheduleTile(BuildContext ctx, String label, DateTime date, String defaultEvent) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF3C7),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Icon(Icons.calendar_today_rounded, size: 18, color: AppTheme.accent),
+      ),
+      title: Text('$label (${date.day}.${date.month.toString().padLeft(2, '0')})', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+      subtitle: Text('Прогноз: ${_temperature > 0 ? '+$_temperature' : '$_temperature'}°C · ${_weatherCondition.label.split(' ')[0]}', style: const TextStyle(fontSize: 11, color: AppTheme.muted)),
+      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.muted),
+      onTap: () async {
+        Navigator.pop(ctx);
+        await _saveOutfitToDate(date, defaultEvent);
+      },
+    );
+  }
+
+  Future<void> _saveOutfitToDate(DateTime date, String eventTitle) async {
+    final dateStr = OutfitCalendarService.formatDate(date);
+    final plan = PlannedDayOutfit(
+      dateStr: dateStr,
+      date: date,
+      weatherTemp: _temperature,
+      weatherCondition: _weatherCondition,
+      occasion: _occasion,
+      eventTitle: eventTitle,
+      outerwearId: _selectedOuterwear?.id,
+      topId: _selectedTop?.id,
+      bottomId: _selectedBottom?.id,
+      shoesId: _selectedShoes?.id,
+    );
+    await OutfitCalendarService.savePlan(plan);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Образ збережено у календар на ${date.day}.${date.month.toString().padLeft(2, '0')}!'),
+          backgroundColor: const Color(0xFF16A34A),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: 'Відкрити',
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => OutfitCalendarScreen(initialDate: date)),
+              );
+            },
+          ),
+        ),
+      );
+    }
+  }
+
   void _showStyleCheckDialog() {
     final items = _currentOutfitItems;
     if (items.isEmpty) {
@@ -428,6 +561,16 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
       appBar: AppBar(
         title: const Text('AI Стиліст Vestora'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_month_outlined, color: AppTheme.accent),
+            tooltip: 'Календар образів (Тижневий план)',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const OutfitCalendarScreen()),
+              );
+            },
+          ),
           // View mode toggle button
           IconButton(
             icon: Icon(_isMoodboardMode ? Icons.view_agenda_outlined : Icons.dashboard_outlined),
@@ -682,6 +825,12 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                       ),
                     );
                   },
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.calendar_today_outlined, color: AppTheme.accent),
+                  tooltip: 'Запланувати в календар на день',
+                  onPressed: _scheduleCurrentOutfit,
                 ),
                 const SizedBox(width: 8),
                 Expanded(

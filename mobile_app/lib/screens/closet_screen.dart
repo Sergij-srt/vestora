@@ -12,6 +12,7 @@ import 'travel_capsule_screen.dart';
 import 'color_analysis_dialog.dart';
 import 'declutter_hub_screen.dart';
 import 'settings_hub_screen.dart';
+import 'outfit_calendar_screen.dart';
 
 class ClosetScreen extends StatelessWidget {
   const ClosetScreen({super.key});
@@ -43,27 +44,12 @@ class ClosetScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.flight_takeoff_rounded, color: AppTheme.accent),
-            tooltip: 'AI Капсула у подорож',
+            icon: const Icon(Icons.calendar_month_outlined, color: AppTheme.accent),
+            tooltip: 'Календар образів (Тижневий розклад)',
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const TravelCapsuleScreen()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.palette_outlined, color: AppTheme.accent),
-            tooltip: 'Персональний кольоротип',
-            onPressed: () => showColorAnalysisDialog(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.shield_outlined, color: AppTheme.accent),
-            tooltip: 'Should I Buy This? (Радник)',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const PurchaseAdvisorScreen()),
+                MaterialPageRoute(builder: (_) => const OutfitCalendarScreen()),
               );
             },
           ),
@@ -77,13 +63,75 @@ class ClosetScreen extends StatelessWidget {
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Скинути фільтри або завантажити демо',
-            onPressed: () {
-              context.read<WardrobeProvider>().setCategoryFilter(null);
-              context.read<WardrobeProvider>().setSearchQuery('');
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded),
+            tooltip: 'Більше інструментів',
+            onSelected: (value) {
+              switch (value) {
+                case 'travel':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TravelCapsuleScreen()),
+                  );
+                  break;
+                case 'palette':
+                  showColorAnalysisDialog(context);
+                  break;
+                case 'advisor':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PurchaseAdvisorScreen()),
+                  );
+                  break;
+                case 'reset':
+                  context.read<WardrobeProvider>().setCategoryFilter(null);
+                  context.read<WardrobeProvider>().setSearchQuery('');
+                  break;
+              }
             },
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'travel',
+                child: Row(
+                  children: [
+                    Icon(Icons.flight_takeoff_rounded, color: AppTheme.accent, size: 20),
+                    SizedBox(width: 10),
+                    Text('Капсула у подорож'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'palette',
+                child: Row(
+                  children: [
+                    Icon(Icons.palette_outlined, color: AppTheme.accent, size: 20),
+                    SizedBox(width: 10),
+                    Text('Мій кольоротип'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'advisor',
+                child: Row(
+                  children: [
+                    Icon(Icons.shield_outlined, color: AppTheme.accent, size: 20),
+                    SizedBox(width: 10),
+                    Text('Радник покупок'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'reset',
+                child: Row(
+                  children: [
+                    Icon(Icons.refresh_rounded, size: 20),
+                    SizedBox(width: 10),
+                    Text('Скинути фільтри'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -264,6 +312,18 @@ class ClosetScreen extends StatelessWidget {
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       children: [
+                        _buildAssistPill(
+                          label: '📅 Календар образів',
+                          color: const Color(0xFFEFF6FF),
+                          textColor: const Color(0xFF1D4ED8),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const OutfitCalendarScreen()),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
                         _buildAssistPill(
                           label: '🧳 Капсула у подорож',
                           color: const Color(0xFFFEF3C7),
