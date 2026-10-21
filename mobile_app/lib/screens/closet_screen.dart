@@ -13,6 +13,7 @@ import 'color_analysis_dialog.dart';
 import 'declutter_hub_screen.dart';
 import 'settings_hub_screen.dart';
 import 'outfit_calendar_screen.dart';
+import 'virtual_fitting_screen.dart';
 
 class ClosetScreen extends StatelessWidget {
   const ClosetScreen({super.key});
@@ -68,6 +69,12 @@ class ClosetScreen extends StatelessWidget {
             tooltip: 'Більше інструментів',
             onSelected: (value) {
               switch (value) {
+                case 'tryon':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const VirtualFittingScreen()),
+                  );
+                  break;
                 case 'travel':
                   Navigator.push(
                     context,
@@ -90,6 +97,16 @@ class ClosetScreen extends StatelessWidget {
               }
             },
             itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'tryon',
+                child: Row(
+                  children: [
+                    Icon(Icons.face_retouching_natural_rounded, color: AppTheme.accent, size: 20),
+                    SizedBox(width: 10),
+                    Text('AI Примірочна (Try-On)'),
+                  ],
+                ),
+              ),
               const PopupMenuItem(
                 value: 'travel',
                 child: Row(
@@ -312,6 +329,18 @@ class ClosetScreen extends StatelessWidget {
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       children: [
+                        _buildAssistPill(
+                          label: '🪞 AI Примірочна',
+                          color: const Color(0xFFFEF3C7),
+                          textColor: const Color(0xFF92400E),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const VirtualFittingScreen()),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
                         _buildAssistPill(
                           label: '📅 Календар образів',
                           color: const Color(0xFFEFF6FF),

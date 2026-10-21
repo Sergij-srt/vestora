@@ -6,6 +6,7 @@ import '../services/ai_config_service.dart';
 import '../services/wardrobe_provider.dart';
 import '../theme/app_theme.dart';
 import 'settings_ai_screen.dart';
+import 'virtual_fitting_screen.dart';
 
 class SettingsHubScreen extends StatefulWidget {
   const SettingsHubScreen({super.key});
@@ -575,6 +576,27 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
             title: 'Персоналізація та Стиль',
             subtitle: '${_profile.preferredStyle} · ${_profile.currency} · ${_profile.sizeSystem}',
             onTap: _showPersonalizationDialog,
+          ),
+          const SizedBox(height: 10),
+
+          // Tile 2b: AI Virtual Try-On Fitting Room & Face Photo
+          _buildSettingsTile(
+            icon: Icons.face_retouching_natural_rounded,
+            iconColor: const Color(0xFFD4AF37),
+            title: 'AI Примірочна та Фото Обличчя',
+            subtitle: _profile.tryOnFaceUrl != null
+                ? 'Власне фото обличчя підключено до віртуальної примірочної'
+                : 'Завантажте фото або оберіть типаж для примірки речей',
+            trailingBadge: _profile.tryOnFaceUrl != null ? 'Готово 🪞' : '+ Фото',
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const VirtualFittingScreen()),
+              );
+              setState(() {
+                _profile = UserProfileService.profile;
+              });
+            },
           ),
           const SizedBox(height: 10),
 

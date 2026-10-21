@@ -11,6 +11,7 @@ import '../widgets/editorial_look_card.dart';
 import '../theme/app_theme.dart';
 import '../services/outfit_calendar_service.dart';
 import 'outfit_calendar_screen.dart';
+import 'virtual_fitting_screen.dart';
 
 class OutfitBuilderScreen extends StatefulWidget {
   const OutfitBuilderScreen({super.key});
@@ -562,6 +563,23 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
         title: const Text('AI Стиліст Vestora'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.face_retouching_natural_rounded, color: AppTheme.accent),
+            tooltip: 'AI Примірочна (Virtual Try-On)',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => VirtualFittingScreen(
+                    initialOuterwear: _selectedOuterwear,
+                    initialTop: _selectedTop,
+                    initialBottom: _selectedBottom,
+                    initialShoes: _selectedShoes,
+                  ),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.calendar_month_outlined, color: AppTheme.accent),
             tooltip: 'Календар образів (Тижневий план)',
             onPressed: () {
@@ -831,6 +849,24 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                   icon: const Icon(Icons.calendar_today_outlined, color: AppTheme.accent),
                   tooltip: 'Запланувати в календар на день',
                   onPressed: _scheduleCurrentOutfit,
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.face_retouching_natural_rounded, color: AppTheme.accent),
+                  tooltip: 'Приміряти на собі (AI Virtual Try-On)',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => VirtualFittingScreen(
+                          initialOuterwear: _selectedOuterwear,
+                          initialTop: _selectedTop,
+                          initialBottom: _selectedBottom,
+                          initialShoes: _selectedShoes,
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(width: 8),
                 Expanded(

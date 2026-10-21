@@ -6,6 +6,7 @@ class UserProfile {
   String phone;
   String location;
   String avatarUrl;
+  String? tryOnFaceUrl;
   String currency;
   String sizeSystem;
   String preferredStyle;
@@ -27,6 +28,7 @@ class UserProfile {
     this.phone = '+380 (50) 123-45-67',
     this.location = 'Київ, Україна',
     this.avatarUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+    this.tryOnFaceUrl,
     this.currency = 'UAH (₴)',
     this.sizeSystem = 'EUR / International',
     this.preferredStyle = 'Quiet Luxury · Стриманий мінімалізм',
@@ -48,6 +50,7 @@ class UserProfileService {
   static const _keyCurrency = 'vestora_profile_currency';
   static const _keySizeSystem = 'vestora_profile_size_system';
   static const _keyStyle = 'vestora_profile_style';
+  static const _keyTryOnFace = 'vestora_profile_tryon_face';
 
   static const _keyPushDaily = 'vestora_notif_push_daily';
   static const _keyPushStreak = 'vestora_notif_push_streak';
@@ -72,6 +75,7 @@ class UserProfileService {
       _current.currency = prefs.getString(_keyCurrency) ?? 'UAH (₴)';
       _current.sizeSystem = prefs.getString(_keySizeSystem) ?? 'EUR / International';
       _current.preferredStyle = prefs.getString(_keyStyle) ?? 'Quiet Luxury · Стриманий мінімалізм';
+      _current.tryOnFaceUrl = prefs.getString(_keyTryOnFace);
 
       _current.pushDailyStylist = prefs.getBool(_keyPushDaily) ?? true;
       _current.pushStreakReminder = prefs.getBool(_keyPushStreak) ?? true;
@@ -112,6 +116,14 @@ class UserProfileService {
       await prefs.setString(_keyCurrency, _current.currency);
       await prefs.setString(_keySizeSystem, _current.sizeSystem);
       await prefs.setString(_keyStyle, _current.preferredStyle);
+    } catch (_) {}
+  }
+
+  static Future<void> saveTryOnFace(String faceUrl) async {
+    _current.tryOnFaceUrl = faceUrl;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyTryOnFace, faceUrl);
     } catch (_) {}
   }
 
