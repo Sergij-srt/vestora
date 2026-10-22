@@ -115,12 +115,12 @@ class TravelCapsuleService {
     final dresses = wardrobe.where((i) => i.category == ClothingCategory.dresses).toList();
 
     // 1 Outerwear (if cold or windy or business)
-    if (temperatureCelsius < 20 && outerwears.isNotEmpty) {
+    if (temperatureCelsius < 20 && outerwears.isNotEmpty && selectedItems.length < maxItems) {
       selectedItems.add(outerwears.first);
     }
 
     // Bottoms (1-2 pairs)
-    if (bottoms.isNotEmpty) {
+    if (bottoms.isNotEmpty && selectedItems.length < maxItems) {
       selectedItems.add(bottoms.first);
       if (days >= 4 && bottoms.length > 1 && selectedItems.length < maxItems) {
         selectedItems.add(bottoms[1]);
@@ -139,7 +139,7 @@ class TravelCapsuleService {
     }
 
     // Shoes (1-2 pairs: comfortable walking + smart)
-    if (shoes.isNotEmpty) {
+    if (shoes.isNotEmpty && selectedItems.length < maxItems) {
       selectedItems.add(shoes.first);
       if (days >= 4 && shoes.length > 1 && selectedItems.length < maxItems) {
         selectedItems.add(shoes[1]);

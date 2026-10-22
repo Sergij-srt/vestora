@@ -49,9 +49,10 @@ void main() {
   ];
 
   group('BackupService Tests', () {
-    test('generateBackupJson produces valid VESTORA_BACKUP payload', () {
+    test('generateBackupJson produces valid VESTORA_BACKUP payload', () async {
       final wardrobe = WardrobeProvider();
-      wardrobe.addMultipleItems(testItems);
+      await wardrobe.clearWardrobe();
+      await wardrobe.addMultipleItems(testItems);
 
       final profile = UserProfile(
         name: 'Софія Лісова',
@@ -129,7 +130,7 @@ void main() {
 
     test('markWorn increments streak and marks digest as worn', () async {
       final wardrobe = WardrobeProvider();
-      wardrobe.addMultipleItems(testItems);
+      await wardrobe.addMultipleItems(testItems);
       final initialStreak = wardrobe.streakDays;
 
       final digest = await DailyStylistService.getTodayDigest(

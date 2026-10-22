@@ -103,9 +103,20 @@ class BackupService {
 
       final List<ClothingItem> parsedItems = [];
       for (final it in itemsRaw) {
-        if (it is Map<String, dynamic>) {
+        if (it is Map<String, dynamic> &&
+            it['id'] != null &&
+            it['id'].toString().trim().isNotEmpty &&
+            it['title'] != null &&
+            it['title'].toString().trim().isNotEmpty) {
           parsedItems.add(ClothingItem.fromMap(it));
         }
+      }
+
+      if (parsedItems.isEmpty && itemsRaw.isNotEmpty) {
+        return const BackupValidationResult(
+          isValid: false,
+          errorMessage: 'Файл не містить валідних даних про речі або містить пошкоджені записи.',
+        );
       }
 
       final userMap = decoded['user'] as Map<String, dynamic>?;

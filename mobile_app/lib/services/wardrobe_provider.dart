@@ -40,8 +40,12 @@ class WardrobeProvider with ChangeNotifier {
   WardrobeHealthReport get healthReport =>
       GamificationService.evaluateWardrobeHealth(items: _items, streakDays: _streakDays);
 
+  Future<void>? _loadFuture;
+
+  Future<void> get initialized => _loadFuture ?? Future.value();
+
   WardrobeProvider() {
-    _loadFromStorage();
+    _loadFuture = _loadFromStorage();
   }
 
   // Filtered items based on active category, season, search query, and sort option
@@ -163,18 +167,21 @@ class WardrobeProvider with ChangeNotifier {
   }
 
   Future<void> clearWardrobe() async {
+    await _loadFuture;
     _items.clear();
     notifyListeners();
     await _saveToStorage();
   }
 
   Future<void> addItem(ClothingItem item) async {
+    await _loadFuture;
     _items.insert(0, item);
     notifyListeners();
     await _saveToStorage();
   }
 
   Future<void> addMultipleItems(List<ClothingItem> newItems) async {
+    await _loadFuture;
     _items.insertAll(0, newItems);
     notifyListeners();
     await _saveToStorage();
