@@ -8,6 +8,7 @@ import '../services/style_check_service.dart';
 import '../widgets/outfit_moodboard.dart';
 import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
+import '../services/localization_service.dart';
 import '../services/outfit_calendar_service.dart';
 import 'outfit_calendar_screen.dart';
 import 'virtual_fitting_screen.dart';
@@ -566,7 +567,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI Стиліст Vestora'),
+        title: Text(context.tr('stylist_title')),
         actions: [
           // 1. View mode toggle button
           IconButton(
@@ -577,7 +578,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
           // 2. Randomize / Shuffle outfit
           IconButton(
             icon: const Icon(Icons.shuffle_rounded),
-            tooltip: 'Згенерувати випадковий образ',
+            tooltip: context.tr('stylist_shuffle'),
             onPressed: _randomizeOutfit,
           ),
           // 3. Overflow Popup Menu for AI Tools
@@ -691,7 +692,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                         onSubmitted: _curateWithNaturalPrompt,
                         style: const TextStyle(fontSize: 13),
                         decoration: InputDecoration(
-                          hintText: 'Запитайте ШІ: "Ділова зустріч у дощ"...',
+                          hintText: context.tr('stylist_prompt_hint'),
                           hintStyle: const TextStyle(fontSize: 12, color: AppTheme.muted),
                           prefixIcon: const Icon(Icons.auto_awesome, size: 18, color: AppTheme.accent),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -884,9 +885,9 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                       child: ElevatedButton.icon(
                         onPressed: _wearThisOutfit,
                         icon: const Icon(Icons.check_circle_rounded, size: 18),
-                        label: const Text(
-                          'Вдягнути образ (+1)',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                        label: Text(
+                          context.tr('stylist_wear_btn'),
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                         ),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -900,9 +901,9 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                       child: OutlinedButton.icon(
                         onPressed: _showStyleCheckDialog,
                         icon: const Icon(Icons.auto_awesome, size: 16, color: AppTheme.accent),
-                        label: const Text(
-                          'Style Check',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                        label: Text(
+                          context.tr('stylist_style_check_btn'),
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
                         ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -920,7 +921,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                   children: [
                     _buildBottomActionItem(
                       icon: Icons.face_retouching_natural_rounded,
-                      label: 'Приміряти',
+                      label: context.tr('stylist_try_on'),
                       color: const Color(0xFFD97706),
                       onTap: () {
                         Navigator.push(
@@ -938,19 +939,19 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                     ),
                     _buildBottomActionItem(
                       icon: Icons.auto_stories_outlined,
-                      label: 'Постер',
+                      label: context.tr('stylist_poster'),
                       color: const Color(0xFF7C3AED),
                       onTap: _openEditorialLook,
                     ),
                     _buildBottomActionItem(
                       icon: Icons.calendar_today_outlined,
-                      label: 'Календар',
+                      label: context.tr('stylist_calendar'),
                       color: const Color(0xFF2563EB),
                       onTap: _scheduleCurrentOutfit,
                     ),
                     _buildBottomActionItem(
                       icon: Icons.bookmark_add_outlined,
-                      label: 'В обрані',
+                      label: context.tr('stylist_bookmark'),
                       color: const Color(0xFF059669),
                       onTap: () {
                         final items = _currentOutfitItems;

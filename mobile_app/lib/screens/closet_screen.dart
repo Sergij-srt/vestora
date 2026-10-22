@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/clothing_item.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/gamification_service.dart';
+import '../services/localization_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vestora_image.dart';
 import 'purchase_advisor_screen.dart';
@@ -214,9 +215,9 @@ class ClosetScreen extends StatelessWidget {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text(
-                                    'ЦИФРОВИЙ ГАРДЕРОБ',
-                                    style: TextStyle(
+                                  Text(
+                                    context.tr('closet_title'),
+                                    style: const TextStyle(
                                       color: Color(0xFFA1A1AA),
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
@@ -234,7 +235,7 @@ class ClosetScreen extends StatelessWidget {
                                         const Text('🔥', style: TextStyle(fontSize: 12)),
                                         const SizedBox(width: 4),
                                         Text(
-                                          '${wardrobe.streakDays} днів',
+                                          '${wardrobe.streakDays} ${context.tr('closet_streak')}',
                                           style: const TextStyle(
                                             color: Color(0xFFFDE68A),
                                             fontWeight: FontWeight.w700,
@@ -264,7 +265,7 @@ class ClosetScreen extends StatelessWidget {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        '${wardrobe.totalItemsCount} активних одиниць',
+                                        '${wardrobe.totalItemsCount} ${context.tr('closet_active_items')}',
                                         style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 12),
                                       ),
                                     ],
@@ -276,7 +277,7 @@ class ClosetScreen extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Text(
-                                      'Здоров\'я: ${wardrobe.healthReport.healthScore}/100',
+                                      '${context.tr('closet_health')} ${wardrobe.healthReport.healthScore}/100',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w800,
@@ -301,7 +302,7 @@ class ClosetScreen extends StatelessWidget {
                     child: TextField(
                       onChanged: (val) => context.read<WardrobeProvider>().setSearchQuery(val),
                       decoration: InputDecoration(
-                        hintText: 'Пошук за назвою, брендом, кольором...',
+                        hintText: context.tr('closet_search_hint'),
                         prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.muted),
                         suffixIcon: wardrobe.searchQuery.isNotEmpty
                             ? IconButton(
@@ -334,20 +335,20 @@ class ClosetScreen extends StatelessWidget {
                           border: Border.all(color: const Color(0xFFBBF7D0)),
                         ),
                         child: Row(
-                          children: const [
-                            Icon(Icons.shield_outlined, color: Color(0xFF16A34A), size: 20),
-                            SizedBox(width: 10),
+                          children: [
+                            const Icon(Icons.shield_outlined, color: Color(0xFF16A34A), size: 20),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'Плануєте покупку? AI перевірить шафу на дублікати →',
-                                style: TextStyle(
+                                context.tr('closet_purchase_banner'),
+                                style: const TextStyle(
                                   color: Color(0xFF166534),
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
-                            Icon(Icons.chevron_right_rounded, color: Color(0xFF16A34A), size: 18),
+                            const Icon(Icons.chevron_right_rounded, color: Color(0xFF16A34A), size: 18),
                           ],
                         ),
                       ),
@@ -457,7 +458,7 @@ class ClosetScreen extends StatelessWidget {
                       children: [
                         _buildCategoryPill(
                           context,
-                          label: 'Все (${wardrobe.items.length})',
+                          label: '${context.tr('closet_all')} (${wardrobe.items.length})',
                           isSelected: wardrobe.selectedCategory == null,
                           onTap: () => context.read<WardrobeProvider>().setCategoryFilter(null),
                         ),
@@ -485,7 +486,7 @@ class ClosetScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '${wardrobe.filteredItems.length} з ${wardrobe.items.length} речей',
+                          '${wardrobe.filteredItems.length} ${context.tr('closet_items_count')} ${wardrobe.items.length} ${context.tr('closet_items_suffix')}',
                           style: const TextStyle(fontSize: 12, color: AppTheme.muted, fontWeight: FontWeight.w600),
                         ),
                         Row(
@@ -506,7 +507,7 @@ class ClosetScreen extends StatelessWidget {
                                     const Icon(Icons.cloud_outlined, size: 13, color: AppTheme.secondary),
                                     const SizedBox(width: 4),
                                     Text(
-                                      wardrobe.selectedSeason != null ? wardrobe.selectedSeason!.label : 'Всі сезони',
+                                      wardrobe.selectedSeason != null ? wardrobe.selectedSeason!.label : context.tr('closet_all_seasons'),
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,

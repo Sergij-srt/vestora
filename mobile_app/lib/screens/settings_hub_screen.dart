@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../services/user_profile_service.dart';
 import '../services/ai_config_service.dart';
 import '../services/wardrobe_provider.dart';
+import '../services/theme_service.dart';
+import '../services/localization_service.dart';
 import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 import 'settings_ai_screen.dart';
@@ -41,26 +43,35 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
   void _confirmSignOutDialog() {
     final auth = AuthService.instance;
     final email = auth.currentUser?.email ?? _profile.email;
+    final loc = LocalizationService.instance;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.logout_rounded, color: Color(0xFFDC2626)),
-            SizedBox(width: 10),
-            Text('Вихід з акаунту', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const Icon(Icons.logout_rounded, color: Color(0xFFDC2626)),
+            const SizedBox(width: 10),
+            Text(loc.translate('settings_logout'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
-        content: Text(
-          'Ви впевнені, що бажаєте вийти з акаунту $email?\nДля подальшого доступу потрібно буде увійти через Google або ввести Email та пароль.',
-          style: const TextStyle(fontSize: 13, height: 1.4),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${loc.translate('settings_logout_confirm')}\n$email?'),
+            const SizedBox(height: 8),
+            const Text(
+              'Для подальшого доступу потрібно буде увійти через Google або ввести Email та пароль.',
+              style: TextStyle(fontSize: 12, color: AppTheme.muted),
+            ),
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Залишитися'),
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: Text(loc.translate('settings_stay')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -68,96 +79,228 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
               foregroundColor: Colors.white,
             ),
             onPressed: () async {
-              Navigator.pop(ctx);
-              await AuthService.instance.signOut();
-              if (mounted) {
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              }
+              Navigator.pop(dialogCtx);
+              await auth.signOut();
+              if (!mounted) return;
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const AuthScreen()),
+                (route) => false,
+              );
             },
-            child: const Text('Вийти'),
+            child: Text(loc.translate('settings_logout_action')),
           ),
         ],
       ),
     );
   }
 
-  // 1. Edit Profile Modal
   void _showEditProfileDialog() {
     final nameCtrl = TextEditingController(text: _profile.name);
     final emailCtrl = TextEditingController(text: _profile.email);
-    final phoneCtrl = TextEditingController(text: _profile.phone);
-    final locationCtrl = TextEditingController(text: _profile.location);
+    final locCtrl = TextEditingController(text: _profile.location);
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Редагування профілю', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('ІМ\'Я', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
+            const SizedBox(height: 4),
+            TextField(controller: nameCtrl, decoration: const InputDecoration(hintText: 'Ваше ім\'я')),
+            const SizedBox(height: 12),
+            const Text('EMAIL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
+            const SizedBox(height: 4),
+            TextField(controller: emailCtrl, decoration: const InputDecoration(hintText: 'user@vestora.app')),
+            const SizedBox(height: 12),
+            const Text('ЛОКАЦІЯ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
+            const SizedBox(height: 4),
+            TextField(controller: locCtrl, decoration: const InputDecoration(hintText: 'Київ, Україна')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Скасувати')),
+          ElevatedButton(
+            onPressed: () async {
+              final nav = Navigator.of(dialogCtx);
+              final messenger = ScaffoldMessenger.of(context);
+              await UserProfileService.saveProfile(
+                name: nameCtrl.text.trim(),
+                email: emailCtrl.text.trim(),
+                location: locCtrl.text.trim(),
+              );
+              if (!mounted) return;
+              setState(() {
+                _profile = UserProfileService.profile;
+              });
+              nav.pop();
+              messenger.showSnackBar(
+                const SnackBar(content: Text('Профіль успішно оновлено!'), backgroundColor: Color(0xFF16A34A)),
+              );
+            },
+            child: const Text('Зберегти'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showChangePasswordDialog() {
+    final curCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Зміна паролю', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('ПОТОЧНИЙ ПАРОЛЬ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
+            const SizedBox(height: 4),
+            TextField(controller: curCtrl, obscureText: true, decoration: const InputDecoration(hintText: '••••••••')),
+            const SizedBox(height: 12),
+            const Text('НОВИЙ ПАРОЛЬ (мін. 8 символів)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
+            const SizedBox(height: 4),
+            TextField(controller: newCtrl, obscureText: true, decoration: const InputDecoration(hintText: '••••••••')),
+            const SizedBox(height: 12),
+            const Text('ПІДТВЕРДЖЕННЯ НОВОГО ПАРОЛЮ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
+            const SizedBox(height: 4),
+            TextField(controller: confirmCtrl, obscureText: true, decoration: const InputDecoration(hintText: '••••••••')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Скасувати')),
+          ElevatedButton(
+            onPressed: () {
+              if (newCtrl.text.length < 8) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Новий пароль має бути не менше 8 символів!'), backgroundColor: Colors.red),
+                );
+                return;
+              }
+              if (newCtrl.text != confirmCtrl.text) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Паролі не співпадають!'), backgroundColor: Colors.red),
+                );
+                return;
+              }
+              Navigator.pop(dialogCtx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Пароль безпечно змінено!'), backgroundColor: Color(0xFF16A34A)),
+              );
+            },
+            child: const Text('Оновити пароль'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPersonalizationDialog() {
+    String selectedStyle = _profile.preferredStyle;
+    String selectedCurrency = _profile.currency;
+    String selectedSize = _profile.sizeSystem;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 18,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-        ),
-        child: SingleChildScrollView(
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
-                ),
+                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
               ),
               const SizedBox(height: 16),
-              const Text('Редагувати особисті дані', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Row(
+                children: [
+                  Icon(Icons.palette_outlined, color: AppTheme.accent),
+                  SizedBox(width: 8),
+                  Text('Персоналізація стилю', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ],
+              ),
               const SizedBox(height: 16),
-
-              const Text('ІМ\'Я', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-              const SizedBox(height: 6),
-              TextField(controller: nameCtrl, decoration: const InputDecoration(prefixIcon: Icon(Icons.person_outline, size: 20))),
-              const SizedBox(height: 14),
-
-              const Text('EMAIL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-              const SizedBox(height: 6),
-              TextField(controller: emailCtrl, decoration: const InputDecoration(prefixIcon: Icon(Icons.email_outlined, size: 20))),
-              const SizedBox(height: 14),
-
-              const Text('ТЕЛЕФОН', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-              const SizedBox(height: 6),
-              TextField(controller: phoneCtrl, decoration: const InputDecoration(prefixIcon: Icon(Icons.phone_outlined, size: 20))),
-              const SizedBox(height: 14),
-
-              const Text('МІСТО / ЛОКАЦІЯ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-              const SizedBox(height: 6),
-              TextField(controller: locationCtrl, decoration: const InputDecoration(prefixIcon: Icon(Icons.location_on_outlined, size: 20))),
-              const SizedBox(height: 20),
-
+              const Text('ОСНОВНИЙ СТИЛЬ ГАРДЕРОБУ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: ['Quiet Luxury', 'Мінімалізм', 'Smart Casual', 'Old Money', 'Streetwear'].map((st) {
+                  final isSel = selectedStyle == st;
+                  return ChoiceChip(
+                    label: Text(st),
+                    selected: isSel,
+                    onSelected: (val) => setSheetState(() => selectedStyle = st),
+                    selectedColor: const Color(0xFFFEF3C7),
+                    labelStyle: TextStyle(color: isSel ? AppTheme.accent : Colors.black87, fontWeight: isSel ? FontWeight.bold : FontWeight.normal),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              const Text('ВАЛЮТА ВИТРАТ ТА ОКУПНОСТІ (CPW)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: ['UAH (₴)', 'USD (\$)', 'EUR (€)'].map((curr) {
+                  final isSel = selectedCurrency == curr;
+                  return ChoiceChip(
+                    label: Text(curr),
+                    selected: isSel,
+                    onSelected: (val) => setSheetState(() => selectedCurrency = curr),
+                    selectedColor: const Color(0xFFFEF3C7),
+                    labelStyle: TextStyle(color: isSel ? AppTheme.accent : Colors.black87, fontWeight: isSel ? FontWeight.bold : FontWeight.normal),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              const Text('СИСТЕМА РОЗМІРІВ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: ['EUR (36-44)', 'US (XS-XL)', 'UK (8-16)'].map((sz) {
+                  final isSel = selectedSize == sz;
+                  return ChoiceChip(
+                    label: Text(sz),
+                    selected: isSel,
+                    onSelected: (val) => setSheetState(() => selectedSize = sz),
+                    selectedColor: const Color(0xFFFEF3C7),
+                    labelStyle: TextStyle(color: isSel ? AppTheme.accent : Colors.black87, fontWeight: isSel ? FontWeight.bold : FontWeight.normal),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
                   onPressed: () async {
+                    final nav = Navigator.of(sheetCtx);
+                    final messenger = ScaffoldMessenger.of(context);
                     await UserProfileService.saveProfile(
-                      name: nameCtrl.text.trim(),
-                      email: emailCtrl.text.trim(),
-                      phone: phoneCtrl.text.trim(),
-                      location: locationCtrl.text.trim(),
+                      preferredStyle: selectedStyle,
+                      currency: selectedCurrency,
+                      sizeSystem: selectedSize,
                     );
-                    if (ctx.mounted) {
-                      Navigator.pop(ctx);
-                    }
-                    if (mounted) {
-                      setState(() => _profile = UserProfileService.profile);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Дані профілю успішно оновлено!'), backgroundColor: Color(0xFF16A34A)),
-                      );
-                    }
+                    if (!mounted) return;
+                    setState(() {
+                      _profile = UserProfileService.profile;
+                    });
+                    nav.pop();
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Налаштування персоналізації збережено!'), backgroundColor: Color(0xFF16A34A)),
+                    );
                   },
-                  child: const Text('Зберегти зміни'),
+                  child: const Text('Застосувати налаштування'),
                 ),
               ),
             ],
@@ -167,306 +310,326 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
     );
   }
 
-  // 2. Change Password Modal
-  void _showChangePasswordDialog() {
-    final oldPassCtrl = TextEditingController();
-    final newPassCtrl = TextEditingController();
-    final confirmPassCtrl = TextEditingController();
-    bool obscure = true;
+  void _showThemePicker() {
+    final theme = ThemeService.instance;
+    final loc = LocalizationService.instance;
+    final isDark = theme.isDarkMode(context);
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (dialogCtx, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 18,
-            bottom: MediaQuery.of(dialogCtx).viewInsets.bottom + 24,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (sheetCtx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF3F3F46) : Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
               children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
+                const Icon(Icons.palette_rounded, color: AppTheme.accent),
+                const SizedBox(width: 8),
+                Text(
+                  loc.translate('settings_appearance'),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Зміна та створення паролю', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    IconButton(
-                      icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                      onPressed: () => setModalState(() => obscure = !obscure),
+              ],
+            ),
+            const SizedBox(height: 18),
+
+            // Light Option
+            _buildThemeOption(
+              icon: Icons.light_mode_rounded,
+              title: '${loc.translate('settings_theme_light')} (Ivory & Gold)',
+              subtitle: 'Класичний світлий преміальний стиль Vestora',
+              isSelected: theme.themeMode == ThemeMode.light,
+              isDark: isDark,
+              onTap: () async {
+                final nav = Navigator.of(sheetCtx);
+                await theme.setThemeMode(ThemeMode.light);
+                if (!mounted) return;
+                setState(() {});
+                nav.pop();
+              },
+            ),
+            const SizedBox(height: 8),
+
+            // Dark Option
+            _buildThemeOption(
+              icon: Icons.dark_mode_rounded,
+              title: '${loc.translate('settings_theme_dark')} (Obsidian Luxury)',
+              subtitle: 'Глибокий чорний онікс із теплими золотими акцентами',
+              isSelected: theme.themeMode == ThemeMode.dark,
+              isDark: isDark,
+              onTap: () async {
+                final nav = Navigator.of(sheetCtx);
+                await theme.setThemeMode(ThemeMode.dark);
+                if (!mounted) return;
+                setState(() {});
+                nav.pop();
+              },
+            ),
+            const SizedBox(height: 8),
+
+            // System Option
+            _buildThemeOption(
+              icon: Icons.brightness_auto_rounded,
+              title: loc.translate('settings_theme_system'),
+              subtitle: 'Автоматична синхронізація з налаштуваннями пристрою',
+              isSelected: theme.themeMode == ThemeMode.system,
+              isDark: isDark,
+              onTap: () async {
+                final nav = Navigator.of(sheetCtx);
+                await theme.setThemeMode(ThemeMode.system);
+                if (!mounted) return;
+                setState(() {});
+                nav.pop();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThemeOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool isSelected,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? const Color(0xFF2E2E38) : const Color(0xFFFEF3C7))
+              : (isDark ? const Color(0xFF1E1E24) : const Color(0xFFF4F4F5)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? AppTheme.accent : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: isSelected ? AppTheme.accent : (isDark ? Colors.white70 : Colors.black87)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: isDark ? Colors.white : Colors.black,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                const Text('ПОТОЧНИЙ ПАРОЛЬ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: oldPassCtrl,
-                  obscureText: obscure,
-                  decoration: const InputDecoration(prefixIcon: Icon(Icons.lock_outline, size: 20)),
-                ),
-                const SizedBox(height: 14),
-
-                const Text('НОВИЙ ПАРОЛЬ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: newPassCtrl,
-                  obscureText: obscure,
-                  decoration: const InputDecoration(hintText: 'Мінімум 6 символів', prefixIcon: Icon(Icons.vpn_key_outlined, size: 20)),
-                ),
-                const SizedBox(height: 14),
-
-                const Text('ПІДТВЕРДЖЕННЯ НОВОГО ПАРОЛЮ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: confirmPassCtrl,
-                  obscureText: obscure,
-                  decoration: const InputDecoration(prefixIcon: Icon(Icons.check_circle_outline, size: 20)),
-                ),
-                const SizedBox(height: 20),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
-                    onPressed: () async {
-                      final res = await UserProfileService.changePassword(
-                        oldPassword: oldPassCtrl.text,
-                        newPassword: newPassCtrl.text,
-                        confirmPassword: confirmPassCtrl.text,
-                      );
-
-                      if (res.success) {
-                        if (dialogCtx.mounted) {
-                          Navigator.pop(dialogCtx);
-                        }
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(res.message), backgroundColor: const Color(0xFF16A34A)),
-                          );
-                        }
-                      } else {
-                        if (dialogCtx.mounted) {
-                          ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                            SnackBar(content: Text(res.message), backgroundColor: Colors.red),
-                          );
-                        }
-                      }
-                    },
-                    child: const Text('Оновити пароль безпеки'),
                   ),
-                ),
-              ],
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                  ),
+                ],
+              ),
             ),
-          ),
+            if (isSelected) const Icon(Icons.check_circle_rounded, color: AppTheme.accent, size: 20),
+          ],
         ),
       ),
     );
   }
 
-  // 3. Notifications Modal
+  void _showLanguagePicker() {
+    final loc = LocalizationService.instance;
+    final isDark = ThemeService.instance.isDarkMode(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetCtx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF3F3F46) : Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Icon(Icons.language_rounded, color: Color(0xFF0284C7)),
+                const SizedBox(width: 8),
+                Text(
+                  loc.translate('settings_language'),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...AppLanguage.values.map((lang) {
+              final isSel = loc.currentLanguage == lang;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: InkWell(
+                  onTap: () async {
+                    final nav = Navigator.of(sheetCtx);
+                    await loc.setLanguage(lang);
+                    if (!mounted) return;
+                    setState(() {});
+                    nav.pop();
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isSel
+                          ? (isDark ? const Color(0xFF2E2E38) : const Color(0xFFE0F2FE))
+                          : (isDark ? const Color(0xFF1E1E24) : const Color(0xFFF4F4F5)),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSel ? const Color(0xFF0284C7) : Colors.transparent,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(lang.flag, style: const TextStyle(fontSize: 24)),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                lang.label,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
+                              ),
+                              Text(
+                                lang.subtitle,
+                                style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (isSel) const Icon(Icons.check_circle_rounded, color: Color(0xFF0284C7), size: 20),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showNotificationsDialog() {
+    bool morning = _profile.pushDailyStylist;
+    bool streak = _profile.pushStreakReminder;
+    bool eco = _profile.emailEcoReport;
+
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (sheetCtx, setModalState) => Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text('Налаштування сповіщень', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                const Text('Керуйте push-сповіщеннями на пристрої та email-розсилками', style: TextStyle(fontSize: 12, color: AppTheme.muted)),
-                const SizedBox(height: 18),
-
-                // Push Section
-                const Text('МОБІЛЬНІ PUSH-СПОВІЩЕННЯ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.accent)),
-                const SizedBox(height: 6),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Ранкова підказка ШІ-стиліста', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Щоденний образ з урахуванням погоди о 08:00', style: TextStyle(fontSize: 11.5, color: AppTheme.muted)),
-                  value: _profile.pushDailyStylist,
-                  onChanged: (val) async {
-                    await UserProfileService.saveNotifications(pushDailyStylist: val);
-                    setModalState(() => _profile.pushDailyStylist = val);
-                    setState(() {});
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 16),
+              const Row(
+                children: [
+                  Icon(Icons.notifications_active_outlined, color: Color(0xFF16A34A)),
+                  SizedBox(width: 8),
+                  Text('Сповіщення та Нагадування', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              SwitchListTile(
+                title: const Text('Ранковий лук о 08:00', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                subtitle: const Text('Готова капсула під погоду за вікном кожного ранку', style: TextStyle(fontSize: 11)),
+                value: morning,
+                onChanged: (val) => setSheetState(() => morning = val),
+              ),
+              SwitchListTile(
+                title: const Text('Нагадування стріку о 20:00', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                subtitle: const Text('Не дайте згоріти вашому прогресу носіння гардероба', style: TextStyle(fontSize: 11)),
+                value: streak,
+                onChanged: (val) => setSheetState(() => streak = val),
+              ),
+              SwitchListTile(
+                title: const Text('Тижневий еко-звіт та CPW', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                subtitle: const Text('Підсумок вартості виходів та рекомендації щодо розхламлення', style: TextStyle(fontSize: 11)),
+                value: eco,
+                onChanged: (val) => setSheetState(() => eco = val),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final nav = Navigator.of(sheetCtx);
+                    final messenger = ScaffoldMessenger.of(context);
+                    await UserProfileService.saveNotifications(
+                      pushDailyStylist: morning,
+                      pushStreakReminder: streak,
+                      emailEcoReport: eco,
+                    );
+                    if (!mounted) return;
+                    setState(() {
+                      _profile = UserProfileService.profile;
+                    });
+                    nav.pop();
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Параметри сповіщень збережено!'), backgroundColor: Color(0xFF16A34A)),
+                    );
                   },
+                  child: const Text('Зберегти налаштування'),
                 ),
-                const Divider(),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Нагадування про стрік активності', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Сповіщення перед сном, якщо образ дня не відмічено', style: TextStyle(fontSize: 11.5, color: AppTheme.muted)),
-                  value: _profile.pushStreakReminder,
-                  onChanged: (val) async {
-                    await UserProfileService.saveNotifications(pushStreakReminder: val);
-                    setModalState(() => _profile.pushStreakReminder = val);
-                    setState(() {});
-                  },
-                ),
-                const Divider(),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Графік догляду за делікатними тканинами', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Нагадування про чищення вовни, шовку та захист шкіри', style: TextStyle(fontSize: 11.5, color: AppTheme.muted)),
-                  value: _profile.pushFabricCare,
-                  onChanged: (val) async {
-                    await UserProfileService.saveNotifications(pushFabricCare: val);
-                    setModalState(() => _profile.pushFabricCare = val);
-                    setState(() {});
-                  },
-                ),
-                const SizedBox(height: 18),
-
-                // Email Section
-                const Text('EMAIL-СПОВІЩЕННЯ ТА ДАЙДЖЕСТИ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.accent)),
-                const SizedBox(height: 6),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Місячний дайджест окупності шафи', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Звіт про вартість, найбільш та найменш ношені речі', style: TextStyle(fontSize: 11.5, color: AppTheme.muted)),
-                  value: _profile.emailMonthlyDigest,
-                  onChanged: (val) async {
-                    await UserProfileService.saveNotifications(emailMonthlyDigest: val);
-                    setModalState(() => _profile.emailMonthlyDigest = val);
-                    setState(() {});
-                  },
-                ),
-                const Divider(),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Екологічний звіт та економія ресурсів', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Кількість збереженої води (л) та скорочення CO₂', style: TextStyle(fontSize: 11.5, color: AppTheme.muted)),
-                  value: _profile.emailEcoReport,
-                  onChanged: (val) async {
-                    await UserProfileService.saveNotifications(emailEcoReport: val);
-                    setModalState(() => _profile.emailEcoReport = val);
-                    setState(() {});
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 4. Personalization Modal
-  void _showPersonalizationDialog() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (sheetCtx, setModalState) => Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text('Персоналізація гардероба', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 18),
-
-                // Currency selector
-                const Text('ОСНОВНА ВАЛЮТА', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  initialValue: _profile.currency,
-                  items: const [
-                    DropdownMenuItem(value: 'UAH (₴)', child: Text('UAH (₴) · Українська гривня')),
-                    DropdownMenuItem(value: 'EUR (€)', child: Text('EUR (€) · Євро')),
-                    DropdownMenuItem(value: 'USD (\$)', child: Text('USD (\$) · Долар США')),
-                  ],
-                  onChanged: (val) async {
-                    if (val != null) {
-                      await UserProfileService.saveProfile(currency: val);
-                      setModalState(() => _profile.currency = val);
-                      setState(() {});
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Size System selector
-                const Text('СИСТЕМА РОЗМІРІВ ЗА ЗАМОВЧУВАННЯМ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  initialValue: _profile.sizeSystem,
-                  items: const [
-                    DropdownMenuItem(value: 'EUR / International', child: Text('EUR / Міжнародна (S, M, EUR 38)')),
-                    DropdownMenuItem(value: 'US / American', child: Text('US (US 6, US S, W30/L32)')),
-                    DropdownMenuItem(value: 'UK / British', child: Text('UK (UK 10, UK 8)')),
-                  ],
-                  onChanged: (val) async {
-                    if (val != null) {
-                      await UserProfileService.saveProfile(sizeSystem: val);
-                      setModalState(() => _profile.sizeSystem = val);
-                      setState(() {});
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Preferred Aesthetic Style
-                const Text('УЛЮБЛЕНИЙ СТИЛЬ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  initialValue: _profile.preferredStyle,
-                  items: const [
-                    DropdownMenuItem(value: 'Quiet Luxury · Стриманий мінімалізм', child: Text('Quiet Luxury · Стриманий мінімалізм')),
-                    DropdownMenuItem(value: 'Smart Casual · Діловий невимушений', child: Text('Smart Casual · Діловий невимушений')),
-                    DropdownMenuItem(value: 'Old Money · Класична елегантність', child: Text('Old Money · Класична елегантність')),
-                    DropdownMenuItem(value: 'Streetwear & Sportswear', child: Text('Streetwear & Sportswear')),
-                  ],
-                  onChanged: (val) async {
-                    if (val != null) {
-                      await UserProfileService.saveProfile(preferredStyle: val);
-                      setModalState(() => _profile.preferredStyle = val);
-                      setState(() {});
-                    }
-                  },
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -475,13 +638,17 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = context.watch<ThemeService>();
+    final loc = context.watch<LocalizationService>();
+
+    final isDark = theme.isDarkMode(context);
     final hasAiKey = AiConfigService.hasCustomKey;
     final adCredits = AiConfigService.adCredits;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: isDark ? AppTheme.darkBackground : const Color(0xFFF9FAFB),
       appBar: AppBar(
-        title: const Text('Налаштування та Кабінет'),
+        title: Text(loc.translate('settings_title')),
         elevation: 0,
       ),
       body: ListView(
@@ -491,13 +658,16 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF18181B), Color(0xFF27272A)],
+              gradient: LinearGradient(
+                colors: isDark
+                    ? const [Color(0xFF1E1E24), Color(0xFF2E2E38)]
+                    : const [Color(0xFF18181B), Color(0xFF27272A)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(22),
-              boxShadow: AppTheme.softShadow,
+              border: isDark ? Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.35)) : null,
+              boxShadow: isDark ? AppTheme.darkSoftShadow : AppTheme.softShadow,
             ),
             child: Column(
               children: [
@@ -598,7 +768,7 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         icon: const Icon(Icons.edit_outlined, size: 16),
-                        label: const Text('Редагувати', style: TextStyle(fontSize: 12)),
+                        label: Text(loc.translate('settings_edit_profile'), style: const TextStyle(fontSize: 12)),
                         onPressed: _showEditProfileDialog,
                       ),
                     ),
@@ -612,7 +782,7 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         icon: const Icon(Icons.vpn_key_outlined, size: 16),
-                        label: const Text('Пароль', style: TextStyle(fontSize: 12)),
+                        label: Text(loc.translate('settings_change_pwd'), style: const TextStyle(fontSize: 12)),
                         onPressed: _showChangePasswordDialog,
                       ),
                     ),
@@ -625,7 +795,7 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       icon: const Icon(Icons.logout_rounded, color: Color(0xFFF87171), size: 18),
-                      tooltip: 'Вийти з акаунту',
+                      tooltip: loc.translate('settings_logout'),
                       onPressed: _confirmSignOutDialog,
                     ),
                   ],
@@ -636,20 +806,52 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           const SizedBox(height: 22),
 
           // 2. Settings Hub Menu Tiles
-          const Text('КАТЕГОРІЇ НАЛАШТУВАНЬ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.muted, letterSpacing: 1)),
+          Text(
+            loc.translate('settings_personalization').toUpperCase(),
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.muted, letterSpacing: 1),
+          ),
           const SizedBox(height: 10),
 
-          // Tile 0: Account & Authentication (Google / Email)
+          // Tile: Appearance / Dark Mode
+          _buildSettingsTile(
+            icon: isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+            iconColor: const Color(0xFFEAB308),
+            title: loc.translate('settings_appearance'),
+            subtitle: theme.themeMode == ThemeMode.dark
+                ? '${loc.translate('settings_theme_dark')} (Obsidian Luxury)'
+                : (theme.themeMode == ThemeMode.light
+                    ? '${loc.translate('settings_theme_light')} (Ivory Cashmere)'
+                    : loc.translate('settings_theme_system')),
+            trailingBadge: theme.themeMode == ThemeMode.dark ? '🌙 Dark' : '☀️ Light',
+            isDark: isDark,
+            onTap: _showThemePicker,
+          ),
+          const SizedBox(height: 10),
+
+          // Tile: Language Selection (Top 5 + Ukrainian)
+          _buildSettingsTile(
+            icon: Icons.language_rounded,
+            iconColor: const Color(0xFF0284C7),
+            title: loc.translate('settings_language'),
+            subtitle: '${loc.currentLanguage.flag} ${loc.currentLanguage.label} · ${loc.currentLanguage.subtitle}',
+            trailingBadge: loc.currentLanguage.flag,
+            isDark: isDark,
+            onTap: _showLanguagePicker,
+          ),
+          const SizedBox(height: 10),
+
+          // Tile 0: Account & Authentication
           _buildSettingsTile(
             icon: Icons.account_circle_outlined,
             iconColor: const Color(0xFF2563EB),
-            title: 'Акаунт та Авторизація',
+            title: loc.translate('settings_account'),
             subtitle: AuthService.instance.currentMethod == AuthMethod.google
-                ? 'Вхід через Google: ${_profile.email}'
+                ? 'Google: ${_profile.email}'
                 : (AuthService.instance.currentMethod == AuthMethod.email
-                    ? 'Вхід через Email & Пароль: ${_profile.email}'
+                    ? 'Email & Пароль: ${_profile.email}'
                     : 'Демо-режим гостя'),
             trailingBadge: AuthService.instance.currentMethod == AuthMethod.google ? 'Google 🌐' : 'Email ✉️',
+            isDark: isDark,
             onTap: _confirmSignOutDialog,
           ),
           const SizedBox(height: 10),
@@ -658,11 +860,12 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           _buildSettingsTile(
             icon: Icons.auto_awesome,
             iconColor: const Color(0xFF4F46E5),
-            title: 'Штучний Інтелект & Vision API',
+            title: loc.translate('settings_ai_engine'),
             subtitle: hasAiKey
                 ? 'Підключено особистий ключ Google Gemini'
                 : (adCredits > 0 ? 'Gemini Vision ($adCredits бонусів за відео)' : 'Локальний евристичний парсер'),
             trailingBadge: hasAiKey ? 'BYOK ✅' : '$adCredits ⚡',
+            isDark: isDark,
             onTap: () async {
               await Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsAiScreen()));
               setState(() {});
@@ -674,8 +877,9 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           _buildSettingsTile(
             icon: Icons.palette_outlined,
             iconColor: const Color(0xFFD97706),
-            title: 'Персоналізація та Стиль',
+            title: loc.translate('settings_personalization'),
             subtitle: '${_profile.preferredStyle} · ${_profile.currency} · ${_profile.sizeSystem}',
+            isDark: isDark,
             onTap: _showPersonalizationDialog,
           ),
           const SizedBox(height: 10),
@@ -689,6 +893,7 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                 ? 'Власне фото обличчя підключено до віртуальної примірочної'
                 : 'Завантажте фото або оберіть типаж для примірки речей',
             trailingBadge: _profile.tryOnFaceUrl != null ? 'Готово 🪞' : '+ Фото',
+            isDark: isDark,
             onTap: () async {
               await Navigator.push(
                 context,
@@ -705,9 +910,10 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           _buildSettingsTile(
             icon: Icons.grid_on_rounded,
             iconColor: const Color(0xFF8B5CF6),
-            title: 'Капсульна Матриця 3x3',
+            title: loc.translate('stylist_matrix_tool'),
             subtitle: 'Математика гардероба: 9 базових речей генерують 18 луків',
             trailingBadge: '96% Луків',
+            isDark: isDark,
             onTap: () {
               Navigator.push(
                 context,
@@ -721,9 +927,10 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           _buildSettingsTile(
             icon: Icons.dry_cleaning_outlined,
             iconColor: const Color(0xFF0D9488),
-            title: 'Гід по догляду за тканинами та бірками',
+            title: loc.translate('tool_fabric_care'),
             subtitle: 'Розшифровка символів прання, порятунок плям, кашемір та шовк',
             trailingBadge: 'Гід 🏷️',
+            isDark: isDark,
             onTap: () {
               Navigator.push(
                 context,
@@ -739,6 +946,7 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
             iconColor: const Color(0xFF16A34A),
             title: 'Сповіщення (Push & Email)',
             subtitle: 'Ранковий образ о 08:00, нагадування стріку, еко-звіти',
+            isDark: isDark,
             onTap: _showNotificationsDialog,
           ),
           const SizedBox(height: 10),
@@ -747,10 +955,10 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? AppTheme.darkCard : Colors.white,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppTheme.border),
-              boxShadow: AppTheme.softShadow,
+              border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
+              boxShadow: isDark ? AppTheme.darkSoftShadow : AppTheme.softShadow,
             ),
             child: Row(
               children: [
@@ -767,11 +975,21 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Двоетапна перевірка (2FA)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                      Text(
+                        loc.translate('settings_security'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
                       const SizedBox(height: 2),
                       Text(
-                        _profile.twoFactorAuth ? 'Активовано (захист по SMS / Email)' : 'Вимкнено (рекомендується увімкнути)',
-                        style: TextStyle(fontSize: 11.5, color: _profile.twoFactorAuth ? const Color(0xFF16A34A) : AppTheme.muted),
+                        _profile.twoFactorAuth ? '2FA Активовано (захист по SMS / Email)' : 'Вимкнено (рекомендується увімкнути)',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: _profile.twoFactorAuth ? const Color(0xFF16A34A) : (isDark ? AppTheme.darkMuted : AppTheme.muted),
+                        ),
                       ),
                     ],
                   ),
@@ -807,6 +1025,7 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
             iconColor: const Color(0xFF0284C7),
             title: 'Експорт гардеробу (JSON)',
             subtitle: 'Зберегти копію всіх речей та історії аутфітів',
+            isDark: isDark,
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -823,6 +1042,7 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
             iconColor: const Color(0xFFDC2626),
             title: 'Скинути фільтри та оновити кеш',
             subtitle: 'Очистити збережені тимчасові файли та завантажити свіжі дані',
+            isDark: isDark,
             onTap: () {
               context.read<WardrobeProvider>().loadDemoCapsule();
               ScaffoldMessenger.of(context).showSnackBar(
@@ -838,10 +1058,10 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
               children: [
                 Text(
                   'Vestora · Smart Wardrobe Luxury Edition',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade700),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkMuted : Colors.grey.shade700),
                 ),
                 const SizedBox(height: 2),
-                Text('Версія 3.8.0 · Build 2026.10', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                Text('Версія 4.5 · Build 2026.10', style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF52525B) : Colors.grey.shade500)),
               ],
             ),
           ),
@@ -857,6 +1077,7 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
     required String title,
     required String subtitle,
     String? trailingBadge,
+    bool isDark = false,
     required VoidCallback onTap,
   }) {
     return InkWell(
@@ -865,17 +1086,17 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppTheme.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppTheme.border),
-          boxShadow: AppTheme.softShadow,
+          border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
+          boxShadow: isDark ? AppTheme.darkSoftShadow : AppTheme.softShadow,
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.12),
+                color: iconColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: iconColor),
@@ -885,9 +1106,21 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: AppTheme.muted)),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                  ),
                 ],
               ),
             ),
@@ -895,14 +1128,21 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
+                  color: isDark ? const Color(0xFF352B18) : const Color(0xFFFEF3C7),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(trailingBadge, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFB45309))),
+                child: Text(
+                  trailingBadge,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
             ],
-            const Icon(Icons.chevron_right_rounded, color: AppTheme.muted, size: 20),
+            Icon(Icons.chevron_right_rounded, color: isDark ? AppTheme.darkMuted : AppTheme.muted, size: 20),
           ],
         ),
       ),

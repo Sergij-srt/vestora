@@ -4,6 +4,8 @@ import 'services/wardrobe_provider.dart';
 import 'services/ai_config_service.dart';
 import 'services/user_profile_service.dart';
 import 'services/auth_service.dart';
+import 'services/theme_service.dart';
+import 'services/localization_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/closet_screen.dart';
 import 'screens/add_item_screen.dart';
@@ -17,6 +19,8 @@ void main() async {
   await AuthService.initialize();
   await AiConfigService.initialize();
   await UserProfileService.initialize();
+  await ThemeService.initialize();
+  await LocalizationService.initialize();
   runApp(const SmartWardrobeApp());
 }
 
@@ -29,13 +33,18 @@ class SmartWardrobeApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => WardrobeProvider()),
         ChangeNotifierProvider.value(value: AuthService.instance),
+        ChangeNotifierProvider.value(value: ThemeService.instance),
+        ChangeNotifierProvider.value(value: LocalizationService.instance),
       ],
-      child: Consumer<AuthService>(
-        builder: (context, auth, _) {
+      child: Consumer3<AuthService, ThemeService, LocalizationService>(
+        builder: (context, auth, theme, loc, _) {
           return MaterialApp(
             title: 'Vestora · Smart Wardrobe',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: theme.themeMode,
+            locale: loc.currentLocale,
             home: ResponsiveAppWrapper(
               child: auth.isLoggedIn
                   ? const MainNavigationScreen()
@@ -57,24 +66,28 @@ class ResponsiveAppWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth > 520;
+    final isDark = ThemeService.instance.isDarkMode(context);
 
     if (!isDesktop) {
       return child;
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F0F3), // Neutral luxury canvas
+      backgroundColor: isDark ? const Color(0xFF09090B) : const Color(0xFFF0F0F3),
       body: Center(
         child: Container(
           width: 440,
           margin: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? AppTheme.darkBackground : Colors.white,
             borderRadius: BorderRadius.circular(36),
-            border: Border.all(color: const Color(0xFFD4D4D8), width: 1.5),
+            border: Border.all(
+              color: isDark ? AppTheme.darkBorder : const Color(0xFFD4D4D8),
+              width: 1.5,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
+                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
                 blurRadius: 36,
                 offset: const Offset(0, 12),
               ),
@@ -100,6 +113,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = context.watch<LocalizationService>();
+    final theme = context.watch<ThemeService>();
+    final isDark = theme.isDarkMode(context);
+
     final screens = [
       const ClosetScreen(),
       const OutfitBuilderScreen(),
@@ -127,43 +144,48 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         ),
       ),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: AppTheme.border, width: 1)),
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.darkSurface : Colors.white,
+          border: Border(
+            top: BorderSide(
+              color: isDark ? AppTheme.darkBorder : AppTheme.border,
+              width: 1,
+            ),
+          ),
         ),
         child: NavigationBar(
           selectedIndex: _currentIndex,
-          backgroundColor: Colors.white,
-          indicatorColor: const Color(0xFFFEF3C7),
+          backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+          indicatorColor: isDark ? const Color(0xFF2E2E38) : const Color(0xFFFEF3C7),
           elevation: 0,
           onDestinationSelected: (index) {
             setState(() => _currentIndex = index);
           },
-          destinations: const [
+          destinations: [
             NavigationDestination(
-              icon: Icon(Icons.checkroom_outlined),
-              selectedIcon: Icon(Icons.checkroom_rounded, color: AppTheme.accent),
-              label: 'Гардероб',
+              icon: const Icon(Icons.checkroom_outlined),
+              selectedIcon: const Icon(Icons.checkroom_rounded, color: AppTheme.accent),
+              label: loc.translate('tab_wardrobe'),
             ),
             NavigationDestination(
-              icon: Icon(Icons.style_outlined),
-              selectedIcon: Icon(Icons.style_rounded, color: AppTheme.accent),
-              label: 'Стиліст',
+              icon: const Icon(Icons.style_outlined),
+              selectedIcon: const Icon(Icons.style_rounded, color: AppTheme.accent),
+              label: loc.translate('tab_stylist'),
             ),
             NavigationDestination(
-              icon: Icon(Icons.add_circle_outline_rounded),
-              selectedIcon: Icon(Icons.add_circle_rounded, color: AppTheme.accent),
-              label: 'Додати',
+              icon: const Icon(Icons.add_circle_outline_rounded),
+              selectedIcon: const Icon(Icons.add_circle_rounded, color: AppTheme.accent),
+              label: loc.translate('tab_add'),
             ),
             NavigationDestination(
-              icon: Icon(Icons.auto_awesome_outlined),
-              selectedIcon: Icon(Icons.auto_awesome_rounded, color: AppTheme.accent),
-              label: 'Спільнота',
+              icon: const Icon(Icons.auto_awesome_outlined),
+              selectedIcon: const Icon(Icons.auto_awesome_rounded, color: AppTheme.accent),
+              label: loc.translate('tab_community'),
             ),
             NavigationDestination(
-              icon: Icon(Icons.insights_rounded),
-              selectedIcon: Icon(Icons.insights_rounded, color: AppTheme.accent),
-              label: 'Аналітика',
+              icon: const Icon(Icons.insights_rounded),
+              selectedIcon: const Icon(Icons.insights_rounded, color: AppTheme.accent),
+              label: loc.translate('tab_analytics'),
             ),
           ],
         ),
