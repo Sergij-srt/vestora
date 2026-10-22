@@ -1697,16 +1697,20 @@ class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
     _loadDigest();
   }
 
-  Future<void> _loadDigest() async {
+  Future<void> _loadDigest({bool forceRefresh = false, String? overrideCity}) async {
     final wardrobe = context.read<WardrobeProvider>();
     if (wardrobe.items.isEmpty) {
       if (mounted) setState(() => _isLoading = false);
       return;
     }
-    final location = UserProfileService.profile.location;
+    if (forceRefresh && mounted) {
+      setState(() => _isLoading = true);
+    }
+    final location = overrideCity ?? UserProfileService.profile.location;
     final digest = await DailyStylistService.getTodayDigest(
       wardrobeItems: wardrobe.items,
       location: location,
+      forceRefresh: forceRefresh,
     );
     if (mounted) {
       setState(() {
@@ -1714,6 +1718,101 @@ class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
         _isLoading = false;
       });
     }
+  }
+
+  void _showCityPickerDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1917),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFFD4AF37), width: 1.2),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.location_on_rounded, color: Color(0xFFD4AF37), size: 22),
+            SizedBox(width: 8),
+            Text(
+              'Місто та погода',
+              style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Оберіть або введіть місто для отримання живого прогнозу погоди (Open-Meteo API):',
+                style: TextStyle(color: Color(0xFFA8A29E), fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: defaultFashionCities.map((city) {
+                  final isCurrent = _digest?.city.toLowerCase() == city.name.toLowerCase();
+                  return ChoiceChip(
+                    label: Text(city.name),
+                    selected: isCurrent,
+                    selectedColor: const Color(0xFFD4AF37),
+                    backgroundColor: const Color(0xFF292524),
+                    labelStyle: TextStyle(
+                      color: isCurrent ? Colors.black : Colors.white,
+                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 12,
+                    ),
+                    onSelected: (_) async {
+                      Navigator.pop(ctx);
+                      await UserProfileService.saveProfile(location: city.name);
+                      _loadDigest(forceRefresh: true, overrideCity: city.name);
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Введіть інше місто (напр. Чернівці)',
+                  hintStyle: const TextStyle(color: Color(0xFF78716C), fontSize: 13),
+                  filled: true,
+                  fillColor: const Color(0xFF292524),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Скасувати', style: TextStyle(color: Color(0xFFA8A29E))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD4AF37),
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              final text = controller.text.trim();
+              Navigator.pop(ctx);
+              if (text.isNotEmpty) {
+                await UserProfileService.saveProfile(location: text);
+                _loadDigest(forceRefresh: true, overrideCity: text);
+              }
+            },
+            child: const Text('Застосувати', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _wearOutfit(WardrobeProvider wardrobe) async {
@@ -1814,38 +1913,57 @@ class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF44403C),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          const Text('⛅', style: TextStyle(fontSize: 12)),
-                          const SizedBox(width: 4),
-                          Text(
-                            digest.weatherSummary,
-                            style: const TextStyle(
-                              color: Color(0xFFFDE68A),
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
+                InkWell(
+                  onTap: _showCityPickerDialog,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF44403C),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Text('⛅', style: TextStyle(fontSize: 12)),
+                            const SizedBox(width: 4),
+                            Text(
+                              digest.weatherSummary,
+                              style: const TextStyle(
+                                color: Color(0xFFFDE68A),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined, size: 12, color: Color(0xFFD4AF37)),
+                          const SizedBox(width: 2),
+                          Text(
+                            digest.city,
+                            style: const TextStyle(color: Color(0xFFA8A29E), fontSize: 11, fontWeight: FontWeight.w600),
                           ),
+                          const Icon(Icons.arrow_drop_down_rounded, size: 16, color: Color(0xFFA8A29E)),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      digest.city,
-                      style: const TextStyle(color: Color(0xFFA8A29E), fontSize: 11, fontWeight: FontWeight.w600),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 Row(
                   children: [
+                    IconButton(
+                      icon: const Icon(Icons.refresh_rounded, color: Color(0xFFA8A29E), size: 18),
+                      tooltip: 'Оновити прогноз погоди (Live Open-Meteo)',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () => _loadDigest(forceRefresh: true),
+                    ),
+                    const SizedBox(width: 10),
                     IconButton(
                       icon: const Icon(Icons.notifications_active_outlined, color: Color(0xFFFDE68A), size: 18),
                       tooltip: 'Надіслати ранкове сповіщення (Push)',
@@ -1853,7 +1971,7 @@ class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
                       constraints: const BoxConstraints(),
                       onPressed: _triggerPush,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     InkWell(
                       onTap: () => setState(() => _isDismissed = true),
                       child: const Icon(Icons.close_rounded, color: Color(0xFFA8A29E), size: 18),

@@ -5,6 +5,7 @@ import 'package:smart_wardrobe/services/wardrobe_provider.dart';
 import 'package:smart_wardrobe/services/user_profile_service.dart';
 import 'package:smart_wardrobe/services/backup_service.dart';
 import 'package:smart_wardrobe/services/daily_stylist_service.dart';
+import 'package:smart_wardrobe/services/weather_stylist_service.dart';
 import 'package:smart_wardrobe/services/virtual_fitting_service.dart';
 
 void main() {
@@ -139,6 +140,28 @@ void main() {
       await DailyStylistService.markWorn(wardrobe, digest);
       expect(digest.isWorn, isTrue);
       expect(wardrobe.streakDays, initialStreak + 1);
+    });
+
+    test('mapWmoCodeToCondition correctly translates WMO weather codes', () {
+      expect(DailyStylistService.mapWmoCodeToCondition(0, 10), WeatherCondition.sunny);
+      expect(DailyStylistService.mapWmoCodeToCondition(2, 10), WeatherCondition.cloudy);
+      expect(DailyStylistService.mapWmoCodeToCondition(61, 10), WeatherCondition.rainy);
+      expect(DailyStylistService.mapWmoCodeToCondition(71, 10), WeatherCondition.snowy);
+      expect(DailyStylistService.mapWmoCodeToCondition(1, 35), WeatherCondition.coldWindy);
+    });
+
+    test('fetchLiveWeather returns valid weather object with fallback resilience', () async {
+      final weather = await DailyStylistService.fetchLiveWeather(city: 'Київ');
+      expect(weather.temperature, isNotNull);
+      expect(weather.condition, isNotNull);
+      expect(weather.windSpeed, greaterThanOrEqualTo(0));
+    });
+
+    test('defaultFashionCities contains key global and Ukrainian cities', () {
+      expect(defaultFashionCities.any((c) => c.name == 'Київ'), isTrue);
+      expect(defaultFashionCities.any((c) => c.name == 'Львів'), isTrue);
+      expect(defaultFashionCities.any((c) => c.name == 'Париж'), isTrue);
+      expect(defaultFashionCities.any((c) => c.name == 'Мілан'), isTrue);
     });
   });
 

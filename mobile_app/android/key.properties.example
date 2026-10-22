@@ -1,0 +1,8 @@
+# Vestora Android Keystore Configuration Template
+# Copy this file to key.properties and replace with your actual keystore credentials:
+# cp key.properties.example key.properties
+
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=vestora-release-key
+storeFile=../vestora-release-keystore.jks
