@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:uuid/uuid.dart';
 import '../models/clothing_item.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/clothing_ocr_service.dart';
+import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 
 class PhotoVerificationScreen extends StatefulWidget {
@@ -401,8 +401,10 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
         fit: StackFit.expand,
         children: [
           if (imageUrl != null && imageUrl.isNotEmpty)
-            CachedNetworkImage(
+            VestoraImage(
               imageUrl: imageUrl,
+              width: double.infinity,
+              height: double.infinity,
               fit: BoxFit.cover,
               errorWidget: (context, url, error) => Center(child: Icon(icon, color: AppTheme.muted)),
             )

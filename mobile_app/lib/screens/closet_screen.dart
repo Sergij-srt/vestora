@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models/clothing_item.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/gamification_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/vestora_image.dart';
 import 'purchase_advisor_screen.dart';
 import 'brand_story_dialog.dart';
 import 'travel_capsule_screen.dart';
@@ -881,9 +881,11 @@ class _ClothingCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  CachedNetworkImage(
+                  VestoraImage(
                     imageUrl: item.imageUrl,
                     fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
                     placeholder: (context, url) => Container(
                       color: const Color(0xFFF4F4F5),
                       child: const Center(
@@ -1049,7 +1051,7 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
             ),
             ClipRRect(
               borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-              child: CachedNetworkImage(
+              child: VestoraImage(
                 imageUrl: imageUrl,
                 fit: BoxFit.contain,
                 placeholder: (context, url) => Container(
@@ -1375,7 +1377,7 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(14),
-                  child: CachedNetworkImage(
+                  child: VestoraImage(
                     imageUrl: item.imageUrl,
                     width: 95,
                     height: 115,

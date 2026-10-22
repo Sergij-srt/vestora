@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 
 class OotdPost {
@@ -441,7 +441,7 @@ class _OotdFeedScreenState extends State<OotdFeedScreen> {
               children: [
                 CircleAvatar(
                   radius: 18,
-                  backgroundImage: CachedNetworkImageProvider(post.authorAvatar),
+                  backgroundImage: vestoraImageProvider(post.authorAvatar),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -478,7 +478,7 @@ class _OotdFeedScreenState extends State<OotdFeedScreen> {
           Stack(
             children: [
               ClipRRect(
-                child: CachedNetworkImage(
+                child: VestoraImage(
                   imageUrl: post.imageUrl,
                   height: 340,
                   width: double.infinity,

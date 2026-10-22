@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../services/user_profile_service.dart';
 import '../services/ai_config_service.dart';
 import '../services/wardrobe_provider.dart';
+import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 import 'settings_ai_screen.dart';
 import 'virtual_fitting_screen.dart';
@@ -507,7 +507,7 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                       children: [
                         CircleAvatar(
                           radius: 34,
-                          backgroundImage: CachedNetworkImageProvider(_profile.avatarUrl),
+                          backgroundImage: vestoraImageProvider(_profile.avatarUrl),
                         ),
                         Positioned(
                           bottom: 0,

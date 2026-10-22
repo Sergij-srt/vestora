@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models/clothing_item.dart';
 import '../services/color_analysis_service.dart';
 import '../services/outfit_calendar_service.dart';
 import '../services/weather_stylist_service.dart';
+import '../widgets/vestora_image.dart';
 import 'virtual_fitting_screen.dart';
 import 'outfit_calendar_screen.dart';
 
@@ -805,9 +805,11 @@ $brands #QuietLuxury #OOTD #VestoraStyle #WardrobeCapsule
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CachedNetworkImage(
+          VestoraImage(
             imageUrl: item.imageUrl,
             fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
             placeholder: (context, url) => Center(
               child: SizedBox(
                 width: 24,

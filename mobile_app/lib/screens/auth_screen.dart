@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
+import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 
 class GoogleLogoWidget extends StatelessWidget {
@@ -157,7 +157,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         CircleAvatar(
                           radius: 20,
                           backgroundColor: const Color(0xFFF4F4F5),
-                          backgroundImage: CachedNetworkImageProvider(account.avatarUrl),
+                          backgroundImage: vestoraImageProvider(account.avatarUrl),
                         ),
                         const SizedBox(width: 14),
                         Expanded(

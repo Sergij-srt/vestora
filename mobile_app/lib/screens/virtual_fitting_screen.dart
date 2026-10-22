@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/clothing_item.dart';
 import '../services/wardrobe_provider.dart';
@@ -9,6 +8,7 @@ import '../services/virtual_fitting_service.dart';
 import '../services/outfit_calendar_service.dart';
 import '../services/weather_stylist_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/vestora_image.dart';
 import 'outfit_calendar_screen.dart';
 import 'editorial_story_screen.dart';
 
@@ -194,7 +194,7 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                         children: [
                           CircleAvatar(
                             radius: 26,
-                            backgroundImage: CachedNetworkImageProvider(face.faceUrl),
+                            backgroundImage: vestoraImageProvider(face.faceUrl),
                           ),
                           const SizedBox(height: 6),
                           Text(
@@ -270,7 +270,7 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: CachedNetworkImage(
+                          child: VestoraImage(
                             imageUrl: it.imageUrl,
                             width: 100,
                             height: 100,
@@ -571,8 +571,10 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                 Positioned.fill(
                   child: Opacity(
                     opacity: 0.25,
-                    child: CachedNetworkImage(
+                    child: VestoraImage(
                       imageUrl: _background.imageUrl,
+                      width: double.infinity,
+                      height: double.infinity,
                       fit: BoxFit.cover,
                     ),
                   ),
@@ -708,8 +710,10 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                                   ],
                                 ),
                                 child: ClipOval(
-                                  child: CachedNetworkImage(
+                                  child: VestoraImage(
                                     imageUrl: _activeFaceUrl,
+                                    width: 76,
+                                    height: 76,
                                     fit: BoxFit.cover,
                                   ),
                                 ),
@@ -918,17 +922,18 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
             fit: StackFit.expand,
             children: [
               // 1. Garment Image with graceful placeholder & error widget
-              CachedNetworkImage(
+              VestoraImage(
                 imageUrl: item.imageUrl,
                 fit: BoxFit.cover,
                 width: double.infinity,
+                height: double.infinity,
                 placeholder: (context, url) => Container(
                   color: const Color(0xFF27272A),
-                  child: Center(
+                  child: const Center(
                     child: SizedBox(
                       width: 24,
                       height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: const Color(0xFFD4AF37)),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD4AF37)),
                     ),
                   ),
                 ),

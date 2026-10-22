@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models/clothing_item.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/weather_stylist_service.dart';
 import '../services/outfit_calendar_service.dart';
+import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 
 class OutfitCalendarScreen extends StatefulWidget {
@@ -172,7 +172,7 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: CachedNetworkImage(
+                          child: VestoraImage(
                             imageUrl: it.imageUrl,
                             width: 90,
                             height: 90,
@@ -775,8 +775,10 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      CachedNetworkImage(
+                      VestoraImage(
                         imageUrl: item.imageUrl,
+                        width: double.infinity,
+                        height: double.infinity,
                         fit: BoxFit.cover,
                       ),
                       Positioned(

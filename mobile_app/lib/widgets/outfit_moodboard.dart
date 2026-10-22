@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models/clothing_item.dart';
 import '../theme/app_theme.dart';
+import 'vestora_image.dart';
 
 class OutfitMoodboardWidget extends StatelessWidget {
   final ClothingItem? outerwear;
@@ -195,9 +195,11 @@ class OutfitMoodboardWidget extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            CachedNetworkImage(
+            VestoraImage(
               imageUrl: item.imageUrl,
               fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
               placeholder: (context, url) => Container(color: const Color(0xFFF4F4F5)),
               errorWidget: (context, url, error) => Container(
                 color: const Color(0xFFF4F4F5),

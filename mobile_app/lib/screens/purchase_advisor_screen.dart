@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:uuid/uuid.dart';
 import '../models/clothing_item.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/url_parser_service.dart';
 import '../services/purchase_advisor_service.dart';
+import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 
 class PurchaseAdvisorScreen extends StatefulWidget {
@@ -359,7 +359,7 @@ class _PurchaseAdvisorScreenState extends State<PurchaseAdvisorScreen> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: CachedNetworkImage(imageUrl: item.imageUrl, width: 44, height: 44, fit: BoxFit.cover),
+                        child: VestoraImage(imageUrl: item.imageUrl, width: 44, height: 44, fit: BoxFit.cover),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -398,7 +398,7 @@ class _PurchaseAdvisorScreenState extends State<PurchaseAdvisorScreen> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: CachedNetworkImage(imageUrl: item.imageUrl, width: 80, height: 80, fit: BoxFit.cover),
+                          child: VestoraImage(imageUrl: item.imageUrl, width: 80, height: 80, fit: BoxFit.cover),
                         ),
                         const SizedBox(height: 4),
                         SizedBox(

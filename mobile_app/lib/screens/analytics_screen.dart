@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/gamification_service.dart';
 import '../models/clothing_item.dart';
+import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 import 'declutter_hub_screen.dart';
 import 'color_analysis_dialog.dart';
@@ -388,7 +388,7 @@ VESTORA · Звіт про Гардероб ✨
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: CachedNetworkImage(
+                          child: VestoraImage(
                             imageUrl: item.imageUrl,
                             width: 48,
                             height: 48,
@@ -628,7 +628,7 @@ VESTORA · Звіт про Гардероб ✨
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: CachedNetworkImage(
+            child: VestoraImage(
               imageUrl: item.imageUrl,
               width: 50,
               height: 50,

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/travel_capsule_service.dart';
+import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 
 class TravelCapsuleScreen extends StatefulWidget {
@@ -358,8 +358,10 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    CachedNetworkImage(
+                    VestoraImage(
                       imageUrl: item.imageUrl,
+                      width: double.infinity,
+                      height: double.infinity,
                       fit: BoxFit.cover,
                     ),
                     Positioned(
@@ -461,7 +463,7 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                     final it = daily.items[i];
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: CachedNetworkImage(
+                      child: VestoraImage(
                         imageUrl: it.imageUrl,
                         width: 75,
                         height: 90,

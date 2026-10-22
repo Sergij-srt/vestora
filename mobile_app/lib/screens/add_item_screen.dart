@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/clothing_item.dart';
 import '../services/url_parser_service.dart';
@@ -10,6 +9,7 @@ import '../services/clothing_ocr_service.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/ai_config_service.dart';
 import '../services/gemini_vision_service.dart';
+import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 import 'photo_verification_screen.dart';
 import 'settings_ai_screen.dart';
@@ -592,7 +592,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: CachedNetworkImage(
+                  child: VestoraImage(
                     imageUrl: preset.itemImageUrl,
                     width: 50,
                     height: 50,
@@ -661,8 +661,10 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
             ? Stack(
                 fit: StackFit.expand,
                 children: [
-                  CachedNetworkImage(
+                  VestoraImage(
                     imageUrl: imageUrl,
+                    width: double.infinity,
+                    height: double.infinity,
                     fit: BoxFit.cover,
                     errorWidget: (context, url, error) => Center(child: Icon(icon, color: AppTheme.muted)),
                   ),
@@ -858,7 +860,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: CachedNetworkImage(
+                child: VestoraImage(
                   imageUrl: _selectedImageUrl.isNotEmpty ? _selectedImageUrl : p.imageUrl,
                   width: 90,
                   height: 120,

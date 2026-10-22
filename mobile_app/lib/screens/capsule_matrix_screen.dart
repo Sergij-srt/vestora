@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models/clothing_item.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/capsule_matrix_service.dart';
 import '../services/outfit_calendar_service.dart';
 import '../services/weather_stylist_service.dart';
+import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 import 'virtual_fitting_screen.dart';
 import 'outfit_calendar_screen.dart';
@@ -106,7 +106,7 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: CachedNetworkImage(
+                          child: VestoraImage(
                             imageUrl: it.imageUrl,
                             width: 100,
                             height: 100,
@@ -358,7 +358,7 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                                       children: [
                                         ClipRRect(
                                           borderRadius: BorderRadius.circular(8),
-                                          child: CachedNetworkImage(
+                                          child: VestoraImage(
                                             imageUrl: top.imageUrl,
                                             height: 44,
                                             width: 44,
@@ -406,7 +406,7 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                                       children: [
                                         ClipRRect(
                                           borderRadius: BorderRadius.circular(6),
-                                          child: CachedNetworkImage(
+                                          child: VestoraImage(
                                             imageUrl: bottom.imageUrl,
                                             height: 38,
                                             width: 38,
@@ -574,8 +574,10 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                                     child: Stack(
                                       fit: StackFit.expand,
                                       children: [
-                                        CachedNetworkImage(
+                                        VestoraImage(
                                           imageUrl: item.imageUrl,
+                                          width: double.infinity,
+                                          height: double.infinity,
                                           fit: BoxFit.cover,
                                         ),
                                         Positioned(

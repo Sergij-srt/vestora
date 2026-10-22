@@ -1,12 +1,12 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models/clothing_item.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/weather_stylist_service.dart';
 import '../services/style_check_service.dart';
 import '../widgets/outfit_moodboard.dart';
+import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 import '../services/outfit_calendar_service.dart';
 import 'outfit_calendar_screen.dart';
@@ -1122,7 +1122,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                 children: [
                   ClipRRect(
                     borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
-                    child: CachedNetworkImage(
+                    child: VestoraImage(
                       imageUrl: item.imageUrl,
                       width: 110,
                       height: 110,
@@ -1215,7 +1215,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                            child: CachedNetworkImage(
+                            child: VestoraImage(
                               imageUrl: it.imageUrl,
                               width: 100,
                               height: 100,

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:uuid/uuid.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/color_analysis_service.dart';
+import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 
 void showColorAnalysisDialog(BuildContext context) {
@@ -732,9 +732,10 @@ class _ColorAnalysisSheetState extends State<ColorAnalysisSheet> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Expanded(
-                                    child: CachedNetworkImage(
+                                    child: VestoraImage(
                                       imageUrl: it.imageUrl,
                                       width: 85,
+                                      height: double.infinity,
                                       fit: BoxFit.cover,
                                     ),
                                   ),
@@ -817,9 +818,10 @@ class _ColorAnalysisSheetState extends State<ColorAnalysisSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: CachedNetworkImage(
+                            child: VestoraImage(
                               imageUrl: it.imageUrl,
                               width: 85,
+                              height: double.infinity,
                               fit: BoxFit.cover,
                             ),
                           ),
