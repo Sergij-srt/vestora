@@ -568,63 +568,109 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
       appBar: AppBar(
         title: const Text('AI Стиліст Vestora'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.face_retouching_natural_rounded, color: AppTheme.accent),
-            tooltip: 'AI Примірочна (Virtual Try-On)',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => VirtualFittingScreen(
-                    initialOuterwear: _selectedOuterwear,
-                    initialTop: _selectedTop,
-                    initialBottom: _selectedBottom,
-                    initialShoes: _selectedShoes,
-                  ),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.grid_on_rounded, color: AppTheme.accent),
-            tooltip: 'Капсульна матриця 3х3',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CapsuleMatrixScreen()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.calendar_month_outlined, color: AppTheme.accent),
-            tooltip: 'Календар образів (Тижневий план)',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const OutfitCalendarScreen()),
-              );
-            },
-          ),
-          // View mode toggle button
+          // 1. View mode toggle button
           IconButton(
             icon: Icon(_isMoodboardMode ? Icons.view_agenda_outlined : Icons.dashboard_outlined),
             tooltip: _isMoodboardMode ? 'Перемкнути на слоти' : 'Перемкнути на колаж',
             onPressed: () => setState(() => _isMoodboardMode = !_isMoodboardMode),
           ),
-          IconButton(
-            icon: const Icon(Icons.auto_stories_outlined, color: AppTheme.accent),
-            tooltip: 'Журнальний експорт (Vogue Editorial)',
-            onPressed: _openEditorialLook,
-          ),
-          IconButton(
-            icon: const Icon(Icons.auto_awesome, color: AppTheme.accent),
-            tooltip: 'Оцінити стиль образу (Style Check)',
-            onPressed: _showStyleCheckDialog,
-          ),
+          // 2. Randomize / Shuffle outfit
           IconButton(
             icon: const Icon(Icons.shuffle_rounded),
             tooltip: 'Згенерувати випадковий образ',
             onPressed: _randomizeOutfit,
+          ),
+          // 3. Overflow Popup Menu for AI Tools
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded),
+            tooltip: 'Більше інструментів стиліста',
+            onSelected: (val) {
+              switch (val) {
+                case 'tryon':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => VirtualFittingScreen(
+                        initialOuterwear: _selectedOuterwear,
+                        initialTop: _selectedTop,
+                        initialBottom: _selectedBottom,
+                        initialShoes: _selectedShoes,
+                      ),
+                    ),
+                  );
+                  break;
+                case 'matrix':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CapsuleMatrixScreen()),
+                  );
+                  break;
+                case 'editorial':
+                  _openEditorialLook();
+                  break;
+                case 'calendar':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const OutfitCalendarScreen()),
+                  );
+                  break;
+                case 'stylecheck':
+                  _showStyleCheckDialog();
+                  break;
+              }
+            },
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'tryon',
+                child: Row(
+                  children: [
+                    Icon(Icons.face_retouching_natural_rounded, color: AppTheme.accent, size: 20),
+                    SizedBox(width: 10),
+                    Text('AI Примірочна (Try-On)'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'matrix',
+                child: Row(
+                  children: [
+                    Icon(Icons.grid_on_rounded, color: AppTheme.accent, size: 20),
+                    SizedBox(width: 10),
+                    Text('Капсульна матриця 3х3'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'editorial',
+                child: Row(
+                  children: [
+                    Icon(Icons.auto_stories_outlined, color: AppTheme.accent, size: 20),
+                    SizedBox(width: 10),
+                    Text('Експорт постера (Stories)'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'calendar',
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_month_outlined, color: AppTheme.accent, size: 20),
+                    SizedBox(width: 10),
+                    Text('Календар образів'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'stylecheck',
+                child: Row(
+                  children: [
+                    Icon(Icons.auto_awesome, color: AppTheme.accent, size: 20),
+                    SizedBox(width: 10),
+                    Text('Оцінка стилю (Style Check)'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -820,82 +866,140 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                   ),
           ),
 
-          // Action Bottom Bar
+          // Action Bottom Bar (2-Tier Responsive Design - No letter wrapping)
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
             decoration: const BoxDecoration(
               color: Colors.white,
               border: Border(top: BorderSide(color: AppTheme.border)),
             ),
-            child: Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                OutlinedButton.icon(
-                  onPressed: _showStyleCheckDialog,
-                  icon: const Icon(Icons.auto_awesome, size: 18, color: AppTheme.accent),
-                  label: const Text('Style Check'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.photo_camera_back_outlined, color: AppTheme.accent),
-                  tooltip: 'Журнальний експорт для Instagram Stories',
-                  onPressed: _openEditorialLook,
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  icon: const Icon(Icons.bookmark_add_outlined, color: AppTheme.accent),
-                  tooltip: 'Зберегти в улюблені капсули',
-                  onPressed: () {
-                    final items = _currentOutfitItems;
-                    if (items.isEmpty) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Образ збережено до улюблених капсул!'),
-                        behavior: SnackBarBehavior.floating,
-                        backgroundColor: Color(0xFF16A34A),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  icon: const Icon(Icons.calendar_today_outlined, color: AppTheme.accent),
-                  tooltip: 'Запланувати в календар на день',
-                  onPressed: _scheduleCurrentOutfit,
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  icon: const Icon(Icons.face_retouching_natural_rounded, color: AppTheme.accent),
-                  tooltip: 'Приміряти на собі (AI Virtual Try-On)',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => VirtualFittingScreen(
-                          initialOuterwear: _selectedOuterwear,
-                          initialTop: _selectedTop,
-                          initialBottom: _selectedBottom,
-                          initialShoes: _selectedShoes,
+                // Tier 1: Primary Wear Button + Style Check Button
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: ElevatedButton.icon(
+                        onPressed: _wearThisOutfit,
+                        icon: const Icon(Icons.check_circle_rounded, size: 18),
+                        label: const Text(
+                          'Вдягнути образ (+1)',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                       ),
-                    );
-                  },
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 4,
+                      child: OutlinedButton.icon(
+                        onPressed: _showStyleCheckDialog,
+                        icon: const Icon(Icons.auto_awesome, size: 16, color: AppTheme.accent),
+                        label: const Text(
+                          'Style Check',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _wearThisOutfit,
-                    icon: const Icon(Icons.check_circle_rounded),
-                    label: const Text('Вдягнути цей образ'),
-                  ),
+                const SizedBox(height: 8),
+
+                // Tier 2: Secondary Quick Actions Strip
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildBottomActionItem(
+                      icon: Icons.face_retouching_natural_rounded,
+                      label: 'Приміряти',
+                      color: const Color(0xFFD97706),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => VirtualFittingScreen(
+                              initialOuterwear: _selectedOuterwear,
+                              initialTop: _selectedTop,
+                              initialBottom: _selectedBottom,
+                              initialShoes: _selectedShoes,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildBottomActionItem(
+                      icon: Icons.auto_stories_outlined,
+                      label: 'Постер',
+                      color: const Color(0xFF7C3AED),
+                      onTap: _openEditorialLook,
+                    ),
+                    _buildBottomActionItem(
+                      icon: Icons.calendar_today_outlined,
+                      label: 'Календар',
+                      color: const Color(0xFF2563EB),
+                      onTap: _scheduleCurrentOutfit,
+                    ),
+                    _buildBottomActionItem(
+                      icon: Icons.bookmark_add_outlined,
+                      label: 'В обрані',
+                      color: const Color(0xFF059669),
+                      onTap: () {
+                        final items = _currentOutfitItems;
+                        if (items.isEmpty) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Образ збережено до улюблених капсул!'),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Color(0xFF16A34A),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBottomActionItem({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade800,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

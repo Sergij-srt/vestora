@@ -519,12 +519,11 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                     ),
                     child: Row(
                       children: [
-                        Text(_silhouette.label.split(' ')[0], style: const TextStyle(fontSize: 14)),
-                        const SizedBox(width: 6),
                         Text(
-                          _silhouette.label.split(' ')[1],
-                          style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600),
+                          _silhouette.label,
+                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
                         ),
+                        const SizedBox(width: 4),
                         const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 18),
                       ],
                     ),
@@ -549,12 +548,11 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                     ),
                     child: Row(
                       children: [
-                        Text(_background.label.split(' ')[0], style: const TextStyle(fontSize: 14)),
-                        const SizedBox(width: 6),
                         Text(
-                          _background.label.split(' ')[1],
-                          style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600),
+                          _background.label,
+                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
                         ),
+                        const SizedBox(width: 4),
                         const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 18),
                       ],
                     ),
@@ -622,51 +620,29 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                                     children: [
                                       // Top
                                       if (_top != null)
-                                        Container(
-                                          margin: const EdgeInsets.symmetric(horizontal: 20),
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(16),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.3),
-                                                blurRadius: 10,
-                                              ),
-                                            ],
-                                          ),
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(16),
-                                            child: CachedNetworkImage(
-                                              imageUrl: _top!.imageUrl,
-                                              fit: BoxFit.cover,
-                                              width: double.infinity,
-                                            ),
-                                          ),
+                                        _buildGarmentLayer(
+                                          item: _top!,
+                                          category: ClothingCategory.tops,
+                                          horizontalMargin: 20,
+                                          onTap: () => _showItemPicker(ClothingCategory.tops, (it) {
+                                            setState(() => _top = it);
+                                            _runAnalysis();
+                                          }),
                                         )
                                       else
                                         _buildEmptySlotPill('Додати верх / топ', ClothingCategory.tops),
 
                                       // Outerwear Layer over Top
                                       if (_outerwear != null)
-                                        Container(
-                                          margin: const EdgeInsets.symmetric(horizontal: 8),
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(18),
-                                            border: Border.all(color: Colors.white30, width: 1),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.4),
-                                                blurRadius: 14,
-                                              ),
-                                            ],
-                                          ),
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(18),
-                                            child: CachedNetworkImage(
-                                              imageUrl: _outerwear!.imageUrl,
-                                              fit: BoxFit.cover,
-                                              width: double.infinity,
-                                            ),
-                                          ),
+                                        _buildGarmentLayer(
+                                          item: _outerwear!,
+                                          category: ClothingCategory.outerwear,
+                                          horizontalMargin: 8,
+                                          isOuterwear: true,
+                                          onTap: () => _showItemPicker(ClothingCategory.outerwear, (it) {
+                                            setState(() => _outerwear = it);
+                                            _runAnalysis();
+                                          }),
                                         ),
                                     ],
                                   ),
@@ -677,25 +653,14 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                                 Expanded(
                                   flex: 6,
                                   child: _bottom != null
-                                      ? Container(
-                                          margin: const EdgeInsets.symmetric(horizontal: 24),
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(16),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.3),
-                                                blurRadius: 10,
-                                              ),
-                                            ],
-                                          ),
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(16),
-                                            child: CachedNetworkImage(
-                                              imageUrl: _bottom!.imageUrl,
-                                              fit: BoxFit.cover,
-                                              width: double.infinity,
-                                            ),
-                                          ),
+                                      ? _buildGarmentLayer(
+                                          item: _bottom!,
+                                          category: ClothingCategory.bottoms,
+                                          horizontalMargin: 24,
+                                          onTap: () => _showItemPicker(ClothingCategory.bottoms, (it) {
+                                            setState(() => _bottom = it);
+                                            _runAnalysis();
+                                          }),
                                         )
                                       : _buildEmptySlotPill('Додати брюки / низ', ClothingCategory.bottoms),
                                 ),
@@ -705,25 +670,14 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                                 Expanded(
                                   flex: 2,
                                   child: _shoes != null
-                                      ? Container(
-                                          margin: const EdgeInsets.symmetric(horizontal: 40),
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(12),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.3),
-                                                blurRadius: 8,
-                                              ),
-                                            ],
-                                          ),
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(12),
-                                            child: CachedNetworkImage(
-                                              imageUrl: _shoes!.imageUrl,
-                                              fit: BoxFit.cover,
-                                              width: double.infinity,
-                                            ),
-                                          ),
+                                      ? _buildGarmentLayer(
+                                          item: _shoes!,
+                                          category: ClothingCategory.shoes,
+                                          horizontalMargin: 40,
+                                          onTap: () => _showItemPicker(ClothingCategory.shoes, (it) {
+                                            setState(() => _shoes = it);
+                                            _runAnalysis();
+                                          }),
                                         )
                                       : _buildEmptySlotPill('Взуття', ClothingCategory.shoes),
                                 ),
@@ -926,6 +880,145 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGarmentLayer({
+    required ClothingItem item,
+    required ClothingCategory category,
+    required double horizontalMargin,
+    bool isOuterwear = false,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: horizontalMargin),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E24), // High-fashion dark slate container
+        borderRadius: BorderRadius.circular(isOuterwear ? 18 : 16),
+        border: Border.all(
+          color: isOuterwear
+              ? const Color(0xFFFDE68A).withValues(alpha: 0.7)
+              : const Color(0xFFD4AF37).withValues(alpha: 0.45),
+          width: isOuterwear ? 1.5 : 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: isOuterwear ? 16 : 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(isOuterwear ? 17 : 15),
+        child: InkWell(
+          onTap: onTap,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // 1. Garment Image with graceful placeholder & error widget
+              CachedNetworkImage(
+                imageUrl: item.imageUrl,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                placeholder: (context, url) => Container(
+                  color: const Color(0xFF27272A),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: const Color(0xFFD4AF37)),
+                    ),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  color: const Color(0xFF27272A),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(category.icon, style: const TextStyle(fontSize: 28)),
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text(
+                            item.title,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // 2. Subtle Dark Gradient at bottom for text contrast
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 38,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.85),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // 3. Floating Brand & Garment Micro-Tag
+              Positioned(
+                left: 6,
+                bottom: 5,
+                right: 6,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.75),
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Text(
+                          '${item.brand.toUpperCase()} · ${item.title}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.all(2.5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD4AF37).withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.sync_rounded, color: Colors.black, size: 10),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
