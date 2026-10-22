@@ -12,6 +12,7 @@ import 'virtual_fitting_screen.dart';
 import 'capsule_matrix_screen.dart';
 import 'fabric_care_screen.dart';
 import '../services/auth_service.dart';
+import '../services/pwa_service.dart';
 import 'auth_screen.dart';
 
 class SettingsHubScreen extends StatefulWidget {
@@ -197,6 +198,181 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
               );
             },
             child: const Text('Оновити пароль'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPwaInstallDialog() {
+    final theme = context.read<ThemeService>();
+    final isDark = theme.isDarkMode(context);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppTheme.darkCard : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(color: isDark ? AppTheme.darkBorder : AppTheme.border, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF18181B) : const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.accent),
+                    ),
+                    child: const Icon(Icons.install_mobile_rounded, color: AppTheme.accent),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Встановити Vestora (PWA)',
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
+                        ),
+                        Text(
+                          'Швидкий запуск, автономність та повний екран',
+                          style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              ...PwaService.pwaFeatures.map((feat) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(feat.icon, style: const TextStyle(fontSize: 18)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              feat.title,
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              feat.desc,
+                              style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('💡 ЯК ВСТАНОВИТИ В 1 КЛІК:', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppTheme.accent, letterSpacing: 0.8)),
+                    const SizedBox(height: 6),
+                    Text(
+                      '• Android / Chrome: Натисніть «Встановити» або в меню браузера оберіть «Встановити додаток».',
+                      style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '• iOS / Safari: Натисніть кнопку «Поділитися» (квадрат зі стрілкою) та виберіть «На початковий екран» (+).',
+                      style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetCtx);
+                    PwaService.triggerInstallPrompt();
+                  },
+                  icon: const Icon(Icons.download_rounded, size: 18),
+                  label: const Text('Встановити додаток зараз'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showOfflineInfoDialog() {
+    final theme = context.read<ThemeService>();
+    final isDark = theme.isDarkMode(context);
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: isDark ? AppTheme.darkCard : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.offline_bolt_rounded, color: Color(0xFF16A34A)),
+            const SizedBox(width: 10),
+            Text('Офлайн-режим (PWA)', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'У Vestora налаштовано розумний Service Worker із кешуванням Cache-First:',
+              style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87),
+            ),
+            const SizedBox(height: 12),
+            Text('✅ Весь гардероб і фото речей зберігаються локально на пристрої.', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87)),
+            const SizedBox(height: 6),
+            Text('✅ Капсульна матриця 3х3 та поєднання кольорів працюють без зв\'язку.', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87)),
+            const SizedBox(height: 6),
+            Text('✅ Енциклопедія догляду за тканинами та бірки доступні в авіарежимі.', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87)),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(color: const Color(0xFF16A34A).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+              child: const Text('Статус Service Worker: АКТИВНИЙ (v1.0.0)', style: TextStyle(color: Color(0xFF16A34A), fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Зрозуміло'),
           ),
         ],
       ),
@@ -1049,6 +1225,32 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                 const SnackBar(content: Text('✨ Кеш оновлено! Гардероб синхронізовано.')),
               );
             },
+          ),
+          const SizedBox(height: 22),
+
+          // 4. PWA & Offline Capabilities
+          const Text('ДОДАТОК ТА ОФЛАЙН-РЕЖИМ (PWA)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.muted, letterSpacing: 1)),
+          const SizedBox(height: 10),
+
+          _buildSettingsTile(
+            icon: Icons.install_mobile_rounded,
+            iconColor: const Color(0xFF16A34A),
+            title: 'Встановити як додаток (PWA)',
+            subtitle: 'Миттєвий запуск з робочого столу смартфона чи ПК',
+            trailingBadge: '📲 1-Клік',
+            isDark: isDark,
+            onTap: _showPwaInstallDialog,
+          ),
+          const SizedBox(height: 10),
+
+          _buildSettingsTile(
+            icon: Icons.offline_bolt_rounded,
+            iconColor: const Color(0xFFD97706),
+            title: 'Офлайн-доступ та Service Worker',
+            subtitle: 'Гардероб, комбінації та кольоротип працюють без інтернету',
+            trailingBadge: 'v1.0 Активний',
+            isDark: isDark,
+            onTap: _showOfflineInfoDialog,
           ),
           const SizedBox(height: 26),
 

@@ -1,46 +1,334 @@
 <!DOCTYPE html>
-<html>
+<html lang="uk">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Vestora — ШІ-гардероб преміум-класу: розумна капсула, віртуальна примірочна, персональний стиліст під погоду та аналітика Cost-Per-Wear.">
+  <meta name="keywords" content="smart wardrobe, digital closet, quiet luxury, капсульний гардероб, AI стиліст, віртуальна примірочна">
 
-  <!-- iOS meta tags & icons -->
+  <!-- OpenGraph / Social Cards -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Vestora · Smart Digital Closet & Haute Capsule">
+  <meta property="og:description" content="Ваш персональний цифровий гардероб зі штучним інтелектом. Приміряйте одяг, плануйте капсули під погоду та контролюйте витрати.">
+  <meta property="og:image" content="icons/Icon-512.png">
+
+  <!-- Web App & PWA Capabilities -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="smart_wardrobe">
+  <meta name="theme-color" content="#0F0F11">
+  <link rel="manifest" href="manifest.json">
+
+  <!-- iOS Safari PWA Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Vestora">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>smart_wardrobe</title>
-  <link rel="manifest" href="manifest.json">
+  <title>Vestora · Smart Digital Closet & Haute Capsule</title>
+
+  <style>
+    /* Reset & Viewport Styling */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #0F0F11;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    /* Luxury Splash Screen / Preloader */
+    #vestora-splash {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at center, #18181D 0%, #0F0F11 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .splash-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      animation: fadeInScale 0.8s ease-out;
+    }
+
+    .splash-logo-container {
+      position: relative;
+      width: 88px;
+      height: 88px;
+      margin-bottom: 22px;
+    }
+
+    .splash-glow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: rgba(212, 175, 55, 0.25);
+      filter: blur(18px);
+      animation: pulseGlow 2.4s infinite ease-in-out;
+    }
+
+    .splash-badge {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: #18181B;
+      border: 1.5px solid #D4AF37;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    }
+
+    .splash-hanger-svg {
+      width: 44px;
+      height: 44px;
+      fill: none;
+      stroke: #D4AF37;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .splash-title {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 7px;
+      color: #FFFFFF;
+      margin: 0 0 6px 7px;
+      text-transform: uppercase;
+    }
+
+    .splash-subtitle {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #A1A1AA;
+      margin: 0 0 28px 2px;
+      text-transform: uppercase;
+    }
+
+    .splash-loader-bar {
+      width: 160px;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .splash-loader-progress {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 50%;
+      background: linear-gradient(90deg, #F59E0B, #D4AF37, #FDE68A);
+      border-radius: 2px;
+      animation: loadingSlide 1.6s infinite ease-in-out;
+    }
+
+    /* PWA Install Toast / Floating Bar (Web Only) */
+    #pwa-install-banner {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1E1E24;
+      border: 1px solid #D4AF37;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
+      border-radius: 16px;
+      padding: 10px 16px;
+      z-index: 9999;
+      align-items: center;
+      gap: 12px;
+      color: #FFFFFF;
+      font-size: 13px;
+      font-weight: 600;
+      animation: slideUp 0.4s ease-out;
+    }
+
+    .pwa-btn {
+      background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%);
+      color: #000;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.15s ease;
+    }
+
+    .pwa-btn:hover {
+      transform: scale(1.04);
+    }
+
+    .pwa-close {
+      background: transparent;
+      border: none;
+      color: #71717A;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 2px 6px;
+    }
+
+    @keyframes fadeInScale {
+      from { opacity: 0; transform: scale(0.94); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.3; transform: scale(0.95); }
+      50% { opacity: 0.7; transform: scale(1.15); }
+    }
+
+    @keyframes loadingSlide {
+      0% { left: -50%; width: 30%; }
+      50% { left: 25%; width: 55%; }
+      100% { left: 100%; width: 30%; }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translate(-50%, 20px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+  <!-- Luxury Preloader -->
+  <div id="vestora-splash">
+    <div class="splash-content">
+      <div class="splash-logo-container">
+        <div class="splash-glow"></div>
+        <div class="splash-badge">
+          <!-- Hanger Icon SVG -->
+          <svg class="splash-hanger-svg" viewBox="0 0 24 24">
+            <path d="M12 4a3 3 0 0 0-3 3c0 .8.4 1.5 1 2l-7.5 7.5a2 2 0 0 0 1.4 3.4h19.2a2 2 0 0 0 1.4-3.4L14 9c.6-.5 1-1.2 1-2a3 3 0 0 0-3-3z"/>
+          </svg>
+        </div>
+      </div>
+      <div class="splash-title">VESTORA</div>
+      <div class="splash-subtitle">SMART DIGITAL CLOSET</div>
+      <div class="splash-loader-bar">
+        <div class="splash-loader-progress"></div>
+      </div>
+    </div>
+  </div>
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <!-- PWA Install Prompt Banner -->
+  <div id="pwa-install-banner">
+    <span>📲 Встановити Vestora як додаток</span>
+    <button class="pwa-btn" id="pwa-install-btn">Встановити</button>
+    <button class="pwa-close" id="pwa-dismiss-btn" title="Закрити">✕</button>
+  </div>
+
+  <!-- Service Worker & PWA Logic -->
+  <script>
+    // 1. Register Service Worker for offline capability
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('service_worker.js')
+          .then(function(reg) {
+            console.log('[Vestora PWA] Service Worker registered successfully! Scope:', reg.scope);
+          })
+          .catch(function(err) {
+            console.warn('[Vestora PWA] Service Worker registration failed:', err);
+          });
+      });
+    }
+
+    // 2. Capture beforeinstallprompt for 1-click PWA installation
+    let deferredPrompt = null;
+    const banner = document.getElementById('pwa-install-banner');
+    const installBtn = document.getElementById('pwa-install-btn');
+    const dismissBtn = document.getElementById('pwa-dismiss-btn');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent automatic browser mini-infobar
+      e.preventDefault();
+      deferredPrompt = e;
+      window.vestoraDeferredPrompt = e;
+
+      // Only show banner if not already running standalone
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      const dismissed = localStorage.getItem('vestora_pwa_dismissed');
+
+      if (!isStandalone && !dismissed) {
+        banner.style.display = 'flex';
+      }
+    });
+
+    if (installBtn) {
+      installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+          banner.style.display = 'none';
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          console.log('[Vestora PWA] User install choice:', outcome);
+          deferredPrompt = null;
+          window.vestoraDeferredPrompt = null;
+        }
+      });
+    }
+
+    if (dismissBtn) {
+      dismissBtn.addEventListener('click', () => {
+        banner.style.display = 'none';
+        localStorage.setItem('vestora_pwa_dismissed', 'true');
+      });
+    }
+
+    // Expose programmatic trigger for Flutter in-app UI
+    window.vestoraTriggerPwaInstall = function() {
+      if (window.vestoraDeferredPrompt) {
+        window.vestoraDeferredPrompt.prompt();
+      } else {
+        alert("Щоб встановити Vestora:\n\n• На iPhone/iPad: Натисніть кнопку 'Поділитися' (Share) та оберіть 'На початковий екран' (+)\n• На Android/Chrome: Натисніть меню (⋮) та оберіть 'Встановити додаток'");
+      }
+    };
+
+    // 3. Smoothly fade out splash screen when Flutter is ready
+    function removeSplashScreen() {
+      const splash = document.getElementById('vestora-splash');
+      if (splash) {
+        splash.style.opacity = '0';
+        setTimeout(() => {
+          if (splash.parentNode) splash.parentNode.removeChild(splash);
+        }, 500);
+      }
+    }
+
+    window.addEventListener('flutter-first-frame', removeSplashScreen);
+    // Safety fallback: dismiss splash after 4.5 seconds if event doesn't fire
+    setTimeout(removeSplashScreen, 4500);
+  </script>
+
+  <!-- Flutter Bootstrap Script -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

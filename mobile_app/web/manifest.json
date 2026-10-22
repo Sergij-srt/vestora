@@ -1,13 +1,27 @@
 {
-    "name": "smart_wardrobe",
-    "short_name": "smart_wardrobe",
-    "start_url": ".",
+    "id": "/vestora-smart-wardrobe",
+    "name": "Vestora · Smart Digital Closet & Haute Capsule",
+    "short_name": "Vestora",
+    "description": "ШІ-гардероб преміум-класу: розумна капсула, віртуальна примірочна, персональний стиліст під погоду та аналітика Cost-Per-Wear.",
+    "start_url": "./",
+    "scope": "./",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "display_override": [
+        "window-controls-overlay",
+        "standalone",
+        "minimal-ui"
+    ],
+    "background_color": "#0F0F11",
+    "theme_color": "#0F0F11",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
+    "categories": [
+        "lifestyle",
+        "shopping",
+        "utilities"
+    ],
+    "lang": "uk",
+    "dir": "ltr",
     "icons": [
         {
             "src": "icons/Icon-192.png",
@@ -30,6 +44,60 @@
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Гардероб",
+            "short_name": "Гардероб",
+            "description": "Переглянути активні речі та здоров'я шафи",
+            "url": "./#/",
+            "icons": [
+                {
+                    "src": "icons/Icon-192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "AI Стиліст",
+            "short_name": "Стиліст",
+            "description": "Підбір аутфіту за погодою та контекстом дня",
+            "url": "./#/",
+            "icons": [
+                {
+                    "src": "icons/Icon-192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "Додати річ",
+            "short_name": "Додати",
+            "description": "Швидке додавання одягу через камеру або посилання",
+            "url": "./#/",
+            "icons": [
+                {
+                    "src": "icons/Icon-192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "screenshots/preview_mobile.png",
+            "sizes": "1280x950",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Vestora Digital Closet - Obsidian Luxury Dark Mode"
+        },
+        {
+            "src": "screenshots/preview_wide.png",
+            "sizes": "1280x950",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Vestora Smart Wardrobe - Ivory Luxury Style"
         }
     ]
 }
