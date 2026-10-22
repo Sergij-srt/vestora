@@ -312,6 +312,47 @@
       }
     };
 
+    // 4. File download helper for wardrobe backup (.vestora / .json)
+    window.vestoraDownloadFile = function(filename, content) {
+      try {
+        const blob = new Blob([content], { type: 'application/json;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (e) {
+        console.error('[Vestora] Error downloading file:', e);
+      }
+    };
+
+    // 5. Web Push & Notification helpers
+    window.vestoraRequestNotificationPermission = async function() {
+      if (!('Notification' in window)) return 'unsupported';
+      try {
+        const perm = await Notification.requestPermission();
+        return perm;
+      } catch (e) {
+        return 'denied';
+      }
+    };
+
+    window.vestoraSendNotification = function(title, body, icon) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      try {
+        new Notification(title, {
+          body: body || '',
+          icon: icon || 'icons/Icon-192.png',
+          badge: 'icons/Icon-192.png'
+        });
+      } catch (e) {
+        console.warn('[Vestora] Notification error:', e);
+      }
+    };
+
     // 3. Smoothly fade out splash screen when Flutter is ready
     function removeSplashScreen() {
       const splash = document.getElementById('vestora-splash');

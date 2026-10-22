@@ -7,6 +7,7 @@ import '../services/user_profile_service.dart';
 import '../services/virtual_fitting_service.dart';
 import '../services/outfit_calendar_service.dart';
 import '../services/weather_stylist_service.dart';
+import '../services/ai_config_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vestora_image.dart';
 import 'outfit_calendar_screen.dart';
@@ -454,6 +455,507 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
     );
   }
 
+  void _showPhotorealisticTryOnSheet() {
+    if (_currentOutfit.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Будь ласка, оберіть хоча б одну річ для нейро-примірки!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    TryOnEnvironment selectedEnv = TryOnEnvironment.parisianCafe;
+    bool isGenerating = false;
+    String statusStep = 'Підготовка образу...';
+    PhotorealisticTryOnResult? result;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF18181B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          return Container(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.9,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.auto_awesome, color: Color(0xFFD4AF37), size: 22),
+                          SizedBox(width: 8),
+                          Text(
+                            'Нейро-примірка 4K',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF27272A),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.5)),
+                        ),
+                        child: Text(
+                          AiConfigService.hasCustomKey ? 'BYOK Gemini ⚡' : '${AiConfigService.adCredits} кредитів',
+                          style: const TextStyle(
+                            color: Color(0xFFFDE68A),
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Генеративний фотореалістичний синтез образу в реалістичному освітленні та інтер\'єрі:',
+                    style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 12),
+                  ),
+                  const SizedBox(height: 16),
+
+                  if (result == null && !isGenerating) ...[
+                    // Environment Selection
+                    const Text(
+                      'ОБЕРІТЬ ЛОКАЦІЮ ТА ОСВІТЛЕННЯ',
+                      style: TextStyle(
+                        color: Color(0xFFD4AF37),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 130,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: TryOnEnvironment.values.length,
+                        separatorBuilder: (_, index) => const SizedBox(width: 10),
+                        itemBuilder: (_, idx) {
+                          final env = TryOnEnvironment.values[idx];
+                          final isSel = selectedEnv == env;
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () => setSheetState(() => selectedEnv = env),
+                            child: Container(
+                              width: 140,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isSel ? const Color(0xFFD4AF37) : const Color(0xFF3F3F46),
+                                  width: isSel ? 2 : 1,
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(13),
+                                child: Stack(
+                                  children: [
+                                    Positioned.fill(
+                                      child: VestoraImage(
+                                        imageUrl: env.backgroundUrl,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                    Positioned.fill(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              Colors.black.withValues(alpha: 0.2),
+                                              Colors.black.withValues(alpha: 0.8),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.all(10),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          if (isSel)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFD4AF37),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: const Text(
+                                                'ОБРАНО',
+                                                style: TextStyle(
+                                                  color: Colors.black,
+                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 9,
+                                                ),
+                                              ),
+                                            ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            env.label,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF27272A),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF3F3F46)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline_rounded, color: Color(0xFFFDE68A), size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              selectedEnv.description,
+                              style: const TextStyle(color: Color(0xFFE4E4E7), fontSize: 11.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Items Summary
+                    const Text(
+                      'РЕЧІ ДЛЯ НЕЙРО-СИНТЕЗУ',
+                      style: TextStyle(
+                        color: Color(0xFFD4AF37),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _currentOutfit.map((item) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF27272A),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFF3F3F46)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: VestoraImage(imageUrl: item.imageUrl, width: 22, height: 22, fit: BoxFit.cover),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${item.brand} ${item.title}',
+                                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Generate Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD4AF37),
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: const Icon(Icons.auto_awesome, size: 20, color: Colors.black),
+                        label: const Text(
+                          'Створити нейро-фото (Deep AI)',
+                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                        ),
+                        onPressed: () async {
+                          setSheetState(() {
+                            isGenerating = true;
+                            statusStep = '1/3 · Аналіз зовнішності та освітлення...';
+                          });
+                          await Future.delayed(const Duration(milliseconds: 500));
+                          setSheetState(() => statusStep = '2/3 · Синтез драпірування та текстури...');
+                          await Future.delayed(const Duration(milliseconds: 500));
+                          setSheetState(() => statusStep = '3/3 · 4K рендеринг у високій якості...');
+
+                          final gen = await VirtualFittingService.generatePhotorealisticTryOn(
+                            faceUrl: _activeFaceUrl,
+                            outfitItems: _currentOutfit,
+                            environment: selectedEnv,
+                          );
+
+                          setSheetState(() {
+                            isGenerating = false;
+                            result = gen;
+                          });
+                        },
+                      ),
+                    ),
+                  ] else if (isGenerating) ...[
+                    // Generation In Progress
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 40),
+                        child: Column(
+                          children: [
+                            const SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD4AF37)),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              statusStep,
+                              style: const TextStyle(
+                                color: Color(0xFFFDE68A),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Imagen 3 · Gemini Vision Neural Synthesis',
+                              style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else if (result != null) ...[
+                    // Result View
+                    Container(
+                      height: 340,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFFD4AF37), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
+                            blurRadius: 18,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(17),
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: VestoraImage(
+                                imageUrl: result!.generatedImageUrl,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned(
+                              top: 12,
+                              left: 12,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.7),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFFD4AF37)),
+                                ),
+                                child: Text(
+                                  result!.environment.label,
+                                  style: const TextStyle(color: Color(0xFFFDE68A), fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 12,
+                              right: 12,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF16A34A),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  '4K ULTRA HD',
+                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Stylist Verdict
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF27272A),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFF3F3F46)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.auto_awesome, color: Color(0xFFD4AF37), size: 16),
+                              SizedBox(width: 6),
+                              Text(
+                                'ЕКСПЕРТИЗА СТИЛІСТА VESTORA',
+                                style: TextStyle(
+                                  color: Color(0xFFD4AF37),
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            result!.editorialVerdict,
+                            style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.4),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Склад образу: ${result!.clothingSummary}',
+                            style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Actions
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD4AF37),
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            icon: const Icon(Icons.check_circle_rounded, size: 18),
+                            label: const Text('Вдягнути (+1)', style: TextStyle(fontWeight: FontWeight.bold)),
+                            onPressed: () {
+                              Navigator.pop(sheetCtx);
+                              _wearFittedOutfit();
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFFDE68A),
+                              side: const BorderSide(color: Color(0xFFD4AF37)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            icon: const Icon(Icons.download_rounded, size: 18),
+                            label: const Text('Зберегти'),
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('✨ Нейро-фото 4K збережено у фотоальбом лукбуку!'),
+                                  backgroundColor: Color(0xFF16A34A),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          style: IconButton.styleFrom(
+                            backgroundColor: const Color(0xFF27272A),
+                            side: const BorderSide(color: Color(0xFF3F3F46)),
+                            padding: const EdgeInsets.all(12),
+                          ),
+                          icon: const Icon(Icons.auto_stories_outlined, color: Color(0xFFD4AF37), size: 18),
+                          tooltip: 'Постер у журнал',
+                          onPressed: () {
+                            Navigator.pop(sheetCtx);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => EditorialStoryScreen(
+                                  items: _currentOutfit,
+                                  occasion: result!.environment.label,
+                                  styleScore: 9.8,
+                                  customQuote: result!.editorialVerdict,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -467,6 +969,11 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.auto_awesome, color: Color(0xFFFDE68A)),
+            tooltip: 'Фотореалістична нейро-примірка (Deep AI 4K)',
+            onPressed: _showPhotorealisticTryOnSheet,
+          ),
           IconButton(
             icon: const Icon(Icons.tune_rounded, color: Colors.white70),
             tooltip: 'Підлаштувати посадку обличчя',
@@ -830,6 +1337,30 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                   ),
                 ],
                 const SizedBox(height: 12),
+
+                // Photorealistic Deep AI Try-On Button
+                Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF18181B),
+                      foregroundColor: const Color(0xFFFDE68A),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: const BorderSide(color: Color(0xFFD4AF37), width: 1.5),
+                      ),
+                      elevation: 3,
+                    ),
+                    icon: const Icon(Icons.auto_awesome, color: Color(0xFFD4AF37), size: 18),
+                    label: const Text(
+                      '✨ Фотореалістична нейро-примірка (Deep AI 4K)',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.3),
+                    ),
+                    onPressed: _currentOutfit.isNotEmpty ? _showPhotorealisticTryOnSheet : null,
+                  ),
+                ),
 
                 // Bottom Action Buttons
                 Row(

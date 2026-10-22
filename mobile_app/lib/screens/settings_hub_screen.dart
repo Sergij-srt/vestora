@@ -13,6 +13,7 @@ import 'capsule_matrix_screen.dart';
 import 'fabric_care_screen.dart';
 import '../services/auth_service.dart';
 import '../services/pwa_service.dart';
+import '../services/backup_service.dart';
 import 'auth_screen.dart';
 
 class SettingsHubScreen extends StatefulWidget {
@@ -375,6 +376,261 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
             child: const Text('Зрозуміло'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showImportBackupDialog() {
+    final theme = context.read<ThemeService>();
+    final isDark = theme.isDarkMode(context);
+    final textCtrl = TextEditingController();
+    BackupValidationResult? validation;
+    bool replaceAll = true;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(sheetCtx).viewInsets.bottom + 24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF3F3F46) : Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Icon(Icons.restore_page_outlined, color: Color(0xFF0284C7), size: 22),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Імпорт гардероба (.vestora)',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Вставте вміст файлу резервної копії .vestora або JSON-код нижче:',
+                    style: TextStyle(fontSize: 12, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                  ),
+                  const SizedBox(height: 14),
+
+                  TextField(
+                    controller: textCtrl,
+                    maxLines: 5,
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 11,
+                      color: isDark ? Colors.white70 : Colors.black87,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: '{\n  "format": "VESTORA_BACKUP",\n  "version": "1.0",\n  "items": [...]\n}',
+                      hintStyle: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        color: isDark ? Colors.white30 : Colors.grey.shade400,
+                      ),
+                      filled: true,
+                      fillColor: isDark ? const Color(0xFF1E1E24) : const Color(0xFFF4F4F5),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                    ),
+                    onChanged: (val) {
+                      if (validation != null) {
+                        setSheetState(() => validation = null);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 8),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton.icon(
+                        icon: const Icon(Icons.paste_rounded, size: 16),
+                        label: const Text('Вставити зразок'),
+                        onPressed: () {
+                          final sampleJson = BackupService.generateBackupJson(
+                            wardrobe: context.read<WardrobeProvider>(),
+                            profile: _profile,
+                          );
+                          textCtrl.text = sampleJson;
+                          setSheetState(() {
+                            validation = BackupService.validateBackup(sampleJson);
+                          });
+                        },
+                      ),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.fact_check_outlined, size: 16),
+                        label: const Text('Перевірити файл'),
+                        onPressed: () {
+                          setSheetState(() {
+                            validation = BackupService.validateBackup(textCtrl.text);
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  if (validation != null) ...[
+                    if (validation!.isValid) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: 0.4)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 18),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Резервна копія валідна!',
+                                  style: TextStyle(
+                                    color: Color(0xFF16A34A),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '👗 Речей у файлі: ${validation!.items.length}\n'
+                              '🔥 Стрік активності: ${validation!.streakDays} днів\n'
+                              '✨ Стиль: ${validation!.preferredStyle ?? _profile.preferredStyle} · ${validation!.currency ?? _profile.currency}',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: isDark ? Colors.white70 : Colors.black87,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Replace or Merge options
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ChoiceChip(
+                              label: const Text('Замінити гардероб'),
+                              selected: replaceAll,
+                              onSelected: (val) => setSheetState(() => replaceAll = true),
+                              selectedColor: const Color(0xFFFEF3C7),
+                              labelStyle: TextStyle(
+                                color: replaceAll ? AppTheme.accent : (isDark ? Colors.white70 : Colors.black87),
+                                fontWeight: replaceAll ? FontWeight.bold : FontWeight.normal,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ChoiceChip(
+                              label: const Text('Об\'єднати речі'),
+                              selected: !replaceAll,
+                              onSelected: (val) => setSheetState(() => replaceAll = false),
+                              selectedColor: const Color(0xFFFEF3C7),
+                              labelStyle: TextStyle(
+                                color: !replaceAll ? AppTheme.accent : (isDark ? Colors.white70 : Colors.black87),
+                                fontWeight: !replaceAll ? FontWeight.bold : FontWeight.normal,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF16A34A),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          icon: const Icon(Icons.cloud_upload_rounded),
+                          label: Text(
+                            replaceAll ? 'Відновити та перезаписати' : 'Об\'єднати з поточним гардеробом',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: () async {
+                            final wardrobeProvider = context.read<WardrobeProvider>();
+                            final messenger = ScaffoldMessenger.of(context);
+                            final nav = Navigator.of(sheetCtx);
+                            final res = await BackupService.restoreBackup(
+                              wardrobe: wardrobeProvider,
+                              rawJson: textCtrl.text,
+                              replaceAll: replaceAll,
+                            );
+
+                            if (mounted) {
+                              nav.pop();
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(res.message),
+                                  backgroundColor: res.success ? const Color(0xFF16A34A) : Colors.redAccent,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ] else ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDC2626).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                validation!.errorMessage ?? 'Помилка валідації резервної копії.',
+                                style: const TextStyle(color: Color(0xFFDC2626), fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1199,17 +1455,32 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           _buildSettingsTile(
             icon: Icons.cloud_download_outlined,
             iconColor: const Color(0xFF0284C7),
-            title: 'Експорт гардеробу (JSON)',
-            subtitle: 'Зберегти копію всіх речей та історії аутфітів',
+            title: 'Експорт гардеробу (.vestora)',
+            subtitle: 'Зберегти повну копію гардероба, аутфітів та профілю на пристрій',
+            trailingBadge: '⬇️ Експорт',
             isDark: isDark,
             onTap: () {
+              final wardrobe = context.read<WardrobeProvider>();
+              BackupService.exportBackupFile(wardrobe: wardrobe, profile: _profile);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('📦 Резервну копію гардероба сформовано та завантажено!'),
+                  content: Text('📦 Файл резервної копії (.vestora) сформовано та завантажено!'),
                   backgroundColor: Color(0xFF16A34A),
+                  behavior: SnackBarBehavior.floating,
                 ),
               );
             },
+          ),
+          const SizedBox(height: 10),
+
+          _buildSettingsTile(
+            icon: Icons.restore_page_outlined,
+            iconColor: const Color(0xFF16A34A),
+            title: 'Імпорт та відновлення (.vestora)',
+            subtitle: 'Відновити речі або об\'єднати капсулу з файлу бекапу чи JSON',
+            trailingBadge: '⬆️ Імпорт',
+            isDark: isDark,
+            onTap: _showImportBackupDialog,
           ),
           const SizedBox(height: 10),
 

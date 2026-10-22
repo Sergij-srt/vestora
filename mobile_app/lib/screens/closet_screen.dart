@@ -5,6 +5,8 @@ import '../models/clothing_item.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/gamification_service.dart';
 import '../services/localization_service.dart';
+import '../services/daily_stylist_service.dart';
+import '../services/user_profile_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vestora_image.dart';
 import 'purchase_advisor_screen.dart';
@@ -293,6 +295,11 @@ class ClosetScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                ),
+
+                // 1b. Morning Daily Stylist Banner
+                const SliverToBoxAdapter(
+                  child: DailyStylistDigestBanner(),
                 ),
 
                 // 2. Search Bar
@@ -1662,6 +1669,313 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                       ),
                     );
                   },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DailyStylistDigestBanner extends StatefulWidget {
+  const DailyStylistDigestBanner({super.key});
+
+  @override
+  State<DailyStylistDigestBanner> createState() => _DailyStylistDigestBannerState();
+}
+
+class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
+  DailyOutfitDigest? _digest;
+  bool _isLoading = true;
+  bool _isDismissed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDigest();
+  }
+
+  Future<void> _loadDigest() async {
+    final wardrobe = context.read<WardrobeProvider>();
+    if (wardrobe.items.isEmpty) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+    final location = UserProfileService.profile.location;
+    final digest = await DailyStylistService.getTodayDigest(
+      wardrobeItems: wardrobe.items,
+      location: location,
+    );
+    if (mounted) {
+      setState(() {
+        _digest = digest;
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _wearOutfit(WardrobeProvider wardrobe) async {
+    if (_digest == null) return;
+    await DailyStylistService.markWorn(wardrobe, _digest!);
+    if (mounted) {
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🔥 Ранковий лук одягнено! Ваш стрік збільшено до ${wardrobe.streakDays} днів.'),
+          backgroundColor: const Color(0xFFD97706),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _triggerPush() async {
+    if (_digest == null) return;
+    final granted = await DailyStylistService.requestNotificationPermission();
+    DailyStylistService.sendMorningPush(_digest!);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            granted
+                ? '🔔 Ранкове сповіщення надіслано! Перевірте робочий стіл / панель повідомлень.'
+                : '🔔 Демо-сповіщення успішно сформовано!',
+          ),
+          backgroundColor: const Color(0xFF16A34A),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _openTryOn() {
+    if (_digest == null || _digest!.outfitItems.isEmpty) return;
+    final items = _digest!.outfitItems;
+    ClothingItem? outerwear;
+    ClothingItem? top;
+    ClothingItem? bottom;
+    ClothingItem? shoes;
+
+    for (final it in items) {
+      if (it.category == ClothingCategory.outerwear) outerwear = it;
+      if (it.category == ClothingCategory.tops) top = it;
+      if (it.category == ClothingCategory.bottoms) bottom = it;
+      if (it.category == ClothingCategory.shoes) shoes = it;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VirtualFittingScreen(
+          initialOuterwear: outerwear,
+          initialTop: top,
+          initialBottom: bottom,
+          initialShoes: shoes,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isDismissed || _isLoading || _digest == null || _digest!.outfitItems.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final wardrobe = context.watch<WardrobeProvider>();
+    final digest = _digest!;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1C1917), Color(0xFF292524)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.4), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Bar: Weather + Title + Actions
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF44403C),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          const Text('⛅', style: TextStyle(fontSize: 12)),
+                          const SizedBox(width: 4),
+                          Text(
+                            digest.weatherSummary,
+                            style: const TextStyle(
+                              color: Color(0xFFFDE68A),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      digest.city,
+                      style: const TextStyle(color: Color(0xFFA8A29E), fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_active_outlined, color: Color(0xFFFDE68A), size: 18),
+                      tooltip: 'Надіслати ранкове сповіщення (Push)',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: _triggerPush,
+                    ),
+                    const SizedBox(width: 12),
+                    InkWell(
+                      onTap: () => setState(() => _isDismissed = true),
+                      child: const Icon(Icons.close_rounded, color: Color(0xFFA8A29E), size: 18),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Title & Advice
+            const Row(
+              children: [
+                Icon(Icons.auto_awesome, color: Color(0xFFD4AF37), size: 15),
+                SizedBox(width: 6),
+                Text(
+                  'Ранковий AI-асистент · Лук дня',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              digest.stylistTip,
+              style: const TextStyle(
+                color: Color(0xFFE7E5E4),
+                fontSize: 12,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Garments Row
+            SizedBox(
+              height: 70,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: digest.outfitItems.length,
+                separatorBuilder: (_, index) => const SizedBox(width: 8),
+                itemBuilder: (_, idx) {
+                  final item = digest.outfitItems[idx];
+                  return Container(
+                    width: 64,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF44403C),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF57534E)),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(11),
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: VestoraImage(
+                              imageUrl: item.imageUrl,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: Container(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                item.category.label,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Actions
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: digest.isWorn ? const Color(0xFF16A34A) : const Color(0xFFD4AF37),
+                      foregroundColor: digest.isWorn ? Colors.white : Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: Icon(
+                      digest.isWorn ? Icons.check_circle_rounded : Icons.check_rounded,
+                      size: 16,
+                    ),
+                    label: Text(
+                      digest.isWorn ? 'Вдягнено (+1)' : 'Вдягнути сьогодні (+1)',
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                    ),
+                    onPressed: digest.isWorn ? null : () => _wearOutfit(wardrobe),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFFDE68A),
+                    side: const BorderSide(color: Color(0xFFD4AF37)),
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.face_retouching_natural_rounded, size: 16),
+                  label: const Text('Примірка', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  onPressed: _openTryOn,
                 ),
               ],
             ),
