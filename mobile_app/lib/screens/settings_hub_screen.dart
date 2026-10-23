@@ -14,6 +14,8 @@ import 'fabric_care_screen.dart';
 import '../services/auth_service.dart';
 import '../services/pwa_service.dart';
 import '../services/backup_service.dart';
+import '../services/supabase_service.dart';
+import 'package:flutter/services.dart';
 import 'auth_screen.dart';
 
 class SettingsHubScreen extends StatefulWidget {
@@ -631,6 +633,511 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _showSupabaseConfigDialog() {
+    final theme = context.read<ThemeService>();
+    final isDark = theme.isDarkMode(context);
+    final urlCtrl = TextEditingController(text: SupabaseService.configuredUrl ?? '');
+    final keyCtrl = TextEditingController(text: SupabaseService.configuredAnonKey ?? '');
+    final emailCtrl = TextEditingController();
+    final passCtrl = TextEditingController();
+    bool autoSync = SupabaseService.autoSyncEnabled;
+    bool isSubmitting = false;
+    String? statusMessage;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final isConfigured = SupabaseService.isConfigured;
+          final isAuth = SupabaseService.isAuthenticated;
+
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              left: 20,
+              right: 20,
+              top: 20,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3ECF8E).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.storage_rounded, color: Color(0xFF3ECF8E), size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Supabase PostgreSQL Cloud',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                            Text(
+                              'Хмарна синхронізація, автентифікація та резервне копіювання',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? AppTheme.darkMuted : AppTheme.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isConfigured
+                              ? const Color(0xFF16A34A).withValues(alpha: 0.15)
+                              : const Color(0xFF71717A).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          isConfigured ? '🟢 Активно' : '⚪ Офлайн',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isConfigured ? const Color(0xFF16A34A) : const Color(0xFFA1A1AA),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+
+                  if (isConfigured) ...[
+                    // Configured State
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.link_rounded, size: 16, color: Color(0xFF3ECF8E)),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  SupabaseService.configuredUrl ?? '',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white : Colors.black87,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            isAuth
+                                ? '👤 Увійшли як: ${SupabaseService.currentUser?.email}'
+                                : '🔒 База підключена, але сесія відсутня (увійдіть нижче)',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isAuth ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    if (!isAuth) ...[
+                      // Login / Signup inputs
+                      TextField(
+                        controller: emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
+                        decoration: InputDecoration(
+                          labelText: 'Email для Supabase Auth',
+                          prefixIcon: const Icon(Icons.email_outlined, size: 18),
+                          filled: true,
+                          fillColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: passCtrl,
+                        obscureText: true,
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
+                        decoration: InputDecoration(
+                          labelText: 'Пароль',
+                          prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
+                          filled: true,
+                          fillColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF3ECF8E),
+                                foregroundColor: Colors.black,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              onPressed: isSubmitting
+                                  ? null
+                                  : () async {
+                                      setSheetState(() => isSubmitting = true);
+                                      final res = await SupabaseService.signInWithPassword(
+                                        email: emailCtrl.text,
+                                        password: passCtrl.text,
+                                      );
+                                      setSheetState(() {
+                                        isSubmitting = false;
+                                        statusMessage = res.success
+                                            ? '✅ Успішний вхід!'
+                                            : '❌ ${res.error ?? 'Помилка входу'}';
+                                      });
+                                    },
+                              child: const Text('Увійти', style: TextStyle(fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF3ECF8E),
+                                side: const BorderSide(color: Color(0xFF3ECF8E)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              onPressed: isSubmitting
+                                  ? null
+                                  : () async {
+                                      setSheetState(() => isSubmitting = true);
+                                      final res = await SupabaseService.signUp(
+                                        email: emailCtrl.text,
+                                        password: passCtrl.text,
+                                      );
+                                      setSheetState(() {
+                                        isSubmitting = false;
+                                        statusMessage = res.success
+                                            ? '✅ Реєстрація успішна! Перевірте пошту для підтвердження.'
+                                            : '❌ ${res.error ?? 'Помилка реєстрації'}';
+                                      });
+                                    },
+                              child: const Text('Реєстрація', style: TextStyle(fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (statusMessage != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          statusMessage!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: statusMessage!.startsWith('✅') ? const Color(0xFF16A34A) : Colors.redAccent,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                    ] else ...[
+                      // Logged In Actions
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.logout_rounded, size: 16),
+                          label: const Text('Вийти з акаунту Supabase'),
+                          onPressed: () async {
+                            await SupabaseService.signOut();
+                            setSheetState(() {});
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                        icon: const Icon(Icons.link_off_rounded, size: 16),
+                        label: const Text('Відключити Supabase (Offline Mode)'),
+                        onPressed: () async {
+                          await SupabaseService.disconnect();
+                          if (!ctx.mounted) return;
+                          if (mounted) setState(() {});
+                          Navigator.pop(ctx);
+                        },
+                      ),
+                    ),
+                  ] else ...[
+                    // Not Configured State: Setup Inputs
+                    TextField(
+                      controller: urlCtrl,
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
+                      decoration: InputDecoration(
+                        labelText: 'Supabase Project URL',
+                        hintText: 'https://xxxxxx.supabase.co',
+                        prefixIcon: const Icon(Icons.public_rounded, size: 18),
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: keyCtrl,
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
+                      decoration: InputDecoration(
+                        labelText: 'Supabase Anon Public Key',
+                        hintText: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                        prefixIcon: const Icon(Icons.key_rounded, size: 18),
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      value: autoSync,
+                      title: const Text('Автоматична синхронізація', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      subtitle: const Text('Фонова реплікація речей при наявності зв\'язку', style: TextStyle(fontSize: 11)),
+                      activeTrackColor: const Color(0xFF3ECF8E),
+                      onChanged: (val) => setSheetState(() => autoSync = val),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Setup guide box
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.help_outline_rounded, size: 15, color: Color(0xFF3ECF8E)),
+                              SizedBox(width: 6),
+                              Text('ЯК НАЛАШТУВАТИ ЗА 2 ХВИЛИНИ:', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF3ECF8E), letterSpacing: 0.8)),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '1. Створіть безкоштовний проект на supabase.com\n'
+                            '2. Відкрийте Project Settings -> API\n'
+                            '3. Скопіюйте Project URL та anon public key сюди\n'
+                            '4. У SQL Editor проекту виконайте готову SQL-схему Vestora.',
+                            style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87, height: 1.4),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3ECF8E),
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: const Icon(Icons.check_rounded, size: 18),
+                        label: const Text('Зберегти та підключити', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        onPressed: () async {
+                          final url = urlCtrl.text.trim();
+                          final key = keyCtrl.text.trim();
+                          if (url.isEmpty || key.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Вкажіть Project URL та Anon Key')),
+                            );
+                            return;
+                          }
+
+                          final ok = await SupabaseService.saveCredentials(url: url, anonKey: key, autoSync: autoSync);
+                          if (mounted && ctx.mounted) {
+                            setState(() {});
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(ok ? '⚡ Supabase підключено успішно!' : '⚠️ Помилка з\'єднання. Перевірте правильність URL та ключа.'),
+                                backgroundColor: ok ? const Color(0xFF16A34A) : Colors.redAccent,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _syncWithSupabase() async {
+    if (!SupabaseService.isConfigured) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ Спочатку підключіть проект Supabase у налаштуваннях.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _showSupabaseConfigDialog();
+      return;
+    }
+
+    if (!SupabaseService.isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🔒 Для синхронізації увійдіть у свій обліковий запис Supabase.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _showSupabaseConfigDialog();
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🔄 Виконується синхронізація з хмарою PostgreSQL...'),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 1),
+      ),
+    );
+
+    final wardrobe = context.read<WardrobeProvider>();
+    final result = await SupabaseService.syncWardrobe(wardrobe: wardrobe);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message ?? 'Синхронізація завершена.'),
+          backgroundColor: result.success ? const Color(0xFF16A34A) : Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _showSqlSchemaDialog() {
+    final theme = context.read<ThemeService>();
+    final isDark = theme.isDarkMode(context);
+    final schema = SupabaseService.getSqlSchema();
+
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.terminal_rounded, color: Color(0xFF3ECF8E), size: 22),
+            SizedBox(width: 8),
+            Text('SQL-схема для Supabase', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Цей SQL-скрипт створить необхідні таблиці (profiles, clothing_items, outfits, wear_logs) із політиками Row Level Security (RLS) та S3-бакетом.',
+                style: TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                height: 200,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
+                ),
+                child: SingleChildScrollView(
+                  child: Text(
+                    schema,
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 10,
+                      color: isDark ? const Color(0xFF3ECF8E) : const Color(0xFF047857),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgCtx),
+            child: const Text('Закрити'),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3ECF8E),
+              foregroundColor: Colors.black,
+            ),
+            icon: const Icon(Icons.copy_rounded, size: 16),
+            label: const Text('Скопіювати SQL'),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: schema));
+              Navigator.pop(dlgCtx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('📋 SQL-схему скопійовано! Вставте її в Supabase SQL Editor.'),
+                  backgroundColor: Color(0xFF16A34A),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -1499,7 +2006,50 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           ),
           const SizedBox(height: 22),
 
-          // 4. PWA & Offline Capabilities
+          // 4. Supabase Cloud Sync & SQL Database
+          const Text('ХМАРНА БАЗА ДАНИХ ТА СИНХРОНІЗАЦІЯ (SUPABASE)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.muted, letterSpacing: 1)),
+          const SizedBox(height: 10),
+
+          _buildSettingsTile(
+            icon: Icons.cloud_sync_outlined,
+            iconColor: const Color(0xFF3ECF8E),
+            title: 'Supabase Cloud (PostgreSQL)',
+            subtitle: SupabaseService.isConfigured
+                ? (SupabaseService.isAuthenticated
+                    ? 'Підключено: ${SupabaseService.currentUserEmail ?? "Сесія активна"}'
+                    : 'Підключено до проекту · Потрібен вхід')
+                : 'Підключити хмарну базу даних PostgreSQL та акаунт',
+            trailingBadge: SupabaseService.isConfigured
+                ? (SupabaseService.isAuthenticated ? '🟢 Хмара' : '🟡 Увійти')
+                : '⚙️ Налаштувати',
+            isDark: isDark,
+            onTap: _showSupabaseConfigDialog,
+          ),
+          const SizedBox(height: 10),
+
+          _buildSettingsTile(
+            icon: Icons.sync_rounded,
+            iconColor: const Color(0xFF0284C7),
+            title: 'Синхронізувати зараз (Хмара ⇄ Локально)',
+            subtitle: 'Двостороння реплікація речей гардеробу та капсул із PostgreSQL',
+            trailingBadge: '🔄 Sync',
+            isDark: isDark,
+            onTap: _syncWithSupabase,
+          ),
+          const SizedBox(height: 10),
+
+          _buildSettingsTile(
+            icon: Icons.terminal_rounded,
+            iconColor: const Color(0xFF8B5CF6),
+            title: 'SQL-схема для Supabase Dashboard',
+            subtitle: 'Готовий DDL-скрипт з RLS-політиками для вставки в SQL Editor',
+            trailingBadge: '📄 DDL',
+            isDark: isDark,
+            onTap: _showSqlSchemaDialog,
+          ),
+          const SizedBox(height: 22),
+
+          // 5. PWA & Offline Capabilities
           const Text('ДОДАТОК ТА ОФЛАЙН-РЕЖИМ (PWA)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.muted, letterSpacing: 1)),
           const SizedBox(height: 10),
 

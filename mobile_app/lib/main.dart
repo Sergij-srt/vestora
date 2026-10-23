@@ -6,6 +6,7 @@ import 'services/user_profile_service.dart';
 import 'services/auth_service.dart';
 import 'services/theme_service.dart';
 import 'services/localization_service.dart';
+import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/closet_screen.dart';
 import 'screens/add_item_screen.dart';
@@ -21,6 +22,7 @@ void main() async {
   await UserProfileService.initialize();
   await ThemeService.initialize();
   await LocalizationService.initialize();
+  await SupabaseService.initialize();
   runApp(const SmartWardrobeApp());
 }
 
