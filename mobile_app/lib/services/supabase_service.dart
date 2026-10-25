@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/clothing_item.dart';
 import 'outfit_calendar_service.dart';
 import 'secure_vault_service.dart';
+import 'sync_mutation_queue.dart';
 import 'user_profile_service.dart';
 import 'wardrobe_provider.dart';
 import 'weather_stylist_service.dart';
@@ -143,8 +144,10 @@ class SupabaseService {
   }
 
   /// Reconciles cloud rows against local items, wear logs, and deletion tombstones (pure helper for unit tests & sync).
+  /// Implements Last-Write-Wins (LWW) via `updatedAt` and Max-Wear merging to prevent losing wear records.
   static ({
     List<ClothingItem> itemsToInsert,
+    List<ClothingItem> itemsToUpdate,
     List<ClothingItem> itemsWithHigherCloudWear,
   }) reconcileCloudItems({
     required List<ClothingItem> localItems,
@@ -154,6 +157,7 @@ class SupabaseService {
   }) {
     final localById = {for (final item in localItems) item.id: item};
     final toInsert = <ClothingItem>[];
+    final toUpdate = <ClothingItem>[];
     final toUpdateWear = <ClothingItem>[];
 
     for (final row in cloudRows) {
@@ -174,13 +178,24 @@ class SupabaseService {
               ? cloudItem.copyWith(wearCount: effectiveCloudWear)
               : cloudItem,
         );
-      } else if (effectiveCloudWear > existingLocal.wearCount) {
-        toUpdateWear.add(existingLocal.copyWith(wearCount: effectiveCloudWear));
+      } else {
+        // Item exists locally and in cloud: Last-Write-Wins + Max Wear Count Merging
+        final maxWear = [effectiveCloudWear, existingLocal.wearCount, cloudItem.wearCount]
+            .reduce((a, b) => a > b ? a : b);
+
+        if (cloudItem.updatedAt.isAfter(existingLocal.updatedAt)) {
+          // Cloud version has newer updatedAt: update local fields while preserving highest wearCount
+          toUpdate.add(cloudItem.copyWith(wearCount: maxWear));
+        } else if (maxWear > existingLocal.wearCount) {
+          // Local is newer or equal, but cloud has higher wearCount
+          toUpdateWear.add(existingLocal.copyWith(wearCount: maxWear));
+        }
       }
     }
 
     return (
       itemsToInsert: toInsert,
+      itemsToUpdate: toUpdate,
       itemsWithHigherCloudWear: toUpdateWear,
     );
   }
@@ -426,6 +441,19 @@ class SupabaseService {
     final newlyPulledItemIds = <String>{};
 
     try {
+      // 0. Flush any offline mutations from the persistent queue first
+      try {
+        final flushRes = await SyncMutationQueue.flush(client: cli, userId: userId);
+        if (flushRes.executed > 0) {
+          pushedCount += flushRes.executed;
+        }
+        if (flushRes.failed > 0) {
+          syncWarnings.add('mutation-queue-retry');
+        }
+      } catch (e) {
+        syncWarnings.add('mutation-queue-flush');
+      }
+
       // 1. Propagate local deletion tombstones FIRST so deleted items/outfits are never resurrected
       final itemTombstones = wardrobe.deletedItemIds.toList();
       if (pushLocal && itemTombstones.isNotEmpty) {
@@ -491,6 +519,11 @@ class SupabaseService {
           }
           await wardrobe.addMultipleItems(reconciled.itemsToInsert);
           pulledCount += reconciled.itemsToInsert.length;
+        }
+        for (final updatedItem in reconciled.itemsToUpdate) {
+          newlyPulledItemIds.add(updatedItem.id);
+          await wardrobe.updateItem(updatedItem);
+          pulledCount++;
         }
         for (final updatedWearItem in reconciled.itemsWithHigherCloudWear) {
           await wardrobe.updateItem(updatedWearItem);

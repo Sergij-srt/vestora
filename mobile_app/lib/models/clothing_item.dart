@@ -67,6 +67,7 @@ class ClothingItem {
   final DateTime purchaseDate;
   int wearCount;
   final String? notes;
+  final DateTime updatedAt;
 
   ClothingItem({
     required this.id,
@@ -90,8 +91,10 @@ class ClothingItem {
     DateTime? purchaseDate,
     this.wearCount = 0,
     this.notes,
+    DateTime? updatedAt,
   })  : galleryImages = galleryImages ?? (imageUrl.isNotEmpty ? [imageUrl] : []),
-        purchaseDate = purchaseDate ?? DateTime.now();
+        purchaseDate = purchaseDate ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
 
   // Cost-per-wear calculation
   double get costPerWear {
@@ -121,6 +124,7 @@ class ClothingItem {
     DateTime? purchaseDate,
     int? wearCount,
     String? notes,
+    DateTime? updatedAt,
   }) {
     return ClothingItem(
       id: id ?? this.id,
@@ -144,6 +148,7 @@ class ClothingItem {
       purchaseDate: purchaseDate ?? this.purchaseDate,
       wearCount: wearCount ?? this.wearCount,
       notes: notes ?? this.notes,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -177,6 +182,7 @@ class ClothingItem {
       'purchaseDate': purchaseDate.toIso8601String(),
       'wearCount': wearCount,
       'notes': notes,
+      'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
@@ -205,7 +211,7 @@ class ClothingItem {
       'wear_count': wearCount,
       'purchase_date': purchaseDate.toUtc().toIso8601String(),
       'notes': notes,
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
     };
   }
 
@@ -241,6 +247,8 @@ class ClothingItem {
       parsedWearCount = int.tryParse(rawWearCount) ?? 0;
     }
 
+    final rawUpdatedAt = map['updatedAt'] ?? map['updated_at'];
+
     return ClothingItem(
       id: (map['id'] ?? '').toString(),
       title: (map['title'] ?? 'Без назви').toString(),
@@ -265,6 +273,9 @@ class ClothingItem {
           : DateTime.now(),
       wearCount: parsedWearCount,
       notes: map['notes']?.toString(),
+      updatedAt: rawUpdatedAt != null
+          ? DateTime.tryParse(rawUpdatedAt.toString()) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 
