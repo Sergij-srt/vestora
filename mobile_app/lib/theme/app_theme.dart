@@ -42,9 +42,9 @@ class AppTheme {
         GoogleFonts.config.allowRuntimeFetching = false;
         return 'Plus Jakarta Sans';
       }
-      return GoogleFonts.plusJakartaSans().fontFamily;
+      return GoogleFonts.plusJakartaSans().fontFamily ?? 'Plus Jakarta Sans';
     } catch (_) {
-      return null;
+      return 'Plus Jakarta Sans';
     }
   }
 
