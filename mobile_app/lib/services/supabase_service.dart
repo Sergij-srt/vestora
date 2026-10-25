@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/clothing_item.dart';
 import 'outfit_calendar_service.dart';
+import 'secure_vault_service.dart';
 import 'user_profile_service.dart';
 import 'wardrobe_provider.dart';
 import 'weather_stylist_service.dart';
@@ -188,9 +189,22 @@ class SupabaseService {
   static Future<bool> initialize({String? customUrl, String? customAnonKey}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _configuredUrl = customUrl ?? prefs.getString(_keySupabaseUrl);
-      _configuredAnonKey = customAnonKey ?? prefs.getString(_keySupabaseAnonKey);
+      final secureUrl = await SecureVaultService.read(_keySupabaseUrl);
+      final secureKey = await SecureVaultService.read(_keySupabaseAnonKey);
+
+      _configuredUrl = customUrl ?? (secureUrl?.isNotEmpty == true ? secureUrl : prefs.getString(_keySupabaseUrl));
+      _configuredAnonKey = customAnonKey ?? (secureKey?.isNotEmpty == true ? secureKey : prefs.getString(_keySupabaseAnonKey));
       _autoSyncEnabled = prefs.getBool(_keyAutoSync) ?? true;
+
+      // Migrate legacy plaintext keys if found
+      if (secureUrl == null && prefs.containsKey(_keySupabaseUrl) && _configuredUrl != null) {
+        await SecureVaultService.write(_keySupabaseUrl, _configuredUrl!);
+        await prefs.remove(_keySupabaseUrl);
+      }
+      if (secureKey == null && prefs.containsKey(_keySupabaseAnonKey) && _configuredAnonKey != null) {
+        await SecureVaultService.write(_keySupabaseAnonKey, _configuredAnonKey!);
+        await prefs.remove(_keySupabaseAnonKey);
+      }
 
       if (!isConfigured) {
         _isInitialized = false;
@@ -218,7 +232,7 @@ class SupabaseService {
     }
   }
 
-  /// Saves Supabase credentials and re-initializes
+  /// Saves Supabase credentials securely and re-initializes
   static Future<bool> saveCredentials({
     required String url,
     required String anonKey,
@@ -228,9 +242,12 @@ class SupabaseService {
     final cleanKey = anonKey.trim();
 
     try {
+      await SecureVaultService.write(_keySupabaseUrl, cleanUrl);
+      await SecureVaultService.write(_keySupabaseAnonKey, cleanKey);
+
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_keySupabaseUrl, cleanUrl);
-      await prefs.setString(_keySupabaseAnonKey, cleanKey);
+      await prefs.remove(_keySupabaseUrl);
+      await prefs.remove(_keySupabaseAnonKey);
       await prefs.setBool(_keyAutoSync, autoSync);
 
       _configuredUrl = cleanUrl;
@@ -246,6 +263,9 @@ class SupabaseService {
   /// Clears credentials and returns to offline-only mode
   static Future<void> disconnect() async {
     try {
+      await SecureVaultService.delete(_keySupabaseUrl);
+      await SecureVaultService.delete(_keySupabaseAnonKey);
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keySupabaseUrl);
       await prefs.remove(_keySupabaseAnonKey);

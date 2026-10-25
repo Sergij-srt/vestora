@@ -8,6 +8,7 @@ import 'services/theme_service.dart';
 import 'services/localization_service.dart';
 import 'services/supabase_service.dart';
 import 'services/outfit_calendar_service.dart';
+import 'services/secure_vault_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/closet_screen.dart';
 import 'screens/add_item_screen.dart';
@@ -18,6 +19,7 @@ import 'screens/auth_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SecureVaultService.migrateFromSharedPreferences();
   await AuthService.initialize();
   await AiConfigService.initialize();
   await UserProfileService.initialize();

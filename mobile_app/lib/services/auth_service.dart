@@ -9,6 +9,7 @@ import 'outfit_calendar_service.dart';
 import 'supabase_service.dart';
 import 'user_profile_service.dart';
 import 'wardrobe_provider.dart';
+import 'secure_vault_service.dart';
 
 enum AuthMethod {
   google('Google', '🌐'),
@@ -163,7 +164,7 @@ class AuthService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final hasLoggedIn = prefs.getBool(_keyIsLoggedIn);
       final userJsonStr = prefs.getString(_keyCurrentUser);
-      final token = prefs.getString(_keySessionToken);
+      final token = (await SecureVaultService.read(_keySessionToken)) ?? prefs.getString(_keySessionToken);
       final expiresStr = prefs.getString(_keySessionExpiresAt);
 
       if (hasLoggedIn == true && userJsonStr != null) {
@@ -483,6 +484,7 @@ class AuthService extends ChangeNotifier {
     _sessionExpiresAt = null;
     _isLoggedIn = false;
     try {
+      await SecureVaultService.delete(_keySessionToken);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_keyIsLoggedIn, false);
       await prefs.remove(_keyCurrentUser);
@@ -540,6 +542,7 @@ class AuthService extends ChangeNotifier {
       _sessionExpiresAt = null;
       _isLoggedIn = false;
 
+      await SecureVaultService.delete(_keySessionToken);
       await prefs.setBool(_keyIsLoggedIn, false);
       await prefs.remove(_keyCurrentUser);
       await prefs.remove(_keySessionToken);
@@ -564,10 +567,11 @@ class AuthService extends ChangeNotifier {
     _sessionToken = token;
     _sessionExpiresAt = expiresAt;
     try {
+      await SecureVaultService.write(_keySessionToken, token);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_keyIsLoggedIn, true);
       await prefs.setString(_keyCurrentUser, json.encode(user.toJson()));
-      await prefs.setString(_keySessionToken, token);
+      await prefs.remove(_keySessionToken);
       await prefs.setString(_keySessionExpiresAt, expiresAt.toIso8601String());
     } catch (_) {}
   }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'secure_vault_service.dart';
 
 enum AiEngineMode {
   byok, // Bring Your Own Key
@@ -19,11 +20,19 @@ class AiConfigService {
   static int _cachedAdCredits = 3; // 3 free introductory AI scans
   static String _cachedModel = 'gemini-2.5-flash';
 
-  /// Initializes persisted AI configuration from SharedPreferences
+  /// Initializes persisted AI configuration from hardware-backed secure storage and SharedPreferences
   static Future<void> initialize() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final storedKey = prefs.getString(_keyApiKey)?.trim();
+      var storedKey = (await SecureVaultService.read(_keyApiKey))?.trim();
+      if (storedKey == null || storedKey.isEmpty) {
+        // Fallback to legacy SharedPreferences and migrate
+        storedKey = prefs.getString(_keyApiKey)?.trim();
+        if (storedKey != null && storedKey.isNotEmpty) {
+          await SecureVaultService.write(_keyApiKey, storedKey);
+          await prefs.remove(_keyApiKey);
+        }
+      }
       _cachedApiKey = (storedKey != null && storedKey.isNotEmpty) ? storedKey : null;
       _cachedAdCredits = prefs.getInt(_keyAdCredits) ?? 3;
       _cachedModel = prefs.getString(_keyModelPreference) ?? 'gemini-2.5-flash';
@@ -103,17 +112,19 @@ class AiConfigService {
     }
   }
 
-  /// Save or remove user's Gemini API key
+  /// Save or remove user's Gemini API key securely
   static Future<void> setApiKey(String? key) async {
     final cleanKey = key?.trim();
     _cachedApiKey = (cleanKey != null && cleanKey.isNotEmpty) ? cleanKey : null;
     try {
       final prefs = await SharedPreferences.getInstance();
       if (_cachedApiKey != null) {
-        await prefs.setString(_keyApiKey, _cachedApiKey!);
+        await SecureVaultService.write(_keyApiKey, _cachedApiKey!);
       } else {
-        await prefs.remove(_keyApiKey);
+        await SecureVaultService.delete(_keyApiKey);
       }
+      // Ensure legacy plain text key is removed
+      await prefs.remove(_keyApiKey);
     } catch (_) {}
   }
 
@@ -156,6 +167,7 @@ class AiConfigService {
     _cachedAdCredits = 3;
     _cachedModel = 'gemini-2.5-flash';
     try {
+      await SecureVaultService.delete(_keyApiKey);
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keyApiKey);
       await prefs.remove(_keyAdCredits);
