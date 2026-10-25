@@ -5,6 +5,14 @@
   "outputDirectory": "build/web",
   "routes": [
     {
+      "src": "/(.*)",
+      "headers": {
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "credentialless"
+      },
+      "continue": true
+    },
+    {
       "src": "/service_worker.js",
       "headers": {
         "cache-control": "no-cache, no-store, must-revalidate",
@@ -29,7 +37,11 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/index.html",
+      "headers": {
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "credentialless"
+      }
     }
   ]
 }

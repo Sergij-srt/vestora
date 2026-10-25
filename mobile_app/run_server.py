@@ -3,7 +3,9 @@ import http.client
 import http.server
 import io
 import ipaddress
+import json
 import os
+import re
 import socket
 import ssl
 import sys
@@ -17,6 +19,7 @@ DIRECTORY = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'build', 'w
 
 MAX_RAW_BYTES = 2 * 1024 * 1024          # 2 MB compressed/raw response cap
 MAX_DECOMPRESSED_BYTES = 5 * 1024 * 1024 # 5 MB decompressed cap (anti-gzip/deflate-bomb)
+MAX_AI_BODY_BYTES = 10 * 1024 * 1024      # 10 MB request body cap for AI vision
 MAX_REDIRECTS = 5
 
 ALLOWED_SCHEMES = {'http', 'https'}
@@ -411,16 +414,21 @@ class VestoraHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=DIRECTORY, **kwargs)
 
+    def end_headers(self):
+        self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
+        self.send_header('Cross-Origin-Embedder-Policy', 'credentialless')
+        super().end_headers()
+
     def _send_cors_headers(self):
         origin = _resolve_allowed_origin(self.headers.get('Origin'))
         self.send_header('Access-Control-Allow-Origin', origin)
         self.send_header('Vary', 'Origin')
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Accept')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Accept, x-goog-api-key, Authorization')
         self.send_header('X-Content-Type-Options', 'nosniff')
 
     def do_OPTIONS(self):
-        if self.path.startswith('/api/proxy') and not _is_trusted_origin(self.headers.get('Origin')):
+        if (self.path.startswith('/api/proxy') or self.path.startswith('/api/ai/vision')) and not _is_trusted_origin(self.headers.get('Origin')):
             self.send_response(403)
             self._send_cors_headers()
             self.end_headers()
@@ -435,12 +443,167 @@ class VestoraHandler(http.server.SimpleHTTPRequestHandler):
             return
         super().do_GET()
 
+    def do_POST(self):
+        if self.path.startswith('/api/ai/vision'):
+            self._handle_ai_vision()
+            return
+        self.send_response(404)
+        self._send_cors_headers()
+        self.end_headers()
+
     def _build_proxy_opener(self, pin_map: dict[tuple[str, int], str]):
         return urllib.request.build_opener(
             PinnedHTTPHandler(pin_map, resolver=self.resolver, dialer=self.dialer),
             PinnedHTTPSHandler(pin_map, resolver=self.resolver, dialer=self.dialer),
             SafeRedirectHandler(resolver=self.resolver, pin_map=pin_map),
         )
+
+    def _handle_ai_vision(self):
+        if not _is_trusted_origin(self.headers.get('Origin')):
+            self.send_response(403)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(b'{"error": "Proxy Forbidden: Untrusted cross-origin request"}')
+            return
+
+        content_length_header = self.headers.get('Content-Length')
+        if not content_length_header:
+            self.send_response(411)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(b'{"error": "Length Required"}')
+            return
+
+        try:
+            content_length = int(content_length_header)
+        except ValueError:
+            self.send_response(400)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(b'{"error": "Invalid Content-Length"}')
+            return
+
+        if content_length > MAX_AI_BODY_BYTES:
+            # Drain up to 15 MB to gracefully return 413 without TCP RST on Windows
+            if content_length <= 15 * 1024 * 1024:
+                try:
+                    remaining = content_length
+                    while remaining > 0:
+                        chunk = self.rfile.read(min(remaining, 65536))
+                        if not chunk:
+                            break
+                        remaining -= len(chunk)
+                except Exception:
+                    pass
+            self.send_response(413)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(b'{"error": "Payload Too Large: Body exceeds 10MB limit"}')
+            return
+
+        body = self.rfile.read(content_length)
+        if len(body) != content_length:
+            self.send_response(400)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(b'{"error": "Incomplete request body"}')
+            return
+
+        parsed = urllib.parse.urlparse(self.path)
+        qs = urllib.parse.parse_qs(parsed.query)
+        model = qs.get('model', ['gemini-2.5-flash'])[0]
+        if not re.match(r'^[a-zA-Z0-9.\-_]{1,64}$', model):
+            self.send_response(400)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(b'{"error": "Invalid model parameter"}')
+            return
+
+        api_key = self.headers.get('x-goog-api-key')
+        if not api_key:
+            auth_header = self.headers.get('Authorization', '')
+            if auth_header.startswith('Bearer '):
+                api_key = auth_header[7:].strip()
+        if not api_key:
+            api_key = qs.get('key', [None])[0]
+        if not api_key:
+            api_key = os.environ.get('GEMINI_API_KEY')
+
+        if not api_key or not api_key.strip():
+            self.send_response(401)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(
+                b'{"error": "Missing Gemini API key. Provide via x-goog-api-key header or configure GEMINI_API_KEY on the server."}'
+            )
+            return
+
+        upstream_base = os.environ.get(
+            'GEMINI_UPSTREAM_BASE_URL',
+            'https://generativelanguage.googleapis.com',
+        ).rstrip('/')
+        target_url = f'{upstream_base}/v1beta/models/{model}:generateContent'
+        try:
+            pin_map: dict[tuple[str, int], str] = {}
+            safe_url = validate_and_pin_url(target_url, resolver=self.resolver, pin_map=pin_map)
+            opener = self._build_proxy_opener(pin_map)
+            req = urllib.request.Request(
+                safe_url,
+                data=body,
+                headers={
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': api_key.strip(),
+                    'User-Agent': 'Vestora-AI-Vision-Proxy/1.0',
+                    'Accept': 'application/json',
+                },
+                method='POST',
+            )
+            with opener.open(req, timeout=30) as resp:
+                resp_data = read_bounded_response(
+                    resp,
+                    max_raw_bytes=MAX_RAW_BYTES,
+                    max_decompressed_bytes=MAX_DECOMPRESSED_BYTES,
+                )
+                self.send_response(resp.status)
+                self.send_header(
+                    'Content-Type',
+                    resp.headers.get('Content-Type', 'application/json; charset=utf-8'),
+                )
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(resp_data)
+        except urllib.error.HTTPError as http_err:
+            err_data = http_err.read()
+            self.send_response(http_err.code)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(err_data if err_data else b'{"error": "Upstream Gemini error"}')
+        except ProxySecurityError as sec_err:
+            self.send_response(403)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': f'Proxy Security Error: {sec_err}'}).encode('utf-8'))
+        except PayloadTooLargeError as size_err:
+            self.send_response(413)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': f'Payload Too Large: {size_err}'}).encode('utf-8'))
+        except Exception as exc:
+            self.send_response(502)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': f'AI Proxy Error: {type(exc).__name__}'}).encode('utf-8'))
 
     def _handle_proxy(self):
         if not _is_trusted_origin(self.headers.get('Origin')):

@@ -2,6 +2,7 @@ import gzip
 import http.client
 import http.server
 import io
+import os
 import socket
 import threading
 import unittest
@@ -256,6 +257,22 @@ class ProxyHttpIntegrationTests(unittest.TestCase):
                     self.end_headers()
                     self.wfile.write(body)
 
+            def do_POST(self):
+                cls.upstream_hits += 1
+                cl = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(cl)
+                auth = self.headers.get('x-goog-api-key')
+                if auth == 'valid-test-key':
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(b'{"candidates": [{"content": {"parts": [{"text": "OK"}]}}]}')
+                else:
+                    self.send_response(403)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(b'{"error": "Forbidden key"}')
+
             def log_message(self, format, *args):
                 pass
 
@@ -271,6 +288,8 @@ class ProxyHttpIntegrationTests(unittest.TestCase):
                 if cls.dns_lookup_counts[host] == 1:
                     return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', ('93.184.216.34', port))]
                 return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', ('127.0.0.1', port))]
+            if host == 'generativelanguage.googleapis.com':
+                return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', ('93.184.216.34', port))]
             return _public_resolver(host, port, type=type)
 
         def _test_dialer(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_address=None):
@@ -377,6 +396,105 @@ class ProxyHttpIntegrationTests(unittest.TestCase):
         status, _, body = self._proxy_get('http://shop.example.com/deflate-bomb')
         self.assertEqual(status, 413)
         self.assertIn(b'Payload Too Large', body)
+
+    def _proxy_options(self, path: str = '/api/proxy', origin: str | None = 'http://localhost:8090'):
+        conn = http.client.HTTPConnection('127.0.0.1', self.proxy_port, timeout=5)
+        try:
+            headers = {'Origin': origin} if origin is not None else {}
+            conn.request('OPTIONS', path, headers=headers)
+            resp = conn.getresponse()
+            body = resp.read()
+            resp_headers = dict(resp.getheaders())
+            return resp.status, resp_headers, body
+        finally:
+            conn.close()
+
+    def _proxy_post(
+        self,
+        path: str = '/api/ai/vision',
+        body: bytes = b'{}',
+        headers: dict | None = None,
+        origin: str | None = 'http://localhost:8090',
+    ):
+        conn = http.client.HTTPConnection('127.0.0.1', self.proxy_port, timeout=5)
+        try:
+            req_headers = {'Content-Type': 'application/json'}
+            if headers:
+                req_headers.update(headers)
+            if origin is not None and 'Origin' not in req_headers:
+                req_headers['Origin'] = origin
+            conn.request('POST', path, body=body, headers=req_headers)
+            resp = conn.getresponse()
+            resp_body = resp.read()
+            resp_headers = dict(resp.getheaders())
+            return resp.status, resp_headers, resp_body
+        finally:
+            conn.close()
+
+    def test_coop_and_coep_headers_present_on_all_responses(self):
+        status, headers, _ = self._proxy_get('http://shop.example.com/ok')
+        self.assertEqual(status, 200)
+        self.assertEqual(headers.get('Cross-Origin-Opener-Policy'), 'same-origin')
+        self.assertEqual(headers.get('Cross-Origin-Embedder-Policy'), 'credentialless')
+
+    def test_options_cors_methods_and_headers(self):
+        status, headers, _ = self._proxy_options('/api/ai/vision')
+        self.assertEqual(status, 200)
+        self.assertIn('POST', headers.get('Access-Control-Allow-Methods', ''))
+        self.assertIn('x-goog-api-key', headers.get('Access-Control-Allow-Headers', ''))
+        self.assertEqual(headers.get('Cross-Origin-Opener-Policy'), 'same-origin')
+        self.assertEqual(headers.get('Cross-Origin-Embedder-Policy'), 'credentialless')
+
+    def test_ai_vision_blocks_untrusted_origin(self):
+        status, headers, body = self._proxy_post(origin='https://evil.example')
+        self.assertEqual(status, 403)
+        self.assertIn(b'Untrusted cross-origin', body)
+
+    def test_ai_vision_validates_model_parameter(self):
+        status, _, body = self._proxy_post(
+            path='/api/ai/vision?model=../../evil_model',
+            body=b'{"contents": []}',
+        )
+        self.assertEqual(status, 400)
+        self.assertIn(b'Invalid model', body)
+
+    def test_ai_vision_requires_api_key(self):
+        status, _, body = self._proxy_post(
+            path='/api/ai/vision?model=gemini-2.5-flash',
+            body=b'{"contents": []}',
+        )
+        self.assertEqual(status, 401)
+        self.assertIn(b'Missing Gemini API key', body)
+
+    def test_ai_vision_validates_oversized_body(self):
+        # 10MB + 1 byte body
+        oversized = b'A' * (10 * 1024 * 1024 + 1)
+        status, _, body = self._proxy_post(
+            path='/api/ai/vision?model=gemini-2.5-flash',
+            body=oversized,
+            headers={'x-goog-api-key': 'test-key'},
+        )
+        self.assertEqual(status, 413)
+        self.assertIn(b'Payload Too Large', body)
+
+    def test_ai_vision_proxies_upstream_successfully(self):
+        old_val = os.environ.get('GEMINI_UPSTREAM_BASE_URL')
+        os.environ['GEMINI_UPSTREAM_BASE_URL'] = 'http://shop.example.com'
+        try:
+            status, headers, body = self._proxy_post(
+                path='/api/ai/vision?model=gemini-2.5-flash',
+                body=b'{"contents": [{"parts": [{"text": "analyze"}]}]}',
+                headers={'x-goog-api-key': 'valid-test-key'},
+            )
+            self.assertEqual(status, 200)
+            self.assertIn(b'"text": "OK"', body)
+            self.assertEqual(headers.get('Cross-Origin-Opener-Policy'), 'same-origin')
+            self.assertEqual(headers.get('Cross-Origin-Embedder-Policy'), 'credentialless')
+        finally:
+            if old_val is not None:
+                os.environ['GEMINI_UPSTREAM_BASE_URL'] = old_val
+            else:
+                os.environ.pop('GEMINI_UPSTREAM_BASE_URL', None)
 
 
 if __name__ == '__main__':

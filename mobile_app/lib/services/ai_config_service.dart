@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'secure_vault_service.dart';
@@ -189,28 +190,74 @@ class AiConfigService {
 
     final client = httpClient ?? http.Client();
     try {
-      final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/$_cachedModel:generateContent',
-      );
+      final pingBody = jsonEncode({
+        'contents': [
+          {
+            'parts': [
+              {'text': 'Ping test. Reply with OK.'}
+            ]
+          }
+        ]
+      });
 
-      final response = await client
-          .post(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'x-goog-api-key': cleanKey,
-            },
-            body: jsonEncode({
-              'contents': [
-                {
-                  'parts': [
-                    {'text': 'Ping test. Reply with OK.'}
-                  ]
-                }
-              ]
-            }),
-          )
-          .timeout(const Duration(seconds: 10));
+      http.Response? response;
+
+      if (kIsWeb) {
+        // Relative proxy
+        try {
+          final proxyUri = Uri.parse('/api/ai/vision?model=$_cachedModel');
+          final res = await client
+              .post(
+                proxyUri,
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-goog-api-key': cleanKey,
+                },
+                body: pingBody,
+              )
+              .timeout(const Duration(seconds: 10));
+          if (res.statusCode == 200) {
+            response = res;
+          }
+        } catch (_) {}
+
+        // Local proxy fallback
+        if (response == null) {
+          try {
+            final proxyUri = Uri.parse('http://127.0.0.1:8080/api/ai/vision?model=$_cachedModel');
+            final res = await client
+                .post(
+                  proxyUri,
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': cleanKey,
+                  },
+                  body: pingBody,
+                )
+                .timeout(const Duration(seconds: 10));
+            if (res.statusCode == 200) {
+              response = res;
+            }
+          } catch (_) {}
+        }
+      }
+
+      if (response == null) {
+        final url = Uri.parse(
+          'https://generativelanguage.googleapis.com/v1beta/models/$_cachedModel:generateContent',
+        );
+
+        response = await client
+            .post(
+              url,
+              headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': cleanKey,
+              },
+              body: pingBody,
+            )
+            .timeout(const Duration(seconds: 10));
+      }
 
       if (response.statusCode == 200) {
         return (isValid: true, message: '✅ Ключ успішно підтверджено! Gemini Vision готовий до роботи.');

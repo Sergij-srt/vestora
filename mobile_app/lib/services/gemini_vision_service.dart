@@ -91,10 +91,6 @@ ${rawReceiptText != null && rawReceiptText.isNotEmpty ? 'Receipt OCR text hint: 
       await _appendImagePart(parts, receiptPhotoUrl, 'Photo 3 (Purchase receipt)', client: client);
 
       final modelName = AiConfigService.preferredModel;
-      final endpoint = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent',
-      );
-
       final requestBody = jsonEncode({
         'contents': [
           {'parts': parts}
@@ -105,16 +101,66 @@ ${rawReceiptText != null && rawReceiptText.isNotEmpty ? 'Receipt OCR text hint: 
         },
       });
 
-      final response = await client
-          .post(
-            endpoint,
-            headers: {
-              'Content-Type': 'application/json',
-              'x-goog-api-key': apiKey,
-            },
-            body: requestBody,
-          )
-          .timeout(const Duration(seconds: 25));
+      http.Response? response;
+
+      // 1. On Web, attempt routing through server-side /api/ai/vision proxy to protect keys & bypass CORS
+      if (kIsWeb) {
+        // Option A: relative proxy URI (same-origin server in production)
+        try {
+          final proxyUri = Uri.parse('/api/ai/vision?model=$modelName');
+          final res = await client
+              .post(
+                proxyUri,
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-goog-api-key': apiKey,
+                },
+                body: requestBody,
+              )
+              .timeout(const Duration(seconds: 25));
+          if (res.statusCode == 200) {
+            response = res;
+          }
+        } catch (_) {}
+
+        // Option B: absolute local proxy server (dev server on port 8080)
+        if (response == null) {
+          try {
+            final proxyUri = Uri.parse('http://127.0.0.1:8080/api/ai/vision?model=$modelName');
+            final res = await client
+                .post(
+                  proxyUri,
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': apiKey,
+                  },
+                  body: requestBody,
+                )
+                .timeout(const Duration(seconds: 25));
+            if (res.statusCode == 200) {
+              response = res;
+            }
+          } catch (_) {}
+        }
+      }
+
+      // 2. Direct upstream Gemini call (Native mobile or Web direct fallback)
+      if (response == null) {
+        final endpoint = Uri.parse(
+          'https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent',
+        );
+
+        response = await client
+            .post(
+              endpoint,
+              headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': apiKey,
+              },
+              body: requestBody,
+            )
+            .timeout(const Duration(seconds: 25));
+      }
 
       if (response.statusCode != 200) {
         if (kDebugMode) {
