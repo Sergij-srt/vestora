@@ -414,10 +414,13 @@ $brands #QuietLuxury #OOTD #VestoraStyle #WardrobeCapsule
             Expanded(
               child: Center(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  child: RepaintBoundary(
-                    key: _cardKey,
-                    child: _buildEditorialPosterCard(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: RepaintBoundary(
+                      key: _cardKey,
+                      child: _buildEditorialPosterCard(),
+                    ),
                   ),
                 ),
               ),

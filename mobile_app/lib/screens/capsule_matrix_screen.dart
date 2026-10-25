@@ -215,6 +215,9 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
     final matrix = _getMatrixData();
     final activeCombo = matrix.getCombination(_selectedTopIndex, _selectedBottomIndex) ??
         (matrix.combinations.isNotEmpty ? matrix.combinations.first : null);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppTheme.darkSurface : Colors.white;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
 
     return Scaffold(
       appBar: AppBar(
@@ -249,9 +252,17 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                   children: [
                     const Icon(Icons.grid_view_rounded, size: 54, color: AppTheme.muted),
                     const SizedBox(height: 14),
-                    const Text('Потрібно щонайменше 1 топ та 1 низ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Потрібно щонайменше 1 топ та 1 низ',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 8),
-                    const Text('Додайте речі у гардероб або завантажте демо-капсулу', style: TextStyle(color: AppTheme.muted, fontSize: 13)),
+                    const Text(
+                      'Додайте речі у гардероб або завантажте демо-капсулу',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppTheme.muted, fontSize: 13),
+                    ),
                   ],
                 ),
               ),
@@ -277,10 +288,14 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'МІКРО-КАПСУЛЬНИЙ ДВИГУН',
-                              style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 1.2),
+                            const Flexible(
+                              child: Text(
+                                'МІКРО-КАПСУЛЬНИЙ ДВИГУН',
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 1.2),
+                              ),
                             ),
+                            const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
@@ -296,13 +311,12 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                         ),
                         const SizedBox(height: 14),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _buildBentoStat('${matrix.combinations.length}', 'Образів з 6 речей'),
+                            Expanded(child: _buildBentoStat('${matrix.combinations.length}', 'Образів з 6 речей')),
                             Container(width: 1, height: 28, color: Colors.white24),
-                            _buildBentoStat('${matrix.averageHarmonyScore.toStringAsFixed(1)} / 10', 'Гармонія кольорів'),
+                            Expanded(child: _buildBentoStat('${matrix.averageHarmonyScore.toStringAsFixed(1)} / 10', 'Гармонія кольорів')),
                             Container(width: 1, height: 28, color: Colors.white24),
-                            _buildBentoStat('-${matrix.projectedSavingsPercent}%', 'Зниження CPW'),
+                            Expanded(child: _buildBentoStat('-${matrix.projectedSavingsPercent}%', 'Зниження CPW')),
                           ],
                         ),
                       ],
@@ -316,15 +330,17 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppTheme.border),
+                      border: Border.all(color: borderColor),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        const Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          alignment: WrapAlignment.spaceBetween,
                           children: [
                             Text(
                               'МАТРИЧНА СІТКА КОМБІНАЦІЙ',
@@ -350,7 +366,9 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                                     margin: const EdgeInsets.symmetric(horizontal: 2),
                                     padding: const EdgeInsets.all(4),
                                     decoration: BoxDecoration(
-                                      color: isColActive ? const Color(0xFFFEF3C7) : const Color(0xFFF4F4F5),
+                                      color: isColActive
+                                          ? (isDark ? const Color(0xFF3F3214) : const Color(0xFFFEF3C7))
+                                          : (isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5)),
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(color: isColActive ? AppTheme.accent : Colors.transparent),
                                     ),
@@ -398,7 +416,9 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                                     width: 50,
                                     padding: const EdgeInsets.all(4),
                                     decoration: BoxDecoration(
-                                      color: isRowActive ? const Color(0xFFFEF3C7) : const Color(0xFFF4F4F5),
+                                      color: isRowActive
+                                          ? (isDark ? const Color(0xFF3F3214) : const Color(0xFFFEF3C7))
+                                          : (isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5)),
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(color: isRowActive ? AppTheme.accent : Colors.transparent),
                                     ),
@@ -445,10 +465,12 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                                         height: 52,
                                         margin: const EdgeInsets.symmetric(horizontal: 2),
                                         decoration: BoxDecoration(
-                                          color: isCellSelected ? AppTheme.primary : const Color(0xFFF8F9FA),
+                                          color: isCellSelected
+                                              ? AppTheme.primary
+                                              : (isDark ? const Color(0xFF27272A) : const Color(0xFFF8F9FA)),
                                           borderRadius: BorderRadius.circular(12),
                                           border: Border.all(
-                                            color: isCellSelected ? AppTheme.accent : AppTheme.border,
+                                            color: isCellSelected ? AppTheme.accent : borderColor,
                                             width: isCellSelected ? 2 : 1,
                                           ),
                                           boxShadow: isCellSelected
@@ -469,7 +491,9 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                                               style: TextStyle(
                                                 fontSize: 10,
                                                 fontWeight: FontWeight.w700,
-                                                color: isCellSelected ? Colors.white : AppTheme.primary,
+                                                color: isCellSelected
+                                                    ? Colors.white
+                                                    : (isDark ? Colors.white : AppTheme.primary),
                                               ),
                                             ),
                                             const SizedBox(height: 2),
@@ -512,9 +536,9 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: cardColor,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppTheme.border),
+                        border: Border.all(color: borderColor),
                         boxShadow: AppTheme.softShadow,
                       ),
                       child: Column(
@@ -523,20 +547,23 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    activeCombo.styleVerdict,
-                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${activeCombo.allItems.length} речі в ансамблі · ${activeCombo.totalPrice.toStringAsFixed(0)} ₴',
-                                    style: const TextStyle(color: AppTheme.muted, fontSize: 12),
-                                  ),
-                                ],
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      activeCombo.styleVerdict,
+                                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${activeCombo.allItems.length} речі в ансамблі · ${activeCombo.totalPrice.toStringAsFixed(0)} ₴',
+                                      style: const TextStyle(color: AppTheme.muted, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
                               ),
+                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                 decoration: BoxDecoration(
@@ -567,7 +594,7 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                                   height: 80,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: AppTheme.border),
+                                    border: Border.all(color: borderColor),
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
@@ -609,7 +636,7 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF8F9FA),
+                              color: isDark ? const Color(0xFF27272A) : const Color(0xFFF8F9FA),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
@@ -620,7 +647,11 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                                 Expanded(
                                   child: Text(
                                     activeCombo.colorRationale,
-                                    style: const TextStyle(fontSize: 11.5, color: AppTheme.secondary, height: 1.3),
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: isDark ? const Color(0xFFD4D4D8) : AppTheme.secondary,
+                                      height: 1.3,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -635,12 +666,16 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                                 flex: 4,
                                 child: OutlinedButton.icon(
                                   style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 11),
+                                    padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
                                     side: const BorderSide(color: Color(0xFFD4AF37)),
-                                    backgroundColor: const Color(0xFFFFFBEB),
+                                    backgroundColor: isDark ? const Color(0xFF272011) : const Color(0xFFFFFBEB),
                                   ),
-                                  icon: const Icon(Icons.face_retouching_natural_rounded, size: 16, color: Color(0xFFB45309)),
-                                  label: const Text('Приміряти', style: TextStyle(color: Color(0xFFB45309), fontSize: 11.5, fontWeight: FontWeight.w700)),
+                                  icon: Icon(Icons.face_retouching_natural_rounded, size: 16, color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309)),
+                                  label: Text(
+                                    'Приміряти',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309), fontSize: 11.5, fontWeight: FontWeight.w700),
+                                  ),
                                   onPressed: () {
                                     Navigator.push(
                                       context,
@@ -660,9 +695,9 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
                               Expanded(
                                 flex: 4,
                                 child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 11)),
+                                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8)),
                                   icon: const Icon(Icons.calendar_today_outlined, size: 16),
-                                  label: const Text('Календар', style: TextStyle(fontSize: 11.5)),
+                                  label: const Text('Календар', overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5)),
                                   onPressed: () => _scheduleCombination(activeCombo),
                                 ),
                               ),
@@ -703,12 +738,26 @@ class _CapsuleMatrixScreenState extends State<CapsuleMatrixScreen> {
   }
 
   Widget _buildBentoStat(String value, String label) {
-    return Column(
-      children: [
-        Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17)),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 11)),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Column(
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 10.5),
+          ),
+        ],
+      ),
     );
   }
 }

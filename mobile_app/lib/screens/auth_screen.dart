@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../widgets/controller_scope.dart';
 import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 
@@ -100,9 +101,10 @@ class _AuthScreenState extends State<AuthScreen> {
 
   // --- 1. Google Sign-In Flow ---
   void _handleGoogleSignIn() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (sheetCtx) => SafeArea(
@@ -120,11 +122,11 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
               const SizedBox(height: 18),
-              Row(
+              const Row(
                 children: [
-                  const GoogleLogoWidget(size: 24),
-                  const SizedBox(width: 12),
-                  const Expanded(
+                  GoogleLogoWidget(size: 24),
+                  SizedBox(width: 12),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -189,7 +191,10 @@ class _AuthScreenState extends State<AuthScreen> {
                   child: const Icon(Icons.add, color: Color(0xFF2563EB), size: 20),
                 ),
                 title: const Text('Використати інший акаунт Google', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
-                subtitle: const Text('Введіть будь-яку Gmail адресу', style: TextStyle(fontSize: 11.5, color: AppTheme.muted)),
+                subtitle: Text(
+                  'Введіть будь-яку Gmail адресу',
+                  style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                ),
                 onTap: () {
                   Navigator.pop(sheetCtx);
                   _showCustomGoogleEmailDialog();
@@ -203,46 +208,59 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _showCustomGoogleEmailDialog() {
-    final customEmailCtrl = TextEditingController(text: 'my.fashion@gmail.com');
-    final customNameCtrl = TextEditingController(text: 'Моє Ім\'я');
-
     showDialog(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            GoogleLogoWidget(size: 22),
-            SizedBox(width: 10),
-            Text('Вхід через Gmail', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('ІМ\'Я', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-            const SizedBox(height: 4),
-            TextField(controller: customNameCtrl, decoration: const InputDecoration(hintText: 'Олена або Сергій')),
-            const SizedBox(height: 12),
-            const Text('GMAIL ПОШТА', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-            const SizedBox(height: 4),
-            TextField(controller: customEmailCtrl, decoration: const InputDecoration(hintText: 'example@gmail.com')),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Скасувати')),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(dialogCtx);
-              _executeGoogleLogin(
-                email: customEmailCtrl.text.trim(),
-                name: customNameCtrl.text.trim(),
-              );
-            },
-            child: const Text('Увійти через Google'),
-          ),
+      builder: (_) => ControllerScope(
+        create: () => [
+          TextEditingController(text: 'my.fashion@gmail.com'),
+          TextEditingController(text: 'Моє Ім\'я'),
         ],
+        builder: (dialogCtx, ctrls) {
+          final customEmailCtrl = ctrls[0];
+          final customNameCtrl = ctrls[1];
+          final dialogDark = Theme.of(dialogCtx).brightness == Brightness.dark;
+          final mutedColor = dialogDark ? AppTheme.darkMuted : AppTheme.muted;
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                GoogleLogoWidget(size: 22),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text('Вхід через Gmail', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('ІМ\'Я', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: mutedColor)),
+                const SizedBox(height: 4),
+                TextField(controller: customNameCtrl, decoration: const InputDecoration(hintText: 'Олена або Сергій')),
+                const SizedBox(height: 12),
+                Text('GMAIL ПОШТА', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: mutedColor)),
+                const SizedBox(height: 4),
+                TextField(controller: customEmailCtrl, decoration: const InputDecoration(hintText: 'example@gmail.com')),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Скасувати')),
+              ElevatedButton(
+                onPressed: () {
+                  final emailVal = customEmailCtrl.text.trim();
+                  final nameVal = customNameCtrl.text.trim();
+                  Navigator.pop(dialogCtx);
+                  _executeGoogleLogin(
+                    email: emailVal,
+                    name: nameVal,
+                  );
+                },
+                child: const Text('Увійти через Google'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -261,7 +279,7 @@ class _AuthScreenState extends State<AuthScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('✨ Вітаємо, ${result.user?.displayName}! Вхід через Google успішний.'),
-          backgroundColor: const Color(0xFF16A34A),
+          backgroundColor: AppTheme.success,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -300,7 +318,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('🎉 Акаунт успішно створено! Ласкаво просимо, ${result.user?.displayName}!'),
-            backgroundColor: const Color(0xFF16A34A),
+            backgroundColor: AppTheme.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -322,7 +340,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('✨ Вхід виконано успішно! Раді бачити, ${result.user?.displayName}!'),
-            backgroundColor: const Color(0xFF16A34A),
+            backgroundColor: AppTheme.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -336,59 +354,71 @@ class _AuthScreenState extends State<AuthScreen> {
 
   // --- 3. Password Reset Dialog ---
   void _showForgotPasswordDialog() {
-    final resetCtrl = TextEditingController(text: _emailCtrl.text);
+    final initialEmail = _emailCtrl.text;
 
     showDialog(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.lock_reset_rounded, color: AppTheme.accent),
-            SizedBox(width: 10),
-            Text('Відновлення паролю', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Введіть адресу електронної пошти, на яку зареєстровано акаунт Vestora. Ми надішлемо вам посилання для зміни паролю.',
-              style: TextStyle(fontSize: 13, color: AppTheme.secondary, height: 1.4),
+      builder: (_) => ControllerScope(
+        create: () => [TextEditingController(text: initialEmail)],
+        builder: (dialogCtx, ctrls) {
+          final resetCtrl = ctrls[0];
+          final dialogDark = Theme.of(dialogCtx).brightness == Brightness.dark;
+          final mutedColor = dialogDark ? AppTheme.darkMuted : AppTheme.muted;
+          final accentColor = dialogDark ? AppTheme.darkAccent : AppTheme.accent;
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Icon(Icons.lock_reset_rounded, color: accentColor),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text('Відновлення паролю', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            const Text('EMAIL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-            const SizedBox(height: 6),
-            TextField(
-              controller: resetCtrl,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.email_outlined, size: 20),
-                hintText: 'ваша_пошта@vestora.app',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Скасувати')),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(dialogCtx);
-              final res = await AuthService.instance.sendPasswordResetEmail(resetCtrl.text);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(res.message),
-                    backgroundColor: res.success ? const Color(0xFF16A34A) : Colors.red,
-                    behavior: SnackBarBehavior.floating,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Введіть адресу електронної пошти, на яку зареєстровано акаунт Vestora. Ми надішлемо вам посилання для зміни паролю.',
+                  style: TextStyle(fontSize: 13, height: 1.4),
+                ),
+                const SizedBox(height: 16),
+                Text('EMAIL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: mutedColor)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: resetCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.email_outlined, size: 20),
+                    hintText: 'ваша_пошта@vestora.app',
                   ),
-                );
-              }
-            },
-            child: const Text('Надіслати лінк'),
-          ),
-        ],
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Скасувати')),
+              ElevatedButton(
+                onPressed: () async {
+                  final emailText = resetCtrl.text;
+                  Navigator.pop(dialogCtx);
+                  final res = await AuthService.instance.sendPasswordResetEmail(emailText);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(res.message),
+                        backgroundColor: res.success ? AppTheme.success : Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Надіслати лінк'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -411,8 +441,12 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppTheme.darkCard : Colors.white;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: isDark ? AppTheme.darkBackground : const Color(0xFFFAFAFA),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -443,23 +477,24 @@ class _AuthScreenState extends State<AuthScreen> {
                           child: const Icon(Icons.checkroom_rounded, color: Color(0xFFD4AF37), size: 32),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           'VESTORA',
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 6,
-                            color: Color(0xFF18181B),
+                            color: isDark ? Colors.white : const Color(0xFF18181B),
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
+                        Text(
                           'SMART DIGITAL CLOSET & HAUTE CAPSULE',
+                          textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1.5,
-                            color: AppTheme.muted,
+                            color: isDark ? AppTheme.darkMuted : AppTheme.muted,
                           ),
                         ),
                       ],
@@ -470,7 +505,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   // 2. Mode Toggle (Sign In vs Sign Up)
                   Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE4E4E7),
+                      color: isDark ? AppTheme.darkSurface : const Color(0xFFE4E4E7),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     padding: const EdgeInsets.all(4),
@@ -483,9 +518,9 @@ class _AuthScreenState extends State<AuthScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                color: !_isSignUp ? Colors.white : Colors.transparent,
+                                color: !_isSignUp ? cardColor : Colors.transparent,
                                 borderRadius: BorderRadius.circular(12),
-                                boxShadow: !_isSignUp
+                                boxShadow: !_isSignUp && !isDark
                                     ? [
                                         BoxShadow(
                                           color: Colors.black.withValues(alpha: 0.06),
@@ -500,7 +535,9 @@ class _AuthScreenState extends State<AuthScreen> {
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: !_isSignUp ? FontWeight.w800 : FontWeight.w600,
-                                  color: !_isSignUp ? const Color(0xFF18181B) : AppTheme.muted,
+                                  color: !_isSignUp
+                                      ? (isDark ? Colors.white : const Color(0xFF18181B))
+                                      : (isDark ? AppTheme.darkMuted : AppTheme.muted),
                                 ),
                               ),
                             ),
@@ -513,9 +550,9 @@ class _AuthScreenState extends State<AuthScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                color: _isSignUp ? Colors.white : Colors.transparent,
+                                color: _isSignUp ? cardColor : Colors.transparent,
                                 borderRadius: BorderRadius.circular(12),
-                                boxShadow: _isSignUp
+                                boxShadow: _isSignUp && !isDark
                                     ? [
                                         BoxShadow(
                                           color: Colors.black.withValues(alpha: 0.06),
@@ -530,7 +567,9 @@ class _AuthScreenState extends State<AuthScreen> {
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: _isSignUp ? FontWeight.w800 : FontWeight.w600,
-                                  color: _isSignUp ? const Color(0xFF18181B) : AppTheme.muted,
+                                  color: _isSignUp
+                                      ? (isDark ? Colors.white : const Color(0xFF18181B))
+                                      : (isDark ? AppTheme.darkMuted : AppTheme.muted),
                                 ),
                               ),
                             ),
@@ -545,20 +584,22 @@ class _AuthScreenState extends State<AuthScreen> {
                   Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                      boxShadow: isDark
+                          ? const []
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                     ),
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF18181B),
-                        side: const BorderSide(color: Color(0xFFD4D4D8), width: 1.2),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: cardColor,
+                        foregroundColor: isDark ? Colors.white : const Color(0xFF18181B),
+                        side: BorderSide(color: borderColor, width: 1.2),
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       onPressed: _isLoading ? null : _handleGoogleSignIn,
@@ -567,12 +608,15 @@ class _AuthScreenState extends State<AuthScreen> {
                         children: [
                           GoogleLogoWidget(size: 22),
                           SizedBox(width: 12),
-                          Text(
-                            'Продовжити через Google',
-                            style: TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.2,
+                          Flexible(
+                            child: Text(
+                              'Продовжити через Google',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.2,
+                              ),
                             ),
                           ),
                         ],
@@ -584,15 +628,25 @@ class _AuthScreenState extends State<AuthScreen> {
                   // 4. Subtle Or Divider
                   Row(
                     children: [
-                      const Expanded(child: Divider(color: Color(0xFFE4E4E7))),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        child: Text(
-                          'або за допомогою Email',
-                          style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                      Expanded(child: Divider(color: borderColor)),
+                      Flexible(
+                        flex: 4,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Text(
+                            'або за допомогою Email',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDark ? AppTheme.darkMuted : AppTheme.muted,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ),
-                      const Expanded(child: Divider(color: Color(0xFFE4E4E7))),
+                      Expanded(child: Divider(color: borderColor)),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -601,10 +655,10 @@ class _AuthScreenState extends State<AuthScreen> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: AppTheme.border),
-                      boxShadow: AppTheme.softShadow,
+                      border: Border.all(color: borderColor),
+                      boxShadow: isDark ? const [] : AppTheme.softShadow,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -643,6 +697,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             prefixIcon: const Icon(Icons.lock_outline, size: 20),
                             hintText: 'Мінімум 6 символів',
                             suffixIcon: IconButton(
+                              tooltip: _obscurePassword ? 'Показати пароль' : 'Приховати пароль',
                               icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 20),
                               onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                             ),
@@ -660,6 +715,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               prefixIcon: const Icon(Icons.lock_reset_outlined, size: 20),
                               hintText: 'Повторіть пароль',
                               suffixIcon: IconButton(
+                                tooltip: _obscureConfirm ? 'Показати пароль' : 'Приховати пароль',
                                 icon: Icon(_obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 20),
                                 onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
                               ),
@@ -674,11 +730,16 @@ class _AuthScreenState extends State<AuthScreen> {
                             child: TextButton(
                               onPressed: _showForgotPasswordDialog,
                               style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                               ),
-                              child: const Text('Забули пароль?', style: TextStyle(fontSize: 12, color: AppTheme.accent, fontWeight: FontWeight.bold)),
+                              child: Text(
+                                'Забули пароль?',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? AppTheme.darkAccent : AppTheme.accent,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -690,7 +751,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           width: double.infinity,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primary,
+                              backgroundColor: isDark ? AppTheme.darkAccent : AppTheme.primary,
+                              foregroundColor: isDark ? Colors.black : Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             ),
@@ -699,6 +761,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                                 : Text(
                                     _isSignUp ? 'Створити акаунт' : 'Увійти з Email та паролем',
+                                    textAlign: TextAlign.center,
                                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
                                   ),
                           ),

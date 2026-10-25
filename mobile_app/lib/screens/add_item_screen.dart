@@ -9,6 +9,7 @@ import '../services/clothing_ocr_service.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/ai_config_service.dart';
 import '../services/gemini_vision_service.dart';
+import '../widgets/controller_scope.dart';
 import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 import 'photo_verification_screen.dart';
@@ -102,8 +103,13 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                   Navigator.pop(ctx);
                   try {
                     final picker = ImagePicker();
-                    final photo = await picker.pickImage(source: ImageSource.camera);
-                    if (photo != null) {
+                    final photo = await picker.pickImage(
+                      source: ImageSource.camera,
+                      maxWidth: 1024,
+                      maxHeight: 1024,
+                      imageQuality: 78,
+                    );
+                    if (photo != null && mounted) {
                       setState(() => onPicked(photo.path));
                     }
                   } catch (_) {}
@@ -116,8 +122,13 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                   Navigator.pop(ctx);
                   try {
                     final picker = ImagePicker();
-                    final photo = await picker.pickImage(source: ImageSource.gallery);
-                    if (photo != null) {
+                    final photo = await picker.pickImage(
+                      source: ImageSource.gallery,
+                      maxWidth: 1024,
+                      maxHeight: 1024,
+                      imageQuality: 78,
+                    );
+                    if (photo != null && mounted) {
                       setState(() => onPicked(photo.path));
                     }
                   } catch (_) {}
@@ -139,27 +150,33 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
   }
 
   void _showUrlInputDialog(String targetName, Function(String) onPicked) {
-    final controller = TextEditingController();
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('URL для: $targetName'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: 'https://images.unsplash.com/...'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Скасувати')),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                setState(() => onPicked(controller.text.trim()));
-              }
-              Navigator.pop(ctx);
-            },
-            child: const Text('Зберегти'),
-          ),
-        ],
+      builder: (ctx) => ControllerScope(
+        create: () => [TextEditingController()],
+        builder: (dialogCtx, ctrls) {
+          final controller = ctrls[0];
+          return AlertDialog(
+            title: Text('URL для: $targetName'),
+            content: TextField(
+              controller: controller,
+              decoration: const InputDecoration(hintText: 'https://images.unsplash.com/...'),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Скасувати')),
+              ElevatedButton(
+                onPressed: () {
+                  final text = controller.text.trim();
+                  if (text.isNotEmpty) {
+                    setState(() => onPicked(text));
+                  }
+                  Navigator.pop(dialogCtx);
+                },
+                child: const Text('Зберегти'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -329,12 +346,13 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Додати в Гардероб'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: AppTheme.accent),
+            icon: Icon(Icons.settings_outlined, color: isDark ? AppTheme.darkAccent : AppTheme.accent),
             tooltip: 'Налаштування та Мій Кабінет',
             onPressed: () async {
               await Navigator.push(
@@ -347,9 +365,9 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
         ],
         bottom: TabBar(
           controller: _tabController,
-          labelColor: AppTheme.primary,
-          unselectedLabelColor: AppTheme.muted,
-          indicatorColor: AppTheme.accent,
+          labelColor: isDark ? AppTheme.darkAccent : AppTheme.primary,
+          unselectedLabelColor: isDark ? AppTheme.darkMuted : AppTheme.muted,
+          indicatorColor: isDark ? AppTheme.darkAccent : AppTheme.accent,
           indicatorWeight: 3,
           isScrollable: true,
           tabs: const [
@@ -363,16 +381,18 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildPhotoScanTab(),
-          _buildUrlImportTab(),
-          _buildReceiptImportTab(),
+          _buildPhotoScanTab(isDark),
+          _buildUrlImportTab(isDark),
+          _buildReceiptImportTab(isDark),
           _buildManualTab(),
         ],
       ),
     );
   }
 
-  Widget _buildPhotoScanTab() {
+  Widget _buildPhotoScanTab(bool isDark) {
+    final cardColor = isDark ? AppTheme.darkCard : Colors.white;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -382,17 +402,17 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
             color: AiConfigService.hasCustomKey
-                ? const Color(0xFFF0FDF4)
+                ? (isDark ? const Color(0xFF064E3B) : const Color(0xFFF0FDF4))
                 : (AiConfigService.adCredits > 0
-                    ? const Color(0xFFFEF3C7)
-                    : const Color(0xFFF4F4F5)),
+                    ? (isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7))
+                    : (isDark ? AppTheme.darkSurface : const Color(0xFFF4F4F5))),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: AiConfigService.hasCustomKey
-                  ? const Color(0xFFBBF7D0)
+                  ? (isDark ? const Color(0xFF059669) : const Color(0xFFBBF7D0))
                   : (AiConfigService.adCredits > 0
-                      ? const Color(0xFFFDE68A)
-                      : const Color(0xFFE4E4E7)),
+                      ? (isDark ? const Color(0xFFD97706) : const Color(0xFFFDE68A))
+                      : borderColor),
             ),
           ),
           child: Row(
@@ -404,10 +424,10 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                         ? Icons.stars_rounded
                         : Icons.memory_rounded),
                 color: AiConfigService.hasCustomKey
-                    ? const Color(0xFF16A34A)
+                    ? (isDark ? const Color(0xFF4ADE80) : AppTheme.success)
                     : (AiConfigService.adCredits > 0
-                        ? const Color(0xFFB45309)
-                        : const Color(0xFF71717A)),
+                        ? (isDark ? AppTheme.darkAccent : AppTheme.accent)
+                        : AppTheme.muted),
                 size: 20,
               ),
               const SizedBox(width: 10),
@@ -425,10 +445,10 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: AiConfigService.hasCustomKey
-                            ? const Color(0xFF166534)
+                            ? (isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534))
                             : (AiConfigService.adCredits > 0
-                                ? const Color(0xFF92400E)
-                                : const Color(0xFF27272A)),
+                                ? (isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E))
+                                : (isDark ? Colors.white : const Color(0xFF27272A))),
                       ),
                     ),
                     Text(
@@ -440,10 +460,10 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                       style: TextStyle(
                         fontSize: 10.5,
                         color: AiConfigService.hasCustomKey
-                            ? const Color(0xFF15803D)
+                            ? (isDark ? const Color(0xFF86EFAC) : AppTheme.success)
                             : (AiConfigService.adCredits > 0
-                                ? const Color(0xFFB45309)
-                                : const Color(0xFF71717A)),
+                                ? (isDark ? AppTheme.darkAccent : AppTheme.accent)
+                                : (isDark ? AppTheme.darkMuted : AppTheme.muted)),
                       ),
                     ),
                   ],
@@ -451,9 +471,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
               ),
               TextButton(
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 ),
                 onPressed: () async {
                   await Navigator.push(
@@ -472,27 +490,35 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFFEF3C7).withValues(alpha: 0.6),
+            color: isDark ? const Color(0xFF27272A) : const Color(0xFFFEF3C7).withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFFDE68A)),
+            border: Border.all(color: isDark ? const Color(0xFF78350F) : const Color(0xFFFDE68A)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Icon(Icons.auto_awesome, color: AppTheme.accent, size: 22),
-              SizedBox(width: 12),
+            children: [
+              Icon(Icons.auto_awesome, color: isDark ? AppTheme.darkAccent : AppTheme.accent, size: 22),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'AI Фото-Сканер Речей, Етикеток та Чеків',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF92400E)),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: isDark ? AppTheme.darkAccent : const Color(0xFF92400E),
+                      ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       'Сфотографуйте річ, її внутрішню етикетку та касовий чек. ШІ вичитає бренд, розмір, склад тканини, догляд і ціну, подасть на перевірку та збереже в гардероб.',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF78350F), height: 1.35),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? const Color(0xFFE4E4E7) : const Color(0xFF78350F),
+                        height: 1.35,
+                      ),
                     ),
                   ],
                 ),
@@ -502,9 +528,14 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
         ),
         const SizedBox(height: 20),
 
-        const Text(
+        Text(
           'ДОДАЙТЕ ФОТО ДЛЯ АНАЛІЗУ',
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1, color: AppTheme.muted),
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.1,
+            color: isDark ? AppTheme.darkMuted : AppTheme.muted,
+          ),
         ),
         const SizedBox(height: 12),
 
@@ -513,6 +544,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
           children: [
             Expanded(
               child: _buildPhotoSlot(
+                isDark: isDark,
                 title: '1. Фото речі',
                 imageUrl: _clothingPhotoUrl,
                 icon: Icons.checkroom_rounded,
@@ -525,6 +557,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
             const SizedBox(width: 10),
             Expanded(
               child: _buildPhotoSlot(
+                isDark: isDark,
                 title: '2. Етикетка',
                 imageUrl: _labelPhotoUrl,
                 icon: Icons.label_important_outline,
@@ -537,6 +570,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
             const SizedBox(width: 10),
             Expanded(
               child: _buildPhotoSlot(
+                isDark: isDark,
                 title: '3. Чек (опція)',
                 imageUrl: _receiptPhotoUrl,
                 icon: Icons.receipt_long_rounded,
@@ -562,10 +596,15 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                   )
                 : const Icon(Icons.auto_awesome),
-            label: Text(_isOcrProcessing ? 'ШІ зчитує текст та атрибути...' : 'Розпізнати через ШІ та перевірити'),
+            label: Text(
+              _isOcrProcessing ? 'ШІ зчитує текст та атрибути...' : 'Розпізнати через ШІ та перевірити',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              backgroundColor: AppTheme.primary,
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+              backgroundColor: isDark ? AppTheme.darkAccent : AppTheme.primary,
+              foregroundColor: isDark ? Colors.black : Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
           ),
@@ -573,9 +612,14 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
         const SizedBox(height: 28),
 
         // Quick 1-Click Testing Presets
-        const Text(
+        Text(
           'ШВИДКІ ПРИКЛАДИ ДЛЯ ТЕСТУВАННЯ (1 КЛІК)',
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1, color: AppTheme.muted),
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.1,
+            color: isDark ? AppTheme.darkMuted : AppTheme.muted,
+          ),
         ),
         const SizedBox(height: 12),
         ...ClothingOcrService.samplePresets.map((preset) {
@@ -583,10 +627,10 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cardColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.border),
-              boxShadow: AppTheme.softShadow,
+              border: Border.all(color: borderColor),
+              boxShadow: isDark ? const [] : AppTheme.softShadow,
             ),
             child: Row(
               children: [
@@ -611,13 +655,14 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
-                      const Text(
+                      Text(
                         '🏷️ Бірка з розміром і складом + 🧾 Чек',
-                        style: TextStyle(fontSize: 11, color: AppTheme.muted),
+                        style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: () => _applyScanPreset(preset),
                   style: ElevatedButton.styleFrom(
@@ -637,6 +682,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
   }
 
   Widget _buildPhotoSlot({
+    required bool isDark,
     required String title,
     required String? imageUrl,
     required IconData icon,
@@ -648,13 +694,13 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
       child: Container(
         height: 125,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppTheme.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: imageUrl != null ? AppTheme.accent : AppTheme.border,
+            color: imageUrl != null ? AppTheme.accent : (isDark ? AppTheme.darkBorder : AppTheme.border),
             width: imageUrl != null ? 1.5 : 1,
           ),
-          boxShadow: AppTheme.softShadow,
+          boxShadow: isDark ? const [] : AppTheme.softShadow,
         ),
         clipBehavior: Clip.antiAlias,
         child: imageUrl != null
@@ -686,28 +732,30 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
               )
             : Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.all(6.0),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFF4F4F5),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppTheme.darkSurface : const Color(0xFFF4F4F5),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(icon, color: AppTheme.accent, size: 20),
+                        child: Icon(icon, color: isDark ? AppTheme.darkAccent : AppTheme.accent, size: 20),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         title,
                         textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 2),
-                      const Text(
+                      Text(
                         '+ Додати',
-                        style: TextStyle(fontSize: 9.5, color: AppTheme.muted, fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 9.5, color: isDark ? AppTheme.darkMuted : AppTheme.muted, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
@@ -717,25 +765,30 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildUrlImportTab() {
+  Widget _buildUrlImportTab(bool isDark) {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFFEF3C7).withValues(alpha: 0.5),
+            color: isDark ? const Color(0xFF27272A) : const Color(0xFFFEF3C7).withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFFDE68A)),
+            border: Border.all(color: isDark ? const Color(0xFF78350F) : const Color(0xFFFDE68A)),
           ),
           child: Row(
-            children: const [
-              Icon(Icons.auto_awesome_rounded, color: AppTheme.accent),
-              SizedBox(width: 12),
+            children: [
+              Icon(Icons.auto_awesome_rounded, color: isDark ? AppTheme.darkAccent : AppTheme.accent),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Вставте посилання на товар із Kasta, Intertop, Answear, Zara, ASOS, Mango чи Nike. Vestora витягне студійні фото, склад тканини, ціну та знижку!',
-                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, height: 1.4),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    height: 1.4,
+                    color: isDark ? const Color(0xFFE4E4E7) : AppTheme.primary,
+                  ),
                 ),
               ),
             ],
@@ -764,7 +817,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
           runSpacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            const Text('Приклади:', style: TextStyle(fontSize: 11, color: AppTheme.muted, fontWeight: FontWeight.w700)),
+            Text('Приклади:', style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkMuted : AppTheme.muted, fontWeight: FontWeight.w700)),
             ActionChip(
               avatar: const Text('🇺🇦', style: TextStyle(fontSize: 11)),
               label: const Text('Kasta Куртка'),
@@ -816,9 +869,9 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFFEE2E2),
+              color: isDark ? const Color(0xFF450A0A) : const Color(0xFFFEE2E2),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFCA5A5)),
+              border: Border.all(color: isDark ? const Color(0xFFDC2626) : const Color(0xFFFCA5A5)),
             ),
             child: Row(
               children: [
@@ -827,7 +880,10 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                 Expanded(
                   child: Text(
                     _parseError!,
-                    style: const TextStyle(color: Color(0xFF991B1B), fontSize: 13),
+                    style: TextStyle(
+                      color: isDark ? const Color(0xFFFECACA) : const Color(0xFF991B1B),
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ],
@@ -837,20 +893,20 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
 
         if (_parsedResult != null) ...[
           const SizedBox(height: 24),
-          _buildParsedResultPreview(),
+          _buildParsedResultPreview(isDark),
         ],
       ],
     );
   }
 
-  Widget _buildParsedResultPreview() {
+  Widget _buildParsedResultPreview(bool isDark) {
     final p = _parsedResult!;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -868,7 +924,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                   errorWidget: (context, url, error) => Container(
                     width: 90,
                     height: 120,
-                    color: AppTheme.background,
+                    color: isDark ? AppTheme.darkSurface : AppTheme.background,
                     child: const Icon(Icons.image_not_supported_outlined),
                   ),
                 ),
@@ -880,7 +936,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                   children: [
                     Text(
                       p.brand.toUpperCase(),
-                      style: const TextStyle(color: AppTheme.muted, fontSize: 11, fontWeight: FontWeight.w700),
+                      style: TextStyle(color: isDark ? AppTheme.darkMuted : AppTheme.muted, fontSize: 11, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -892,13 +948,13 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                     const SizedBox(height: 8),
                     Text(
                       '${p.price.toStringAsFixed(0)} ${p.currency}',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.primary),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? AppTheme.darkAccent : AppTheme.primary),
                     ),
                     if (p.fabricComposition != null) ...[
                       const SizedBox(height: 4),
                       Text(
                         'Склад: ${p.fabricComposition}',
-                        style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+                        style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -922,25 +978,30 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildReceiptImportTab() {
+  Widget _buildReceiptImportTab(bool isDark) {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFF0FDF4),
+            color: isDark ? const Color(0xFF064E3B) : const Color(0xFFF0FDF4),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFBBF7D0)),
+            border: Border.all(color: isDark ? const Color(0xFF059669) : const Color(0xFFBBF7D0)),
           ),
           child: Row(
-            children: const [
-              Icon(Icons.mark_email_read_outlined, color: Color(0xFF16A34A)),
-              SizedBox(width: 12),
+            children: [
+              Icon(Icons.mark_email_read_outlined, color: isDark ? const Color(0xFF4ADE80) : AppTheme.success),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Скопіюйте та вставте текст підтвердження замовлення з пошти (Zara, Kasta, Intertop, ASOS). Vestora автоматично розпізнає всі позиції чека!',
-                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, height: 1.4, color: Color(0xFF166534)),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    height: 1.4,
+                    color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534),
+                  ),
                 ),
               ),
             ],
@@ -960,8 +1021,10 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
 
         Wrap(
           spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            const Text('Пресети:', style: TextStyle(fontSize: 11, color: AppTheme.muted, fontWeight: FontWeight.w700)),
+            Text('Пресети:', style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkMuted : AppTheme.muted, fontWeight: FontWeight.w700)),
             ActionChip(
               label: const Text('Чек Kasta'),
               onPressed: () {
@@ -991,7 +1054,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
 
         if (_scannedReceipt != null) ...[
           const SizedBox(height: 24),
-          _buildScannedReceiptPreview(),
+          _buildScannedReceiptPreview(isDark),
         ],
       ],
     );
@@ -1007,14 +1070,14 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
     });
   }
 
-  Widget _buildScannedReceiptPreview() {
+  Widget _buildScannedReceiptPreview(bool isDark) {
     final r = _scannedReceipt!;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1022,13 +1085,17 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Замовлення: ${r.storeName}',
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+              Expanded(
+                child: Text(
+                  'Замовлення: ${r.storeName}',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const SizedBox(width: 8),
               Text(
                 '№ ${r.orderNumber}',
-                style: const TextStyle(color: AppTheme.muted, fontSize: 12),
+                style: TextStyle(color: isDark ? AppTheme.darkMuted : AppTheme.muted, fontSize: 12),
               ),
             ],
           ),
@@ -1118,12 +1185,17 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
           children: [
             Expanded(
               child: DropdownButtonFormField<ClothingCategory>(
+                isExpanded: true,
                 initialValue: _manualCategory,
                 decoration: const InputDecoration(labelText: 'Категорія'),
                 items: ClothingCategory.values.map((cat) {
                   return DropdownMenuItem(
                     value: cat,
-                    child: Text('${cat.icon} ${cat.label}', style: const TextStyle(fontSize: 13)),
+                    child: Text(
+                      '${cat.icon} ${cat.label}',
+                      style: const TextStyle(fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   );
                 }).toList(),
                 onChanged: (val) {
@@ -1134,12 +1206,17 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
             const SizedBox(width: 12),
             Expanded(
               child: DropdownButtonFormField<Season>(
+                isExpanded: true,
                 initialValue: _manualSeason,
                 decoration: const InputDecoration(labelText: 'Сезон'),
                 items: Season.values.map((s) {
                   return DropdownMenuItem(
                     value: s,
-                    child: Text(s.label, style: const TextStyle(fontSize: 13)),
+                    child: Text(
+                      s.label,
+                      style: const TextStyle(fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   );
                 }).toList(),
                 onChanged: (val) {

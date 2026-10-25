@@ -13,30 +13,65 @@ class AiConfigService {
   static const String _keyApiKey = 'vestora_gemini_api_key';
   static const String _keyAdCredits = 'vestora_ai_ad_credits';
   static const String _keyPreferredModel = 'vestora_gemini_model';
+  static const String _keyModelPreference = _keyPreferredModel;
 
   static String? _cachedApiKey;
   static int _cachedAdCredits = 3; // 3 free introductory AI scans
   static String _cachedModel = 'gemini-2.5-flash';
-  static bool _initialized = false;
 
   /// Initializes persisted AI configuration from SharedPreferences
   static Future<void> initialize() async {
-    if (_initialized) return;
     try {
       final prefs = await SharedPreferences.getInstance();
-      _cachedApiKey = prefs.getString(_keyApiKey)?.trim();
+      final storedKey = prefs.getString(_keyApiKey)?.trim();
+      _cachedApiKey = (storedKey != null && storedKey.isNotEmpty) ? storedKey : null;
       _cachedAdCredits = prefs.getInt(_keyAdCredits) ?? 3;
       _cachedModel = prefs.getString(_keyModelPreference) ?? 'gemini-2.5-flash';
-      _initialized = true;
     } catch (_) {
-      _initialized = true;
+      _cachedApiKey = null;
+      _cachedAdCredits = 3;
+      _cachedModel = 'gemini-2.5-flash';
     }
   }
 
-  static const String _keyModelPreference = _keyPreferredModel;
+  /// Redacts API keys and query secrets from logs or user-facing error messages.
+  static String redactSecrets(String input, [String? explicitSecret]) {
+    var sanitized = input;
+    if (explicitSecret != null && explicitSecret.trim().isNotEmpty) {
+      sanitized = sanitized.replaceAll(explicitSecret.trim(), '[REDACTED_KEY]');
+    }
+    if (_cachedApiKey != null && _cachedApiKey!.isNotEmpty) {
+      sanitized = sanitized.replaceAll(_cachedApiKey!, '[REDACTED_KEY]');
+    }
+    sanitized = sanitized.replaceAll(
+      RegExp(r'AIza[0-9A-Za-z_\-]{12,}'),
+      '[REDACTED_KEY]',
+    );
+    sanitized = sanitized.replaceAll(
+      RegExp(r'([?&]key=)[^&\s]+', caseSensitive: false),
+      r'$1[REDACTED_KEY]',
+    );
+    sanitized = sanitized.replaceAll(
+      RegExp(r'(Bearer\s+)[A-Za-z0-9\-._~+/]+=*', caseSensitive: false),
+      r'$1[REDACTED_TOKEN]',
+    );
+    sanitized = sanitized.replaceAll(
+      RegExp(r'(x-goog-api-key\s*[:=]\s*)[^\s,;]+', caseSensitive: false),
+      r'$1[REDACTED_KEY]',
+    );
+    return sanitized;
+  }
 
   /// Returns current Gemini API key if configured
   static String? get apiKey => _cachedApiKey;
+
+  /// Returns masked preview of API key for safe UI display
+  static String? get maskedApiKey {
+    final key = _cachedApiKey;
+    if (key == null || key.isEmpty) return null;
+    if (key.length <= 8) return '••••••••';
+    return '${key.substring(0, 4)}••••••••${key.substring(key.length - 4)}';
+  }
 
   /// Returns true if user configured a non-empty API key
   static bool get hasCustomKey => _cachedApiKey != null && _cachedApiKey!.isNotEmpty;
@@ -115,31 +150,55 @@ class AiConfigService {
     return _cachedAdCredits;
   }
 
-  /// Test whether a Gemini API key is valid with a live ping to Google AI
-  static Future<({bool isValid, String message})> testApiKey(String testKey) async {
+  /// Clears stored API keys and resets configuration (used during account deletion)
+  static Future<void> clearAllData() async {
+    _cachedApiKey = null;
+    _cachedAdCredits = 3;
+    _cachedModel = 'gemini-2.5-flash';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyApiKey);
+      await prefs.remove(_keyAdCredits);
+      await prefs.remove(_keyModelPreference);
+    } catch (_) {}
+  }
+
+  /// Test whether a Gemini API key is valid with a live ping to Google AI.
+  /// Sends key via `x-goog-api-key` header instead of URL query string to prevent
+  /// accidental secret leakage in exception URIs or proxy access logs.
+  static Future<({bool isValid, String message})> testApiKey(
+    String testKey, {
+    http.Client? httpClient,
+  }) async {
     final cleanKey = testKey.trim();
     if (cleanKey.isEmpty) {
       return (isValid: false, message: 'Ключ порожній. Будь ласка, вставте ваш ключ.');
     }
 
+    final client = httpClient ?? http.Client();
     try {
       final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/$_cachedModel:generateContent?key=$cleanKey',
+        'https://generativelanguage.googleapis.com/v1beta/models/$_cachedModel:generateContent',
       );
 
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-            {
-              'parts': [
-                {'text': 'Ping test. Reply with OK.'}
+      final response = await client
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': cleanKey,
+            },
+            body: jsonEncode({
+              'contents': [
+                {
+                  'parts': [
+                    {'text': 'Ping test. Reply with OK.'}
+                  ]
+                }
               ]
-            }
-          ]
-        }),
-      ).timeout(const Duration(seconds: 10));
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         return (isValid: true, message: '✅ Ключ успішно підтверджено! Gemini Vision готовий до роботи.');
@@ -148,13 +207,18 @@ class AiConfigService {
         try {
           final bodyJson = jsonDecode(response.body);
           if (bodyJson['error'] != null && bodyJson['error']['message'] != null) {
-            detail = bodyJson['error']['message'];
+            detail = redactSecrets(bodyJson['error']['message'].toString(), cleanKey);
           }
         } catch (_) {}
         return (isValid: false, message: '❌ Недійсний ключ: $detail');
       }
     } catch (e) {
-      return (isValid: false, message: '⚠️ Помилка з\'єднання з серверами Google: $e');
+      final safeError = redactSecrets(e.toString(), cleanKey);
+      return (isValid: false, message: '⚠️ Помилка з\'єднання з серверами Google: $safeError');
+    } finally {
+      if (httpClient == null) {
+        client.close();
+      }
     }
   }
 }

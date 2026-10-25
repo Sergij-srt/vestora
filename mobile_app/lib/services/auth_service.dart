@@ -1,7 +1,14 @@
 import 'dart:convert';
+import 'dart:math';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show UserAttributes;
+import 'ai_config_service.dart';
+import 'outfit_calendar_service.dart';
+import 'supabase_service.dart';
 import 'user_profile_service.dart';
+import 'wardrobe_provider.dart';
 
 enum AuthMethod {
   google('Google', '🌐'),
@@ -77,15 +84,28 @@ class AuthService extends ChangeNotifier {
 
   static const _keyIsLoggedIn = 'vestora_auth_is_logged_in';
   static const _keyCurrentUser = 'vestora_auth_current_user_json';
+  static const _keySessionToken = 'vestora_auth_session_token';
+  static const _keySessionExpiresAt = 'vestora_auth_session_expires_at';
   static const _keyRegisteredUsers = 'vestora_auth_registered_users_map';
 
-  AuthUser? _currentUser;
-  bool _isLoggedIn = false;
-  static bool _initialized = false;
+  static const int _kdfIterations = 12000;
+  static const Duration _sessionTtl = Duration(days: 30);
 
-  bool get isLoggedIn => _isLoggedIn && _currentUser != null;
+  AuthUser? _currentUser;
+  String? _sessionToken;
+  DateTime? _sessionExpiresAt;
+  bool _isLoggedIn = false;
+
+  bool get isLoggedIn => _isLoggedIn && _currentUser != null && isSessionValid;
   AuthUser? get currentUser => _currentUser;
   AuthMethod get currentMethod => _currentUser?.method ?? AuthMethod.guest;
+  String? get currentSessionToken => _sessionToken;
+
+  bool get isSessionValid {
+    if (!_isLoggedIn || _currentUser == null) return false;
+    if (_sessionExpiresAt == null) return true;
+    return DateTime.now().toUtc().isBefore(_sessionExpiresAt!);
+  }
 
   static final List<GooglePresetAccount> googlePresetAccounts = [
     const GooglePresetAccount(
@@ -105,25 +125,71 @@ class AuthService extends ChangeNotifier {
     ),
   ];
 
+  /// Generates cryptographically secure random hex string.
+  static String _generateSecureHex(int byteLength) {
+    Random rng;
+    try {
+      rng = Random.secure();
+    } catch (_) {
+      rng = Random();
+    }
+    final bytes = List<int>.generate(byteLength, (_) => rng.nextInt(256));
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
+  /// Derives a salted iterative HMAC-SHA256 password digest.
+  static String hashPasswordWithSalt(String password, String saltHex) {
+    final keyBytes = utf8.encode('vestora-pepper-v2:$saltHex');
+    final hmac = Hmac(sha256, keyBytes);
+    List<int> digest = hmac.convert(utf8.encode(password)).bytes;
+    for (int i = 1; i < _kdfIterations; i++) {
+      digest = hmac.convert(digest).bytes;
+    }
+    return digest.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
+  /// Constant-time comparison to mitigate timing side-channel attacks.
+  static bool _constantTimeEquals(String a, String b) {
+    if (a.length != b.length) return false;
+    var diff = 0;
+    for (var i = 0; i < a.length; i++) {
+      diff |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+    }
+    return diff == 0;
+  }
+
   static Future<void> initialize() async {
-    if (_initialized) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       final hasLoggedIn = prefs.getBool(_keyIsLoggedIn);
       final userJsonStr = prefs.getString(_keyCurrentUser);
+      final token = prefs.getString(_keySessionToken);
+      final expiresStr = prefs.getString(_keySessionExpiresAt);
 
       if (hasLoggedIn == true && userJsonStr != null) {
+        final expiresAt = expiresStr != null ? DateTime.tryParse(expiresStr)?.toUtc() : null;
+        if (expiresAt != null && DateTime.now().toUtc().isAfter(expiresAt)) {
+          // Expired session — clear safely
+          await instance.signOut();
+          return;
+        }
+
         final decoded = json.decode(userJsonStr) as Map<String, dynamic>;
         instance._currentUser = AuthUser.fromJson(decoded);
+        instance._sessionToken = (token != null && token.isNotEmpty) ? token : _generateSecureHex(32);
+        instance._sessionExpiresAt = expiresAt ?? DateTime.now().toUtc().add(_sessionTtl);
         instance._isLoggedIn = true;
       } else {
-        // If first launch, default to false so AuthScreen is shown, or user can sign in
         instance._isLoggedIn = false;
         instance._currentUser = null;
+        instance._sessionToken = null;
+        instance._sessionExpiresAt = null;
       }
-      _initialized = true;
     } catch (_) {
-      _initialized = true;
+      instance._isLoggedIn = false;
+      instance._currentUser = null;
+      instance._sessionToken = null;
+      instance._sessionExpiresAt = null;
     }
   }
 
@@ -154,7 +220,6 @@ class AuthService extends ChangeNotifier {
       _currentUser = user;
       _isLoggedIn = true;
 
-      // Update UserProfileService to sync across the app
       await UserProfileService.saveProfile(
         name: finalName,
         email: finalEmail,
@@ -174,28 +239,46 @@ class AuthService extends ChangeNotifier {
     required String password,
   }) async {
     final cleanEmail = email.trim();
+    final cleanPass = password.trim();
     if (cleanEmail.isEmpty || !cleanEmail.contains('@') || !cleanEmail.contains('.')) {
       return (success: false, error: 'Введіть коректну адресу електронної пошти', user: null);
     }
-    if (password.trim().length < 6) {
+    if (cleanPass.length < 6) {
       return (success: false, error: 'Пароль повинен містити щонайменше 6 символів', user: null);
     }
 
     try {
       final prefs = await SharedPreferences.getInstance();
       final usersMap = _getStoredUsersMap(prefs);
+      final lowerEmail = cleanEmail.toLowerCase();
 
-      // Check registered users or default accounts
       String userName = 'Користувач Vestora';
-      if (usersMap.containsKey(cleanEmail.toLowerCase())) {
-        final userData = usersMap[cleanEmail.toLowerCase()] as Map<String, dynamic>;
-        final storedPass = userData['password'] as String?;
-        if (storedPass != null && storedPass != password.trim()) {
-          return (success: false, error: 'Невірний пароль для вказаної пошти', user: null);
+      if (usersMap.containsKey(lowerEmail)) {
+        final userData = Map<String, dynamic>.from(usersMap[lowerEmail] as Map);
+        final storedSalt = userData['passwordSalt'] as String?;
+        final storedHash = userData['passwordHash'] as String?;
+        final legacyPlainPass = userData['password'] as String?;
+
+        if (storedSalt != null && storedHash != null) {
+          final candidateHash = hashPasswordWithSalt(cleanPass, storedSalt);
+          if (!_constantTimeEquals(candidateHash, storedHash)) {
+            return (success: false, error: 'Невірний пароль для вказаної пошти', user: null);
+          }
+        } else if (legacyPlainPass != null) {
+          if (!_constantTimeEquals(legacyPlainPass, cleanPass)) {
+            return (success: false, error: 'Невірний пароль для вказаної пошти', user: null);
+          }
+          // Transparently migrate legacy plaintext password to salted HMAC-SHA256
+          final newSalt = _generateSecureHex(16);
+          userData.remove('password');
+          userData['passwordSalt'] = newSalt;
+          userData['passwordHash'] = hashPasswordWithSalt(cleanPass, newSalt);
+          usersMap[lowerEmail] = userData;
+          await prefs.setString(_keyRegisteredUsers, json.encode(usersMap));
         }
+
         userName = userData['name'] as String? ?? cleanEmail.split('@').first;
       } else {
-        // Allow seamless login for demo accounts or newly introduced accounts
         userName = cleanEmail.split('@').first;
         if (cleanEmail == 'sergij@vestora.app') {
           userName = 'Сергій';
@@ -226,7 +309,7 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Register a new account with Name, Email and Password
+  /// Register a new account with Name, Email and Password (salted SHA-256)
   Future<({bool success, String? error, AuthUser? user})> registerWithEmailAndPassword({
     required String name,
     required String email,
@@ -249,17 +332,21 @@ class AuthService extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final usersMap = _getStoredUsersMap(prefs);
+      final lowerEmail = cleanEmail.toLowerCase();
 
-      if (usersMap.containsKey(cleanEmail.toLowerCase())) {
+      if (usersMap.containsKey(lowerEmail)) {
         return (success: false, error: 'Акаунт з такою поштою вже зареєстровано. Увійдіть у систему.', user: null);
       }
 
-      // Save user to local store
-      usersMap[cleanEmail.toLowerCase()] = {
+      final salt = _generateSecureHex(16);
+      final passwordHash = hashPasswordWithSalt(cleanPass, salt);
+
+      usersMap[lowerEmail] = {
         'name': cleanName,
         'email': cleanEmail,
-        'password': cleanPass,
-        'registeredAt': DateTime.now().toIso8601String(),
+        'passwordSalt': salt,
+        'passwordHash': passwordHash,
+        'registeredAt': DateTime.now().toUtc().toIso8601String(),
       };
       await prefs.setString(_keyRegisteredUsers, json.encode(usersMap));
 
@@ -287,13 +374,85 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Send password reset email simulation
+  /// Verifies current password (when registered) and updates stored salted hash & session token.
+  Future<({bool success, String message})> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final cleanOld = oldPassword.trim();
+    final cleanNew = newPassword.trim();
+    final cleanConfirm = confirmPassword.trim();
+
+    if (cleanNew.length < 6) {
+      return (success: false, message: 'Пароль повинен містити щонайменше 6 символів');
+    }
+    if (cleanNew != cleanConfirm) {
+      return (success: false, message: 'Новий пароль та підтвердження не співпадають');
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final usersMap = _getStoredUsersMap(prefs);
+      final activeEmail = (_currentUser?.email ?? UserProfileService.profile.email).trim().toLowerCase();
+
+      if (usersMap.containsKey(activeEmail)) {
+        final userData = Map<String, dynamic>.from(usersMap[activeEmail] as Map);
+        final storedSalt = userData['passwordSalt'] as String?;
+        final storedHash = userData['passwordHash'] as String?;
+        final legacyPlain = userData['password'] as String?;
+
+        if (storedSalt != null && storedHash != null) {
+          final oldCandidate = hashPasswordWithSalt(cleanOld, storedSalt);
+          if (!_constantTimeEquals(oldCandidate, storedHash)) {
+            return (success: false, message: 'Поточний пароль вказано невірно');
+          }
+        } else if (legacyPlain != null && !_constantTimeEquals(legacyPlain, cleanOld)) {
+          return (success: false, message: 'Поточний пароль вказано невірно');
+        }
+
+        final newSalt = _generateSecureHex(16);
+        userData.remove('password');
+        userData['passwordSalt'] = newSalt;
+        userData['passwordHash'] = hashPasswordWithSalt(cleanNew, newSalt);
+        userData['updatedAt'] = DateTime.now().toUtc().toIso8601String();
+        usersMap[activeEmail] = userData;
+        await prefs.setString(_keyRegisteredUsers, json.encode(usersMap));
+      }
+
+      if (SupabaseService.isAuthenticated) {
+        try {
+          await SupabaseService.client?.auth.updateUser(
+            UserAttributes(password: cleanNew),
+          );
+        } catch (_) {}
+      }
+
+      if (_currentUser != null) {
+        await _persistSession(_currentUser!);
+      }
+
+      return (success: true, message: 'Пароль успішно змінено!');
+    } catch (e) {
+      return (success: false, message: 'Помилка зміни пароля: $e');
+    }
+  }
+
+  /// Send password reset email simulation (uses Supabase resetPasswordForEmail if connected)
   Future<({bool success, String message})> sendPasswordResetEmail(String email) async {
     final cleanEmail = email.trim();
     if (cleanEmail.isEmpty || !cleanEmail.contains('@')) {
       return (success: false, message: 'Будь ласка, введіть коректну електронну адресу');
     }
-    await Future.delayed(const Duration(milliseconds: 300));
+
+    if (SupabaseService.isConfigured && SupabaseService.client != null) {
+      try {
+        await SupabaseService.client!.auth.resetPasswordForEmail(cleanEmail);
+      } catch (_) {}
+    } else {
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+
     return (
       success: true,
       message: 'Інструкцію для скидання паролю успішно надіслано на $cleanEmail. Перевірте поштову скриньку!',
@@ -317,23 +476,99 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Sign out current user
+  /// Sign out current user and invalidate session token
   Future<void> signOut() async {
     _currentUser = null;
+    _sessionToken = null;
+    _sessionExpiresAt = null;
     _isLoggedIn = false;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_keyIsLoggedIn, false);
       await prefs.remove(_keyCurrentUser);
+      await prefs.remove(_keySessionToken);
+      await prefs.remove(_keySessionExpiresAt);
     } catch (_) {}
     notifyListeners();
   }
 
+  /// Mandatory App Store (Guideline 5.1.1v) & Google Play 1-click Account & Cloud Data Deletion.
+  /// Permanently wipes cloud data (if authenticated), local account credentials, wardrobe,
+  /// planned outfits, profile PII, and AI API keys.
+  Future<({bool success, String message})> deleteAccount({
+    WardrobeProvider? wardrobe,
+    bool deleteCloudData = true,
+  }) async {
+    try {
+      if (deleteCloudData && SupabaseService.isAuthenticated) {
+        final cloudDeleted = await SupabaseService.deleteCloudUserData();
+        if (!cloudDeleted) {
+          return (
+            success: false,
+            message:
+                'Не вдалося видалити хмарні дані Supabase. Перевірте з\'єднання та повторіть спробу.',
+          );
+        }
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final activeEmail = _currentUser?.email.toLowerCase();
+      if (activeEmail != null && activeEmail.isNotEmpty) {
+        final usersMap = _getStoredUsersMap(prefs);
+        if (usersMap.containsKey(activeEmail)) {
+          usersMap.remove(activeEmail);
+          await prefs.setString(_keyRegisteredUsers, json.encode(usersMap));
+        }
+      }
+
+      if (wardrobe != null) {
+        await wardrobe.clearWardrobe(clearTombstones: true);
+      } else {
+        await prefs.remove('smart_wardrobe_items_v2');
+        await prefs.remove('vestora_deleted_item_ids');
+        await prefs.remove('vestora_pending_wear_logs');
+        await prefs.remove('vestora_streak_days');
+      }
+
+      await OutfitCalendarService.clearAllPlans();
+      await UserProfileService.clearAllData();
+      await AiConfigService.clearAllData();
+      await SupabaseService.disconnect();
+
+      _currentUser = null;
+      _sessionToken = null;
+      _sessionExpiresAt = null;
+      _isLoggedIn = false;
+
+      await prefs.setBool(_keyIsLoggedIn, false);
+      await prefs.remove(_keyCurrentUser);
+      await prefs.remove(_keySessionToken);
+      await prefs.remove(_keySessionExpiresAt);
+
+      notifyListeners();
+      return (
+        success: true,
+        message: 'Ваш акаунт та всі персональні дані остаточно видалено.',
+      );
+    } catch (e) {
+      return (
+        success: false,
+        message: 'Помилка при видаленні акаунта: $e',
+      );
+    }
+  }
+
   Future<void> _persistSession(AuthUser user) async {
+    final token = _generateSecureHex(32);
+    final expiresAt = DateTime.now().toUtc().add(_sessionTtl);
+    _sessionToken = token;
+    _sessionExpiresAt = expiresAt;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_keyIsLoggedIn, true);
       await prefs.setString(_keyCurrentUser, json.encode(user.toJson()));
+      await prefs.setString(_keySessionToken, token);
+      await prefs.setString(_keySessionExpiresAt, expiresAt.toIso8601String());
     } catch (_) {}
   }
 

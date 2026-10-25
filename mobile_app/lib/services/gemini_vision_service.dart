@@ -31,6 +31,7 @@ class GeminiVisionService {
     String? rawLabelText,
     String? rawReceiptText,
     String? overrideApiKey,
+    http.Client? httpClient,
   }) async {
     final apiKey = (overrideApiKey ?? AiConfigService.apiKey)?.trim();
 
@@ -52,6 +53,7 @@ class GeminiVisionService {
       );
     }
 
+    final client = httpClient ?? http.Client();
     try {
       final parts = <Map<String, dynamic>>[];
 
@@ -84,13 +86,13 @@ ${rawReceiptText != null && rawReceiptText.isNotEmpty ? 'Receipt OCR text hint: 
       parts.add({'text': prompt});
 
       // 2. Attach images as base64 inline data if possible
-      await _appendImagePart(parts, clothingPhotoUrl, 'Photo 1 (Clothing item)');
-      await _appendImagePart(parts, labelPhotoUrl, 'Photo 2 (Care tag / label)');
-      await _appendImagePart(parts, receiptPhotoUrl, 'Photo 3 (Purchase receipt)');
+      await _appendImagePart(parts, clothingPhotoUrl, 'Photo 1 (Clothing item)', client: client);
+      await _appendImagePart(parts, labelPhotoUrl, 'Photo 2 (Care tag / label)', client: client);
+      await _appendImagePart(parts, receiptPhotoUrl, 'Photo 3 (Purchase receipt)', client: client);
 
       final modelName = AiConfigService.preferredModel;
       final endpoint = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$apiKey',
+        'https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent',
       );
 
       final requestBody = jsonEncode({
@@ -103,14 +105,23 @@ ${rawReceiptText != null && rawReceiptText.isNotEmpty ? 'Receipt OCR text hint: 
         },
       });
 
-      final response = await http.post(
-        endpoint,
-        headers: {'Content-Type': 'application/json'},
-        body: requestBody,
-      ).timeout(const Duration(seconds: 25));
+      final response = await client
+          .post(
+            endpoint,
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': apiKey,
+            },
+            body: requestBody,
+          )
+          .timeout(const Duration(seconds: 25));
 
       if (response.statusCode != 200) {
-        debugPrint('Gemini Vision API error: ${response.statusCode} - ${response.body}');
+        if (kDebugMode) {
+          debugPrint(
+            'Gemini Vision API error: ${response.statusCode} - ${AiConfigService.redactSecrets(response.body, apiKey)}',
+          );
+        }
         // Fallback to local parser with warning
         final fallback = _runLocalFallback(
           clothingPhotoUrl: clothingPhotoUrl,
@@ -187,7 +198,10 @@ ${rawReceiptText != null && rawReceiptText.isNotEmpty ? 'Receipt OCR text hint: 
         modelUsed: modelName,
       );
     } catch (e) {
-      debugPrint('GeminiVisionService exception: $e');
+      final safeErr = AiConfigService.redactSecrets(e.toString(), apiKey);
+      if (kDebugMode) {
+        debugPrint('GeminiVisionService exception: $safeErr');
+      }
       final fallback = _runLocalFallback(
         clothingPhotoUrl: clothingPhotoUrl,
         labelPhotoUrl: labelPhotoUrl,
@@ -198,10 +212,14 @@ ${rawReceiptText != null && rawReceiptText.isNotEmpty ? 'Receipt OCR text hint: 
       return GeminiVisionAnalysisResult(
         isSuccess: true,
         data: fallback,
-        errorMessage: 'Помилка Gemini API: $e. Застосовано резервний парсер.',
+        errorMessage: 'Помилка Gemini API: $safeErr. Застосовано резервний парсер.',
         usedGemini: false,
         modelUsed: 'Local Fallback',
       );
+    } finally {
+      if (httpClient == null) {
+        client.close();
+      }
     }
   }
 
@@ -209,13 +227,17 @@ ${rawReceiptText != null && rawReceiptText.isNotEmpty ? 'Receipt OCR text hint: 
   static Future<void> _appendImagePart(
     List<Map<String, dynamic>> parts,
     String? photoUrl,
-    String label,
-  ) async {
+    String label, {
+    http.Client? client,
+  }) async {
     if (photoUrl == null || photoUrl.isEmpty) return;
 
     try {
       if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
-        final res = await http.get(Uri.parse(photoUrl)).timeout(const Duration(seconds: 8));
+        final res = await (client != null
+                ? client.get(Uri.parse(photoUrl))
+                : http.get(Uri.parse(photoUrl)))
+            .timeout(const Duration(seconds: 8));
         if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
           final base64Img = base64Encode(res.bodyBytes);
           final mime = _guessMimeType(photoUrl, res.headers['content-type']);
@@ -243,7 +265,9 @@ ${rawReceiptText != null && rawReceiptText.isNotEmpty ? 'Receipt OCR text hint: 
         }
       }
     } catch (e) {
-      debugPrint('Failed to fetch image bytes for $photoUrl: $e');
+      if (kDebugMode) {
+        debugPrint('Failed to fetch image bytes for $photoUrl: ${AiConfigService.redactSecrets(e.toString())}');
+      }
     }
 
     // If binary download fails or is skipped, mention photo context textually

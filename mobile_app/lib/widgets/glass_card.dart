@@ -9,6 +9,7 @@ class GlassCard extends StatefulWidget {
   final double borderRadius;
   final Color? backgroundColor;
   final Border? border;
+  final String? semanticLabel;
 
   const GlassCard({
     super.key,
@@ -18,6 +19,7 @@ class GlassCard extends StatefulWidget {
     this.borderRadius = 20,
     this.backgroundColor,
     this.border,
+    this.semanticLabel,
   });
 
   @override
@@ -29,7 +31,10 @@ class _GlassCardState extends State<GlassCard> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedScale(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final resolvedBg = widget.backgroundColor ?? (isDark ? AppTheme.darkCard : Colors.white);
+
+    Widget card = AnimatedScale(
       scale: _isPressed ? 0.98 : 1.0,
       duration: const Duration(milliseconds: 150),
       curve: Curves.easeOutBack,
@@ -49,14 +54,16 @@ class _GlassCardState extends State<GlassCard> {
             child: Container(
               padding: widget.padding,
               decoration: BoxDecoration(
-                color: (widget.backgroundColor ?? Colors.white).withValues(alpha: 0.88),
+                color: resolvedBg.withValues(alpha: 0.9),
                 borderRadius: BorderRadius.circular(widget.borderRadius),
                 border: widget.border ??
                     Border.all(
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: isDark
+                          ? AppTheme.darkBorder
+                          : Colors.white.withValues(alpha: 0.6),
                       width: 1.2,
                     ),
-                boxShadow: AppTheme.softShadow,
+                boxShadow: isDark ? AppTheme.darkSoftShadow : AppTheme.softShadow,
               ),
               child: widget.child,
             ),
@@ -64,5 +71,14 @@ class _GlassCardState extends State<GlassCard> {
         ),
       ),
     );
+
+    if (widget.semanticLabel != null || widget.onTap != null) {
+      card = Semantics(
+        button: widget.onTap != null,
+        label: widget.semanticLabel,
+        child: card,
+      );
+    }
+    return card;
   }
 }

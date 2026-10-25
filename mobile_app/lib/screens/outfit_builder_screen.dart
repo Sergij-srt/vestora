@@ -384,124 +384,135 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppTheme.border,
-                    borderRadius: BorderRadius.circular(2),
+        final sheetDark = Theme.of(ctx).brightness == Brightness.dark;
+        final sheetBorder = sheetDark ? AppTheme.darkBorder : AppTheme.border;
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.88,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: sheetBorder,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF3C7),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.auto_awesome, color: AppTheme.accent, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Дзеркало ШІ · Style Check',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                        ),
-                        Text(
-                          eval.verdict,
-                          style: const TextStyle(fontSize: 12, color: AppTheme.accent, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Text(
-                      '${eval.overallScore}/10',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              _buildMetricBar('Гармонія кольорів', eval.colorHarmonyScore, const Color(0xFF2563EB)),
-              const SizedBox(height: 10),
-              _buildMetricBar('Баланс пропорцій', eval.proportionScore, const Color(0xFF16A34A)),
-
-              const SizedBox(height: 16),
-              const Divider(color: AppTheme.border),
-              const SizedBox(height: 12),
-
-              ...eval.positiveHighlights.map((hl) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.check_circle_outline, color: Color(0xFF16A34A), size: 18),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(hl, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
-                        ),
-                      ],
-                    ),
-                  )),
-
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8F9FA),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.border),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 16),
+                Row(
                   children: [
-                    const Icon(Icons.lightbulb_outline, size: 20, color: AppTheme.accent),
-                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.auto_awesome, color: AppTheme.accent, size: 22),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Дзеркало ШІ · Style Check',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                          ),
+                          Text(
+                            eval.verdict,
+                            style: const TextStyle(fontSize: 12, color: AppTheme.accent, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                       child: Text(
-                        eval.actionableTip,
-                        style: const TextStyle(fontSize: 12, color: AppTheme.secondary, height: 1.4),
+                        '${eval.overallScore}/10',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Зрозуміло'),
+                const SizedBox(height: 20),
+
+                _buildMetricBar('Гармонія кольорів', eval.colorHarmonyScore, const Color(0xFF2563EB), sheetDark),
+                const SizedBox(height: 10),
+                _buildMetricBar('Баланс пропорцій', eval.proportionScore, const Color(0xFF16A34A), sheetDark),
+
+                const SizedBox(height: 16),
+                Divider(color: sheetBorder),
+                const SizedBox(height: 12),
+
+                ...eval.positiveHighlights.map((hl) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.check_circle_outline, color: Color(0xFF16A34A), size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(hl, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
+                          ),
+                        ],
+                      ),
+                    )),
+
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: sheetDark ? const Color(0xFF27272A) : const Color(0xFFF8F9FA),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: sheetBorder),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.lightbulb_outline, size: 20, color: AppTheme.accent),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          eval.actionableTip,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: sheetDark ? const Color(0xFFD4D4D8) : AppTheme.secondary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Зрозуміло'),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildMetricBar(String label, int value, Color color) {
+  Widget _buildMetricBar(String label, int value, Color color, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -515,7 +526,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
         const SizedBox(height: 4),
         LinearProgressIndicator(
           value: value / 100.0,
-          backgroundColor: AppTheme.background,
+          backgroundColor: isDark ? const Color(0xFF27272A) : AppTheme.background,
           valueColor: AlwaysStoppedAnimation(color),
           minHeight: 6,
           borderRadius: BorderRadius.circular(3),
@@ -527,6 +538,9 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
   @override
   Widget build(BuildContext context) {
     final wardrobe = context.watch<WardrobeProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppTheme.darkSurface : Colors.white;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
 
     if (wardrobe.items.isEmpty) {
       return Scaffold(
@@ -627,7 +641,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                   children: [
                     Icon(Icons.face_retouching_natural_rounded, color: AppTheme.accent, size: 20),
                     SizedBox(width: 10),
-                    Text('AI Примірочна (Try-On)'),
+                    Flexible(child: Text('AI Примірочна (Try-On)')),
                   ],
                 ),
               ),
@@ -637,7 +651,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                   children: [
                     Icon(Icons.grid_on_rounded, color: AppTheme.accent, size: 20),
                     SizedBox(width: 10),
-                    Text('Капсульна матриця 3х3'),
+                    Flexible(child: Text('Капсульна матриця 3х3')),
                   ],
                 ),
               ),
@@ -647,7 +661,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                   children: [
                     Icon(Icons.auto_stories_outlined, color: AppTheme.accent, size: 20),
                     SizedBox(width: 10),
-                    Text('Експорт постера (Stories)'),
+                    Flexible(child: Text('Експорт постера (Stories)')),
                   ],
                 ),
               ),
@@ -657,7 +671,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                   children: [
                     Icon(Icons.calendar_month_outlined, color: AppTheme.accent, size: 20),
                     SizedBox(width: 10),
-                    Text('Календар образів'),
+                    Flexible(child: Text('Календар образів')),
                   ],
                 ),
               ),
@@ -667,7 +681,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                   children: [
                     Icon(Icons.auto_awesome, color: AppTheme.accent, size: 20),
                     SizedBox(width: 10),
-                    Text('Оцінка стилю (Style Check)'),
+                    Flexible(child: Text('Оцінка стилю (Style Check)')),
                   ],
                 ),
               ),
@@ -680,7 +694,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
           // Natural Language AI Prompt & Context Bar
           Container(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-            color: Colors.white,
+            color: surfaceColor,
             child: Column(
               children: [
                 // Natural Language Search Bar
@@ -697,10 +711,10 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                           prefixIcon: const Icon(Icons.auto_awesome, size: 18, color: AppTheme.accent),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           filled: true,
-                          fillColor: const Color(0xFFF8F9FA),
+                          fillColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF8F9FA),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppTheme.border),
+                            borderSide: BorderSide(color: borderColor),
                           ),
                         ),
                       ),
@@ -723,11 +737,11 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildWeatherPill('☀️ +22°C Сонячно', WeatherCondition.sunny, 22),
-                      _buildWeatherPill('⛅ +16°C Хмарно', WeatherCondition.cloudy, 16),
-                      _buildWeatherPill('🌧️ +13°C Дощ', WeatherCondition.rainy, 13),
-                      _buildWeatherPill('💨 +8°C Вітряно', WeatherCondition.coldWindy, 8),
-                      _buildWeatherPill('❄️ -2°C Мороз', WeatherCondition.snowy, -2),
+                      _buildWeatherPill('☀️ +22°C Сонячно', WeatherCondition.sunny, 22, isDark),
+                      _buildWeatherPill('⛅ +16°C Хмарно', WeatherCondition.cloudy, 16, isDark),
+                      _buildWeatherPill('🌧️ +13°C Дощ', WeatherCondition.rainy, 13, isDark),
+                      _buildWeatherPill('💨 +8°C Вітряно', WeatherCondition.coldWindy, 8, isDark),
+                      _buildWeatherPill('❄️ -2°C Мороз', WeatherCondition.snowy, -2, isDark),
                     ],
                   ),
                 ),
@@ -738,11 +752,11 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildOccasionPill('💼 Офіс', Occasion.work),
-                      _buildOccasionPill('☕ Прогулянка', Occasion.casual),
-                      _buildOccasionPill('✨ Побачення', Occasion.dateNight),
-                      _buildOccasionPill('🏃 Спорт', Occasion.sport),
-                      _buildOccasionPill('✈️ Подорож', Occasion.travel),
+                      _buildOccasionPill('💼 Офіс', Occasion.work, isDark),
+                      _buildOccasionPill('☕ Прогулянка', Occasion.casual, isDark),
+                      _buildOccasionPill('✨ Побачення', Occasion.dateNight, isDark),
+                      _buildOccasionPill('🏃 Спорт', Occasion.sport, isDark),
+                      _buildOccasionPill('✈️ Подорож', Occasion.travel, isDark),
                     ],
                   ),
                 ),
@@ -753,10 +767,10 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildQuickPromptChip('🌧️ Дощовий офіс'),
-                      _buildQuickPromptChip('☕ Затишна кав\'ярня'),
-                      _buildQuickPromptChip('✨ Вечірнє побачення'),
-                      _buildQuickPromptChip('🏃 Спортивний вихід'),
+                      _buildQuickPromptChip('🌧️ Дощовий офіс', isDark),
+                      _buildQuickPromptChip('☕ Затишна кав\'ярня', isDark),
+                      _buildQuickPromptChip('✨ Вечірнє побачення', isDark),
+                      _buildQuickPromptChip('🏃 Спортивний вихід', isDark),
                     ],
                   ),
                 ),
@@ -766,9 +780,9 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FA),
+                      color: isDark ? const Color(0xFF27272A) : const Color(0xFFF8F9FA),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.border),
+                      border: Border.all(color: borderColor),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -781,9 +795,9 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                         Expanded(
                           child: Text(
                             '${_lastCurated!.weatherRationale} ${_lastCurated!.occasionRationale}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11.5,
-                              color: AppTheme.secondary,
+                              color: isDark ? const Color(0xFFD4D4D8) : AppTheme.secondary,
                               height: 1.35,
                             ),
                           ),
@@ -795,7 +809,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
               ],
             ),
           ),
-          const Divider(height: 1, color: AppTheme.border),
+          Divider(height: 1, color: borderColor),
 
           // Main View: Moodboard Canvas or Classical Slots
           Expanded(
@@ -836,6 +850,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     children: [
                       _buildOutfitSlot(
+                        isDark: isDark,
                         title: 'Верхній одяг',
                         item: _selectedOuterwear,
                         category: ClothingCategory.outerwear,
@@ -843,6 +858,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                       ),
                       const SizedBox(height: 10),
                       _buildOutfitSlot(
+                        isDark: isDark,
                         title: 'Верх / Топ',
                         item: _selectedTop,
                         category: ClothingCategory.tops,
@@ -850,6 +866,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                       ),
                       const SizedBox(height: 10),
                       _buildOutfitSlot(
+                        isDark: isDark,
                         title: 'Низ / Брюки',
                         item: _selectedBottom,
                         category: ClothingCategory.bottoms,
@@ -857,6 +874,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                       ),
                       const SizedBox(height: 10),
                       _buildOutfitSlot(
+                        isDark: isDark,
                         title: 'Взуття',
                         item: _selectedShoes,
                         category: ClothingCategory.shoes,
@@ -870,9 +888,9 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
           // Action Bottom Bar (2-Tier Responsive Design - No letter wrapping)
           Container(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(top: BorderSide(color: AppTheme.border)),
+            decoration: BoxDecoration(
+              color: surfaceColor,
+              border: Border(top: BorderSide(color: borderColor)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -887,10 +905,11 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                         icon: const Icon(Icons.check_circle_rounded, size: 18),
                         label: Text(
                           context.tr('stylist_wear_btn'),
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                         ),
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                       ),
@@ -903,10 +922,11 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                         icon: const Icon(Icons.auto_awesome, size: 16, color: AppTheme.accent),
                         label: Text(
                           context.tr('stylist_style_check_btn'),
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
                         ),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                       ),
@@ -916,10 +936,13 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                 const SizedBox(height: 8),
 
                 // Tier 2: Secondary Quick Actions Strip
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 6,
+                  runSpacing: 4,
                   children: [
                     _buildBottomActionItem(
+                      isDark: isDark,
                       icon: Icons.face_retouching_natural_rounded,
                       label: context.tr('stylist_try_on'),
                       color: const Color(0xFFD97706),
@@ -938,18 +961,21 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                       },
                     ),
                     _buildBottomActionItem(
+                      isDark: isDark,
                       icon: Icons.auto_stories_outlined,
                       label: context.tr('stylist_poster'),
                       color: const Color(0xFF7C3AED),
                       onTap: _openEditorialLook,
                     ),
                     _buildBottomActionItem(
+                      isDark: isDark,
                       icon: Icons.calendar_today_outlined,
                       label: context.tr('stylist_calendar'),
                       color: const Color(0xFF2563EB),
                       onTap: _scheduleCurrentOutfit,
                     ),
                     _buildBottomActionItem(
+                      isDark: isDark,
                       icon: Icons.bookmark_add_outlined,
                       label: context.tr('stylist_bookmark'),
                       color: const Color(0xFF059669),
@@ -976,6 +1002,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
   }
 
   Widget _buildBottomActionItem({
+    required bool isDark,
     required IconData icon,
     required String label,
     required Color color,
@@ -985,7 +1012,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
       borderRadius: BorderRadius.circular(10),
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -996,7 +1023,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
               style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey.shade800,
+                color: isDark ? const Color(0xFFE4E4E7) : Colors.grey.shade800,
               ),
             ),
           ],
@@ -1005,7 +1032,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
     );
   }
 
-  Widget _buildWeatherPill(String label, WeatherCondition condition, int temp) {
+  Widget _buildWeatherPill(String label, WeatherCondition condition, int temp, bool isDark) {
     final isSelected = _weatherCondition == condition && _temperature == temp;
     return Padding(
       padding: const EdgeInsets.only(right: 6),
@@ -1015,10 +1042,12 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFFEF3C7) : const Color(0xFFF4F4F5),
+            color: isSelected
+                ? const Color(0xFFFEF3C7)
+                : (isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5)),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected ? AppTheme.accent : AppTheme.border,
+              color: isSelected ? AppTheme.accent : (isDark ? AppTheme.darkBorder : AppTheme.border),
               width: isSelected ? 1.5 : 1,
             ),
           ),
@@ -1027,7 +1056,9 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-              color: isSelected ? const Color(0xFF92400E) : AppTheme.secondary,
+              color: isSelected
+                  ? const Color(0xFF92400E)
+                  : (isDark ? const Color(0xFFD4D4D8) : AppTheme.secondary),
             ),
           ),
         ),
@@ -1035,7 +1066,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
     );
   }
 
-  Widget _buildOccasionPill(String label, Occasion occasion) {
+  Widget _buildOccasionPill(String label, Occasion occasion, bool isDark) {
     final isSelected = _occasion == occasion;
     return Padding(
       padding: const EdgeInsets.only(right: 6),
@@ -1045,10 +1076,14 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.primary : const Color(0xFFF4F4F5),
+            color: isSelected
+                ? (isDark ? AppTheme.accent : AppTheme.primary)
+                : (isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5)),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected ? AppTheme.primary : AppTheme.border,
+              color: isSelected
+                  ? (isDark ? AppTheme.accent : AppTheme.primary)
+                  : (isDark ? AppTheme.darkBorder : AppTheme.border),
             ),
           ),
           child: Text(
@@ -1056,7 +1091,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              color: isSelected ? Colors.white : AppTheme.secondary,
+              color: isSelected ? Colors.white : (isDark ? const Color(0xFFD4D4D8) : AppTheme.secondary),
             ),
           ),
         ),
@@ -1064,7 +1099,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
     );
   }
 
-  Widget _buildQuickPromptChip(String text) {
+  Widget _buildQuickPromptChip(String text, bool isDark) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: InkWell(
@@ -1076,16 +1111,16 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFFF4F4F5),
+            color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppTheme.border),
+            border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
           ),
           child: Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: AppTheme.primary,
+              color: isDark ? Colors.white : AppTheme.primary,
             ),
           ),
         ),
@@ -1094,6 +1129,7 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
   }
 
   Widget _buildOutfitSlot({
+    required bool isDark,
     required String title,
     required ClothingItem? item,
     required ClothingCategory category,
@@ -1104,9 +1140,9 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
     return Container(
       height: 110,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
       ),
       child: item == null
           ? Center(
@@ -1149,11 +1185,15 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                         ),
                         Text(
                           item.brand,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(color: AppTheme.muted, fontSize: 12),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${item.wearCount} носінь · ${item.costPerWear.toStringAsFixed(0)} ₴/вихід',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontSize: 11, color: AppTheme.accent, fontWeight: FontWeight.w600),
                         ),
                       ],

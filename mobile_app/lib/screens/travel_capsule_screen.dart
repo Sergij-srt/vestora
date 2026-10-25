@@ -68,6 +68,11 @@ class _TravelCapsuleScreenState extends State<TravelCapsuleScreen> with SingleTi
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppTheme.darkSurface : Colors.white;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+    final isNarrow = MediaQuery.of(context).size.width < 360;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('AI Капсула у Подорож'),
@@ -108,9 +113,9 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                 // Top Configuration Collapsible Header
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    border: Border(bottom: BorderSide(color: AppTheme.border)),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    border: Border(bottom: BorderSide(color: borderColor)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,7 +124,6 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                       Row(
                         children: [
                           Expanded(
-                            flex: 3,
                             child: TextField(
                               controller: _cityController,
                               onSubmitted: (_) => _generatePlan(),
@@ -129,52 +133,60 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                                 hintText: 'Куди летите / їдете?',
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                 filled: true,
-                                fillColor: const Color(0xFFF8F9FA),
+                                fillColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF8F9FA),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(color: AppTheme.border),
+                                  borderSide: BorderSide(color: borderColor),
                                 ),
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Expanded(
-                            flex: 2,
-                            child: Container(
-                              height: 48,
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8F9FA),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppTheme.border),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  IconButton(
+                          Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF27272A) : const Color(0xFFF8F9FA),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: borderColor),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 44,
+                                  height: 48,
+                                  child: IconButton(
                                     icon: const Icon(Icons.remove, size: 16),
+                                    tooltip: 'Зменшити кількість днів',
                                     padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    onPressed: _days > 2 ? () {
-                                      setState(() => _days--);
-                                      _generatePlan();
-                                    } : null,
+                                    onPressed: _days > 2
+                                        ? () {
+                                            setState(() => _days--);
+                                            _generatePlan();
+                                          }
+                                        : null,
                                   ),
-                                  Text(
-                                    '$_days дн.',
-                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                                  ),
-                                  IconButton(
+                                ),
+                                Text(
+                                  '$_days дн.',
+                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+                                ),
+                                SizedBox(
+                                  width: 44,
+                                  height: 48,
+                                  child: IconButton(
                                     icon: const Icon(Icons.add, size: 16),
+                                    tooltip: 'Збільшити кількість днів',
                                     padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    onPressed: _days < 14 ? () {
-                                      setState(() => _days++);
-                                      _generatePlan();
-                                    } : null,
+                                    onPressed: _days < 14
+                                        ? () {
+                                            setState(() => _days++);
+                                            _generatePlan();
+                                          }
+                                        : null,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -201,18 +213,22 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                                 },
                                 borderRadius: BorderRadius.circular(12),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: isSel ? const Color(0xFFFEF3C7) : const Color(0xFFF4F4F5),
+                                    color: isSel
+                                        ? const Color(0xFFFEF3C7)
+                                        : (isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5)),
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: isSel ? AppTheme.accent : AppTheme.border),
+                                    border: Border.all(color: isSel ? AppTheme.accent : borderColor),
                                   ),
                                   child: Text(
                                     dest,
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
-                                      color: isSel ? const Color(0xFF92400E) : AppTheme.secondary,
+                                      color: isSel
+                                          ? const Color(0xFF92400E)
+                                          : (isDark ? const Color(0xFFD4D4D8) : AppTheme.secondary),
                                     ),
                                   ),
                                 ),
@@ -228,6 +244,7 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<TripType>(
+                              isExpanded: true,
                               initialValue: _tripType,
                               decoration: const InputDecoration(
                                 contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -237,7 +254,7 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                               items: TripType.values.map((t) {
                                 return DropdownMenuItem(
                                   value: t,
-                                  child: Text(t.label, style: const TextStyle(fontSize: 12)),
+                                  child: Text(t.label, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
                                 );
                               }).toList(),
                               onChanged: (val) {
@@ -251,6 +268,7 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                           const SizedBox(width: 8),
                           Expanded(
                             child: DropdownButtonFormField<LuggageType>(
+                              isExpanded: true,
                               initialValue: _luggageType,
                               decoration: const InputDecoration(
                                 contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -260,7 +278,7 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                               items: LuggageType.values.map((l) {
                                 return DropdownMenuItem(
                                   value: l,
-                                  child: Text(l.label, style: const TextStyle(fontSize: 12)),
+                                  child: Text(l.label, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
                                 );
                               }).toList(),
                               onChanged: (val) {
@@ -280,7 +298,7 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                 // AI Insight Strip
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  color: const Color(0xFFFFFBEB),
+                  color: isDark ? const Color(0xFF272011) : const Color(0xFFFFFBEB),
                   child: Row(
                     children: [
                       const Icon(Icons.auto_awesome, color: AppTheme.accent, size: 18),
@@ -288,7 +306,11 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                       Expanded(
                         child: Text(
                           _plan!.stylistAdvice,
-                          style: const TextStyle(fontSize: 11.5, color: Color(0xFF78350F), height: 1.3),
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF78350F),
+                            height: 1.3,
+                          ),
                         ),
                       ),
                     ],
@@ -297,11 +319,13 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
 
                 // Tab Bar: 1. Речі у валізі | 2. Луки по днях | 3. Чек-лист
                 Container(
-                  color: Colors.white,
+                  color: cardColor,
                   child: TabBar(
                     controller: _tabController,
-                    indicatorColor: AppTheme.primary,
-                    labelColor: AppTheme.primary,
+                    isScrollable: isNarrow,
+                    tabAlignment: isNarrow ? TabAlignment.start : TabAlignment.fill,
+                    indicatorColor: isDark ? AppTheme.accent : AppTheme.primary,
+                    labelColor: isDark ? AppTheme.accent : AppTheme.primary,
                     unselectedLabelColor: AppTheme.muted,
                     labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
                     tabs: [
@@ -317,9 +341,9 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildCapsuleItemsGrid(_plan!),
-                      _buildDailyOutfitsList(_plan!),
-                      _buildChecklistList(_plan!),
+                      _buildCapsuleItemsGrid(_plan!, isDark),
+                      _buildDailyOutfitsList(_plan!, isDark),
+                      _buildChecklistList(_plan!, isDark),
                     ],
                   ),
                 ),
@@ -328,7 +352,7 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
     );
   }
 
-  Widget _buildCapsuleItemsGrid(TravelCapsulePlan plan) {
+  Widget _buildCapsuleItemsGrid(TravelCapsulePlan plan, bool isDark) {
     if (plan.capsuleItems.isEmpty) {
       return const Center(child: Text('У вашому гардеробі поки немає речей'));
     }
@@ -346,9 +370,9 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
         final item = plan.capsuleItems[index];
         return Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? AppTheme.darkSurface : Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.border),
+            border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -386,6 +410,8 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                   children: [
                     Text(
                       item.brand.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: AppTheme.muted),
                     ),
                     Text(
@@ -397,6 +423,8 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                     const SizedBox(height: 2),
                     Text(
                       '${item.color} · ${item.size ?? 'M'}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 10, color: AppTheme.muted),
                     ),
                   ],
@@ -409,7 +437,7 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
     );
   }
 
-  Widget _buildDailyOutfitsList(TravelCapsulePlan plan) {
+  Widget _buildDailyOutfitsList(TravelCapsulePlan plan, bool isDark) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: plan.dailyOutfits.length,
@@ -419,9 +447,9 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? AppTheme.darkSurface : Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.border),
+            border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
             boxShadow: AppTheme.softShadow,
           ),
           child: Column(
@@ -430,10 +458,14 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    daily.dayTitle,
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                  Flexible(
+                    child: Text(
+                      daily.dayTitle,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
@@ -480,7 +512,7 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
     );
   }
 
-  Widget _buildChecklistList(TravelCapsulePlan plan) {
+  Widget _buildChecklistList(TravelCapsulePlan plan, bool isDark) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: plan.checklist.length,
@@ -489,10 +521,12 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? AppTheme.darkSurface : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: item.isChecked ? const Color(0xFFBBF7D0) : AppTheme.border,
+              color: item.isChecked
+                  ? const Color(0xFF16A34A)
+                  : (isDark ? AppTheme.darkBorder : AppTheme.border),
             ),
           ),
           child: CheckboxListTile(
@@ -503,7 +537,9 @@ ${_plan!.capsuleItems.map((e) => '• ${e.title} (${e.brand})').join('\n')}
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 decoration: item.isChecked ? TextDecoration.lineThrough : null,
-                color: item.isChecked ? AppTheme.muted : AppTheme.primary,
+                color: item.isChecked
+                    ? AppTheme.muted
+                    : (isDark ? Colors.white : AppTheme.primary),
               ),
             ),
             subtitle: Text(

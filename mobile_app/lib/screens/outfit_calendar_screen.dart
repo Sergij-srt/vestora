@@ -4,6 +4,7 @@ import '../models/clothing_item.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/weather_stylist_service.dart';
 import '../services/outfit_calendar_service.dart';
+import '../widgets/controller_scope.dart';
 import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 
@@ -204,7 +205,9 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
 
   void _showEditEventModal() {
     final plan = _selectedPlan;
-    final titleCtrl = TextEditingController(text: plan.eventTitle);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedColor = isDark ? AppTheme.darkMuted : AppTheme.muted;
+    final accentColor = isDark ? AppTheme.darkAccent : AppTheme.accent;
     Occasion selectedOcc = plan.occasion;
     WeatherCondition selectedCond = plan.weatherCondition;
     int temp = plan.weatherTemp;
@@ -212,103 +215,113 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (dialogCtx, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 18,
-            bottom: MediaQuery.of(dialogCtx).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
-                ),
+      builder: (_) => ControllerScope(
+        create: () => [TextEditingController(text: plan.eventTitle)],
+        builder: (ctx, ctrls) {
+          final titleCtrl = ctrls[0];
+          return StatefulBuilder(
+            builder: (dialogCtx, setModalState) => Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 18,
+                bottom: MediaQuery.of(dialogCtx).viewInsets.bottom + 24,
               ),
-              const SizedBox(height: 16),
-              const Text('Налаштування події та погоди', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 14),
-
-              const Text('ПОДІЯ ДНЯ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: titleCtrl,
-                decoration: const InputDecoration(
-                  hintText: 'Наприклад: Зустріч з клієнтом у кав\'ярні',
-                  prefixIcon: Icon(Icons.event_outlined, size: 20),
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              const Text('ДРЕС-КОД / КОНТЕКСТ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: Occasion.values.map((occ) {
-                  final isSel = occ == selectedOcc;
-                  return ChoiceChip(
-                    label: Text(occ.label.split(' ')[0]),
-                    selected: isSel,
-                    selectedColor: AppTheme.primary,
-                    labelStyle: TextStyle(
-                      color: isSel ? Colors.white : AppTheme.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
+                      ),
                     ),
-                    onSelected: (_) => setModalState(() => selectedOcc = occ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 14),
+                    const SizedBox(height: 16),
+                    const Text('Налаштування події та погоди', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 14),
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('ПРОГНОЗ ПОГОДИ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-                  Text('${temp > 0 ? '+$temp' : '$temp'}°C', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.accent)),
-                ],
-              ),
-              Slider(
-                value: temp.toDouble(),
-                min: -10,
-                max: 35,
-                divisions: 45,
-                activeColor: AppTheme.accent,
-                onChanged: (v) => setModalState(() => temp = v.round()),
-              ),
-              const SizedBox(height: 14),
+                    Text('ПОДІЯ ДНЯ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: mutedColor)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: titleCtrl,
+                      decoration: const InputDecoration(
+                        hintText: 'Наприклад: Зустріч з клієнтом у кав\'ярні',
+                        prefixIcon: Icon(Icons.event_outlined, size: 20),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
 
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final updated = plan.copyWith(
-                      eventTitle: titleCtrl.text.trim().isNotEmpty ? titleCtrl.text.trim() : plan.eventTitle,
-                      occasion: selectedOcc,
-                      weatherCondition: selectedCond,
-                      weatherTemp: temp,
-                    );
-                    Navigator.pop(dialogCtx);
-                    await OutfitCalendarService.savePlan(updated);
-                    if (mounted) {
-                      _loadWeek();
-                    }
-                  },
-                  child: const Text('Зберегти зміни'),
+                    Text('ДРЕС-КОД / КОНТЕКСТ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: mutedColor)),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: Occasion.values.map((occ) {
+                        final isSel = occ == selectedOcc;
+                        return ChoiceChip(
+                          label: Text(occ.label.split(' ')[0]),
+                          selected: isSel,
+                          selectedColor: isDark ? AppTheme.darkAccent : AppTheme.primary,
+                          labelStyle: TextStyle(
+                            color: isSel
+                                ? (isDark ? Colors.black : Colors.white)
+                                : (isDark ? Colors.white : AppTheme.primary),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          onSelected: (_) => setModalState(() => selectedOcc = occ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 14),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('ПРОГНОЗ ПОГОДИ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: mutedColor)),
+                        Text('${temp > 0 ? '+$temp' : '$temp'}°C', style: TextStyle(fontWeight: FontWeight.bold, color: accentColor)),
+                      ],
+                    ),
+                    Slider(
+                      value: temp.toDouble(),
+                      min: -10,
+                      max: 35,
+                      divisions: 45,
+                      activeColor: accentColor,
+                      onChanged: (v) => setModalState(() => temp = v.round()),
+                    ),
+                    const SizedBox(height: 14),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final updated = plan.copyWith(
+                            eventTitle: titleCtrl.text.trim().isNotEmpty ? titleCtrl.text.trim() : plan.eventTitle,
+                            occasion: selectedOcc,
+                            weatherCondition: selectedCond,
+                            weatherTemp: temp,
+                          );
+                          Navigator.pop(dialogCtx);
+                          await OutfitCalendarService.savePlan(updated);
+                          if (mounted) {
+                            _loadWeek();
+                          }
+                        },
+                        child: const Text('Зберегти зміни'),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -316,6 +329,10 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final wardrobe = context.watch<WardrobeProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppTheme.darkCard : Colors.white;
+    final barColor = isDark ? AppTheme.darkSurface : Colors.white;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
     final plan = _selectedPlan;
     final outfitItems = plan.getOutfitItems(wardrobe.items);
 
@@ -330,7 +347,7 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.auto_awesome, color: AppTheme.accent),
+            icon: Icon(Icons.auto_awesome, color: isDark ? AppTheme.darkAccent : AppTheme.accent),
             tooltip: 'Згенерувати AI-план на тиждень',
             onPressed: _generateAiWeeklyPlan,
           ),
@@ -356,27 +373,31 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                 SliverToBoxAdapter(
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    color: Colors.white,
+                    color: barColor,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         IconButton(
+                          tooltip: 'Попередній тиждень',
                           icon: const Icon(Icons.chevron_left_rounded),
                           onPressed: () => _changeWeek(-1),
                         ),
-                        Column(
-                          children: [
-                            Text(
-                              weekTitle,
-                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                            ),
-                            const Text(
-                              'Тижневий план гардеробу',
-                              style: TextStyle(fontSize: 11, color: AppTheme.muted),
-                            ),
-                          ],
+                        Flexible(
+                          child: Column(
+                            children: [
+                              Text(
+                                weekTitle,
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                              ),
+                              Text(
+                                'Тижневий план гардеробу',
+                                style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                              ),
+                            ],
+                          ),
                         ),
                         IconButton(
+                          tooltip: 'Наступний тиждень',
                           icon: const Icon(Icons.chevron_right_rounded),
                           onPressed: () => _changeWeek(1),
                         ),
@@ -390,7 +411,7 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                   child: Container(
                     height: 105,
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    color: Colors.white,
+                    color: barColor,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -418,24 +439,17 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 6),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? AppTheme.primary
-                                  : (isToday ? const Color(0xFFFEF3C7) : const Color(0xFFF8F9FA)),
+                                  ? (isDark ? AppTheme.darkAccent : AppTheme.primary)
+                                  : (isToday
+                                      ? (isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7))
+                                      : (isDark ? AppTheme.darkCard : const Color(0xFFF8F9FA))),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: isSelected
                                     ? AppTheme.accent
-                                    : (isToday ? const Color(0xFFFDE68A) : AppTheme.border),
+                                    : (isToday ? const Color(0xFFFDE68A) : borderColor),
                                 width: isSelected ? 2 : 1,
                               ),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.1),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ]
-                                  : null,
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -445,7 +459,9 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
-                                    color: isSelected ? Colors.white70 : AppTheme.muted,
+                                    color: isSelected
+                                        ? (isDark ? Colors.black87 : Colors.white70)
+                                        : (isDark ? AppTheme.darkMuted : AppTheme.muted),
                                   ),
                                 ),
                                 const SizedBox(height: 2),
@@ -454,7 +470,9 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w900,
-                                    color: isSelected ? Colors.white : AppTheme.primary,
+                                    color: isSelected
+                                        ? (isDark ? Colors.black : Colors.white)
+                                        : (isDark ? Colors.white : AppTheme.primary),
                                   ),
                                 ),
                                 const SizedBox(height: 2),
@@ -463,12 +481,14 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
-                                    color: isSelected ? const Color(0xFFFDE68A) : AppTheme.secondary,
+                                    color: isSelected
+                                        ? (isDark ? Colors.black87 : const Color(0xFFFDE68A))
+                                        : (isDark ? const Color(0xFFD4D4D8) : AppTheme.secondary),
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 if (day.isWorn)
-                                  const Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF16A34A))
+                                  const Icon(Icons.check_circle_rounded, size: 12, color: AppTheme.success)
                                 else if (day.hasOutfit)
                                   Container(
                                     width: 5,
@@ -487,7 +507,7 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                   ),
                 ),
 
-                const SliverToBoxAdapter(child: Divider(height: 1, color: AppTheme.border)),
+                SliverToBoxAdapter(child: Divider(height: 1, color: borderColor)),
 
                 // Selected Day Focus Card
                 SliverToBoxAdapter(
@@ -496,10 +516,10 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: cardColor,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppTheme.border),
-                        boxShadow: AppTheme.softShadow,
+                        border: Border.all(color: borderColor),
+                        boxShadow: isDark ? const [] : AppTheme.softShadow,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -508,33 +528,40 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${plan.dayOfWeekName}, ${plan.date.day} ${_getMonthName(plan.date.month)}',
-                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        plan.eventTitle,
-                                        style: const TextStyle(color: AppTheme.muted, fontSize: 12.5),
-                                      ),
-                                      if (outfitItems.isNotEmpty) ...[
-                                        const Text(' · ', style: TextStyle(color: AppTheme.muted, fontSize: 12.5)),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${plan.dayOfWeekName}, ${plan.date.day} ${_getMonthName(plan.date.month)}',
+                                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Wrap(
+                                      spacing: 4,
+                                      runSpacing: 2,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      children: [
                                         Text(
-                                          '${outfitItems.length} речі (${outfitItems.fold(0.0, (s, i) => s + i.price).toStringAsFixed(0)} ₴)',
-                                          style: const TextStyle(color: AppTheme.accent, fontWeight: FontWeight.w600, fontSize: 11.5),
+                                          plan.eventTitle,
+                                          style: TextStyle(color: isDark ? AppTheme.darkMuted : AppTheme.muted, fontSize: 12.5),
                                         ),
+                                        if (outfitItems.isNotEmpty)
+                                          Text(
+                                            '· ${outfitItems.length} речі (${outfitItems.fold(0.0, (s, i) => s + i.price).toStringAsFixed(0)} ₴)',
+                                            style: TextStyle(
+                                              color: isDark ? AppTheme.darkAccent : AppTheme.accent,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 11.5,
+                                            ),
+                                          ),
                                       ],
-                                    ],
-                                  ),
-                                ],
+                                    ),
+                                  ],
+                                ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.edit_outlined, size: 20, color: AppTheme.accent),
+                                icon: Icon(Icons.edit_outlined, size: 20, color: isDark ? AppTheme.darkAccent : AppTheme.accent),
                                 tooltip: 'Редагувати подію та погоду',
                                 onPressed: _showEditEventModal,
                               ),
@@ -543,7 +570,10 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                           const SizedBox(height: 12),
 
                           // Weather & Occasion Badges
-                          Row(
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -557,7 +587,6 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF166534)),
                                 ),
                               ),
-                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
@@ -570,7 +599,6 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF92400E)),
                                 ),
                               ),
-                              const Spacer(),
                               if (plan.isWorn)
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -579,8 +607,9 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF16A34A)),
+                                      Icon(Icons.check_circle_rounded, size: 14, color: AppTheme.success),
                                       SizedBox(width: 4),
                                       Text(
                                         'Вдягнено',
@@ -594,15 +623,16 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                           const SizedBox(height: 18),
 
                           // Visual Outfit Slots
-                          const Text(
+                          Text(
                             'СКЛАД ОБРАЗУ',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.muted, letterSpacing: 1),
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: isDark ? AppTheme.darkMuted : AppTheme.muted, letterSpacing: 1),
                           ),
                           const SizedBox(height: 10),
 
                           Row(
                             children: [
                               _buildSlotCard(
+                                isDark,
                                 'Верхній одяг',
                                 plan.outerwearId,
                                 ClothingCategory.outerwear,
@@ -610,6 +640,7 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                               ),
                               const SizedBox(width: 8),
                               _buildSlotCard(
+                                isDark,
                                 'Верх / Топ',
                                 plan.topId,
                                 ClothingCategory.tops,
@@ -617,6 +648,7 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                               ),
                               const SizedBox(width: 8),
                               _buildSlotCard(
+                                isDark,
                                 'Низ / Брюки',
                                 plan.bottomId,
                                 ClothingCategory.bottoms,
@@ -624,6 +656,7 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                               ),
                               const SizedBox(width: 8),
                               _buildSlotCard(
+                                isDark,
                                 'Взуття',
                                 plan.shoesId,
                                 ClothingCategory.shoes,
@@ -639,22 +672,37 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                               Expanded(
                                 child: ElevatedButton.icon(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: plan.isWorn ? const Color(0xFF16A34A) : AppTheme.primary,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    backgroundColor: plan.isWorn
+                                        ? AppTheme.success
+                                        : (isDark ? AppTheme.darkAccent : AppTheme.primary),
+                                    foregroundColor: plan.isWorn
+                                        ? Colors.white
+                                        : (isDark ? Colors.black : Colors.white),
+                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                                   ),
                                   icon: Icon(plan.isWorn ? Icons.check_circle_rounded : Icons.flare_rounded, size: 18),
-                                  label: Text(plan.isWorn ? 'Вдягнено сьогодні' : 'Вдягнути сьогодні (+1)'),
+                                  label: Text(
+                                    plan.isWorn ? 'Вдягнено сьогодні' : 'Вдягнути сьогодні (+1)',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                   onPressed: plan.isWorn ? null : _markSelectedDayAsWorn,
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-                                ),
-                                icon: const Icon(Icons.auto_awesome, size: 16, color: AppTheme.accent),
-                                label: const Text('AI-підбір'),
-                                onPressed: () {
+                              Flexible(
+                                fit: FlexFit.loose,
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                                  ),
+                                  icon: Icon(Icons.auto_awesome, size: 16, color: isDark ? AppTheme.darkAccent : AppTheme.accent),
+                                  label: const Text(
+                                    'AI-підбір',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  onPressed: () {
                                   final curated = WeatherStylistService.curateOutfit(
                                     wardrobe: wardrobe.items,
                                     temperatureCelsius: plan.weatherTemp,
@@ -670,6 +718,7 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                                   OutfitCalendarService.savePlan(plan);
                                 },
                               ),
+                            ),
                             ],
                           ),
                         ],
@@ -685,30 +734,58 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8F9FA),
+                        color: cardColor,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppTheme.border),
+                        border: Border.all(color: borderColor),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             children: [
-                              Icon(Icons.insights_rounded, size: 18, color: AppTheme.accent),
-                              SizedBox(width: 8),
-                              Text(
-                                'ЕФЕКТИВНІСТЬ ТИЖНЯ',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1, color: AppTheme.accent),
+                              Icon(Icons.insights_rounded, size: 18, color: isDark ? AppTheme.darkAccent : AppTheme.accent),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'ЕФЕКТИВНІСТЬ ТИЖНЯ',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1,
+                                    color: isDark ? AppTheme.darkAccent : AppTheme.accent,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 10),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _buildStatItem('Заплановано', '${_weekDays.where((d) => d.hasOutfit).length}/7 днів'),
-                              _buildStatItem('Вдягнено', '${_weekDays.where((d) => d.isWorn).length} виходів'),
-                              _buildStatItem('Стрік', '${wardrobe.streakDays} днів 🔥'),
+                              Expanded(
+                                child: _buildStatItem(
+                                  isDark,
+                                  'Заплановано',
+                                  '${_weekDays.where((d) => d.hasOutfit).length}/7 днів',
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: _buildStatItem(
+                                  isDark,
+                                  'Вдягнено',
+                                  '${_weekDays.where((d) => d.isWorn).length} виходів',
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: _buildStatItem(
+                                  isDark,
+                                  'Стрік',
+                                  '${wardrobe.streakDays} днів 🔥',
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -722,17 +799,27 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, String value) {
+  Widget _buildStatItem(bool isDark, String label, String value) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(value, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+        ),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(color: AppTheme.muted, fontSize: 11)),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: isDark ? AppTheme.darkMuted : AppTheme.muted, fontSize: 11),
+        ),
       ],
     );
   }
 
   Widget _buildSlotCard(
+    bool isDark,
     String slotName,
     String? itemId,
     ClothingCategory category,
@@ -753,22 +840,27 @@ class _OutfitCalendarScreenState extends State<OutfitCalendarScreen> {
         child: Container(
           height: 110,
           decoration: BoxDecoration(
-            color: const Color(0xFFF4F4F5),
+            color: isDark ? AppTheme.darkSurface : const Color(0xFFF4F4F5),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppTheme.border),
+            border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
           ),
           child: item == null
-              ? Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.add_circle_outline_rounded, size: 22, color: AppTheme.muted),
-                    const SizedBox(height: 4),
-                    Text(
-                      slotName,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 9.5, color: AppTheme.muted, fontWeight: FontWeight.w600),
-                    ),
-                  ],
+              ? Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_circle_outline_rounded, size: 22, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                      const SizedBox(height: 4),
+                      Text(
+                        slotName,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 9.5, color: isDark ? AppTheme.darkMuted : AppTheme.muted, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
                 )
               : ClipRRect(
                   borderRadius: BorderRadius.circular(14),

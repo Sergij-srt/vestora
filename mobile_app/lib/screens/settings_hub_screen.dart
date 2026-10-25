@@ -5,6 +5,7 @@ import '../services/ai_config_service.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/theme_service.dart';
 import '../services/localization_service.dart';
+import '../widgets/controller_scope.dart';
 import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 import 'settings_ai_screen.dart';
@@ -44,20 +45,38 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
     }
   }
 
+  /// Preserves SmartWardrobeApp's reactive root `/` route (`Consumer3<AuthService>`)
+  /// when pushed inside the main app, while supporting standalone widget mounting in tests.
+  void _returnToAuthRoot() {
+    final nav = Navigator.of(context);
+    if (nav.canPop()) {
+      nav.popUntil((route) => route.isFirst);
+    } else {
+      nav.pushReplacement(MaterialPageRoute(builder: (_) => const AuthScreen()));
+    }
+  }
+
   void _confirmSignOutDialog() {
     final auth = AuthService.instance;
     final email = auth.currentUser?.email ?? _profile.email;
     final loc = LocalizationService.instance;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
+        backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             const Icon(Icons.logout_rounded, color: Color(0xFFDC2626)),
             const SizedBox(width: 10),
-            Text(loc.translate('settings_logout'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Expanded(
+              child: Text(
+                loc.translate('settings_logout'),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
           ],
         ),
         content: Column(
@@ -66,9 +85,9 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           children: [
             Text('${loc.translate('settings_logout_confirm')}\n$email?'),
             const SizedBox(height: 8),
-            const Text(
-              'Для подальшого доступу потрібно буде увійти через Google або ввести Email та пароль.',
-              style: TextStyle(fontSize: 12, color: AppTheme.muted),
+            Text(
+              loc.translate('settings_logout_note'),
+              style: TextStyle(fontSize: 12, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
             ),
           ],
         ),
@@ -86,10 +105,7 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
               Navigator.pop(dialogCtx);
               await auth.signOut();
               if (!mounted) return;
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const AuthScreen()),
-                (route) => false,
-              );
+              _returnToAuthRoot();
             },
             child: Text(loc.translate('settings_logout_action')),
           ),
@@ -98,118 +114,264 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
     );
   }
 
-  void _showEditProfileDialog() {
-    final nameCtrl = TextEditingController(text: _profile.name);
-    final emailCtrl = TextEditingController(text: _profile.email);
-    final locCtrl = TextEditingController(text: _profile.location);
+  void _confirmDeleteAccountDialog() {
+    final loc = LocalizationService.instance;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
+        backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Редагування профілю', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            const Text('ІМ\'Я', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-            const SizedBox(height: 4),
-            TextField(controller: nameCtrl, decoration: const InputDecoration(hintText: 'Ваше ім\'я')),
-            const SizedBox(height: 12),
-            const Text('EMAIL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-            const SizedBox(height: 4),
-            TextField(controller: emailCtrl, decoration: const InputDecoration(hintText: 'user@vestora.app')),
-            const SizedBox(height: 12),
-            const Text('ЛОКАЦІЯ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-            const SizedBox(height: 4),
-            TextField(controller: locCtrl, decoration: const InputDecoration(hintText: 'Київ, Україна')),
+            const Icon(Icons.delete_forever_rounded, color: AppTheme.danger),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                loc.translate('settings_delete_confirm_title'),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+              ),
+            ),
           ],
         ),
+        content: Text(
+          loc.translate('settings_delete_confirm_body'),
+          style: TextStyle(
+            fontSize: 13,
+            height: 1.45,
+            color: isDark ? AppTheme.darkText : Colors.black87,
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Скасувати')),
-          ElevatedButton(
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: Text(loc.translate('settings_delete_cancel')),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.delete_forever_rounded, size: 18),
+            label: Text(loc.translate('settings_delete_confirm_btn')),
             onPressed: () async {
-              final nav = Navigator.of(dialogCtx);
+              final wardrobe = context.read<WardrobeProvider>();
               final messenger = ScaffoldMessenger.of(context);
-              await UserProfileService.saveProfile(
-                name: nameCtrl.text.trim(),
-                email: emailCtrl.text.trim(),
-                location: locCtrl.text.trim(),
-              );
+              Navigator.pop(dialogCtx);
+              final res = await AuthService.instance.deleteAccount(wardrobe: wardrobe);
               if (!mounted) return;
-              setState(() {
-                _profile = UserProfileService.profile;
-              });
-              nav.pop();
               messenger.showSnackBar(
-                const SnackBar(content: Text('Профіль успішно оновлено!'), backgroundColor: Color(0xFF16A34A)),
+                SnackBar(
+                  content: Text(
+                    res.success ? loc.translate('settings_delete_success') : res.message,
+                  ),
+                  backgroundColor: res.success ? AppTheme.primary : AppTheme.danger,
+                  behavior: SnackBarBehavior.floating,
+                ),
               );
+              if (res.success) {
+                _returnToAuthRoot();
+              }
             },
-            child: const Text('Зберегти'),
           ),
         ],
       ),
     );
   }
 
-  void _showChangePasswordDialog() {
-    final curCtrl = TextEditingController();
-    final newCtrl = TextEditingController();
-    final confirmCtrl = TextEditingController();
+  void _showPrivacyPolicyDialog() {
+    final loc = LocalizationService.instance;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.verified_user_outlined, color: isDark ? AppTheme.darkAccent : AppTheme.accent),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                loc.translate('settings_privacy_policy'),
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            loc.translate('settings_privacy_body'),
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.45,
+              color: isDark ? AppTheme.darkText : Colors.black87,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgCtx),
+            child: Text(loc.translate('common_close')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditProfileDialog() {
+    final loc = LocalizationService.instance;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedColor = isDark ? AppTheme.darkMuted : AppTheme.muted;
 
     showDialog(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Зміна паролю', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('ПОТОЧНИЙ ПАРОЛЬ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-            const SizedBox(height: 4),
-            TextField(controller: curCtrl, obscureText: true, decoration: const InputDecoration(hintText: '••••••••')),
-            const SizedBox(height: 12),
-            const Text('НОВИЙ ПАРОЛЬ (мін. 8 символів)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-            const SizedBox(height: 4),
-            TextField(controller: newCtrl, obscureText: true, decoration: const InputDecoration(hintText: '••••••••')),
-            const SizedBox(height: 12),
-            const Text('ПІДТВЕРДЖЕННЯ НОВОГО ПАРОЛЮ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-            const SizedBox(height: 4),
-            TextField(controller: confirmCtrl, obscureText: true, decoration: const InputDecoration(hintText: '••••••••')),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Скасувати')),
-          ElevatedButton(
-            onPressed: () {
-              if (newCtrl.text.length < 8) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Новий пароль має бути не менше 8 символів!'), backgroundColor: Colors.red),
-                );
-                return;
-              }
-              if (newCtrl.text != confirmCtrl.text) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Паролі не співпадають!'), backgroundColor: Colors.red),
-                );
-                return;
-              }
-              Navigator.pop(dialogCtx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Пароль безпечно змінено!'), backgroundColor: Color(0xFF16A34A)),
-              );
-            },
-            child: const Text('Оновити пароль'),
-          ),
+      builder: (dialogCtx) => ControllerScope(
+        create: () => [
+          TextEditingController(text: _profile.name),
+          TextEditingController(text: _profile.email),
+          TextEditingController(text: _profile.location),
         ],
+        builder: (scopeCtx, controllers) {
+          final nameCtrl = controllers[0];
+          final emailCtrl = controllers[1];
+          final locCtrl = controllers[2];
+          return AlertDialog(
+            backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              loc.translate('settings_edit_profile_title'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(loc.translate('settings_field_name'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: mutedColor)),
+                  const SizedBox(height: 4),
+                  TextField(controller: nameCtrl, decoration: const InputDecoration(hintText: 'Vestora')),
+                  const SizedBox(height: 12),
+                  Text('EMAIL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: mutedColor)),
+                  const SizedBox(height: 4),
+                  TextField(controller: emailCtrl, decoration: const InputDecoration(hintText: 'user@vestora.app')),
+                  const SizedBox(height: 12),
+                  Text(loc.translate('settings_field_location'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: mutedColor)),
+                  const SizedBox(height: 4),
+                  TextField(controller: locCtrl, decoration: const InputDecoration(hintText: 'Kyiv / Paris')),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogCtx), child: Text(context.tr('common_cancel'))),
+              ElevatedButton(
+                onPressed: () async {
+                  final nav = Navigator.of(dialogCtx);
+                  final messenger = ScaffoldMessenger.of(context);
+                  await UserProfileService.saveProfile(
+                    name: nameCtrl.text.trim(),
+                    email: emailCtrl.text.trim(),
+                    location: locCtrl.text.trim(),
+                  );
+                  if (!mounted) return;
+                  setState(() {
+                    _profile = UserProfileService.profile;
+                  });
+                  nav.pop();
+                  messenger.showSnackBar(
+                    SnackBar(content: Text(loc.translate('settings_profile_saved')), backgroundColor: AppTheme.success),
+                  );
+                },
+                child: Text(context.tr('common_save')),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showChangePasswordDialog() {
+    final loc = LocalizationService.instance;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedColor = isDark ? AppTheme.darkMuted : AppTheme.muted;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => ControllerScope(
+        create: () => [
+          TextEditingController(),
+          TextEditingController(),
+          TextEditingController(),
+        ],
+        builder: (scopeCtx, controllers) {
+          final curCtrl = controllers[0];
+          final newCtrl = controllers[1];
+          final confirmCtrl = controllers[2];
+          return AlertDialog(
+            backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              loc.translate('settings_change_pwd_title'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(loc.translate('settings_pwd_current'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: mutedColor)),
+                  const SizedBox(height: 4),
+                  TextField(controller: curCtrl, obscureText: true, decoration: const InputDecoration(hintText: '••••••••')),
+                  const SizedBox(height: 12),
+                  Text(loc.translate('settings_pwd_new'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: mutedColor)),
+                  const SizedBox(height: 4),
+                  TextField(controller: newCtrl, obscureText: true, decoration: const InputDecoration(hintText: '••••••••')),
+                  const SizedBox(height: 12),
+                  Text(loc.translate('settings_pwd_confirm'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: mutedColor)),
+                  const SizedBox(height: 4),
+                  TextField(controller: confirmCtrl, obscureText: true, decoration: const InputDecoration(hintText: '••••••••')),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogCtx), child: Text(context.tr('common_cancel'))),
+              ElevatedButton(
+                onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  final nav = Navigator.of(dialogCtx);
+                  final res = await UserProfileService.changePassword(
+                    oldPassword: curCtrl.text,
+                    newPassword: newCtrl.text,
+                    confirmPassword: confirmCtrl.text,
+                  );
+                  if (!mounted) return;
+                  if (!res.success) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(res.message), backgroundColor: AppTheme.danger),
+                    );
+                    return;
+                  }
+                  nav.pop();
+                  messenger.showSnackBar(
+                    SnackBar(content: Text(res.message), backgroundColor: AppTheme.success),
+                  );
+                },
+                child: Text(loc.translate('settings_pwd_update_btn')),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
   void _showPwaInstallDialog() {
     final theme = context.read<ThemeService>();
+    final loc = LocalizationService.instance;
     final isDark = theme.isDarkMode(context);
+    final accentColor = isDark ? AppTheme.darkAccent : AppTheme.accent;
 
     showModalBottomSheet(
       context: context,
@@ -219,115 +381,117 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
       builder: (sheetCtx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 4,
-                  decoration: BoxDecoration(color: isDark ? AppTheme.darkBorder : AppTheme.border, borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Container(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
                     width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF18181B) : const Color(0xFFFEF3C7),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.accent),
-                    ),
-                    child: const Icon(Icons.install_mobile_rounded, color: AppTheme.accent),
+                    height: 4,
+                    decoration: BoxDecoration(color: isDark ? AppTheme.darkBorder : AppTheme.border, borderRadius: BorderRadius.circular(2)),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Встановити Vestora (PWA)',
-                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
-                        ),
-                        Text(
-                          'Швидкий запуск, автономність та повний екран',
-                          style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              ...PwaService.pwaFeatures.map((feat) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(feat.icon, style: const TextStyle(fontSize: 18)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              feat.title,
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
-                            ),
-                            const SizedBox(height: 1),
-                            Text(
-                              feat.desc,
-                              style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 18),
+                Row(
                   children: [
-                    const Text('💡 ЯК ВСТАНОВИТИ В 1 КЛІК:', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppTheme.accent, letterSpacing: 0.8)),
-                    const SizedBox(height: 6),
-                    Text(
-                      '• Android / Chrome: Натисніть «Встановити» або в меню браузера оберіть «Встановити додаток».',
-                      style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF18181B) : const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: accentColor),
+                      ),
+                      child: Icon(Icons.install_mobile_rounded, color: accentColor),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '• iOS / Safari: Натисніть кнопку «Поділитися» (квадрат зі стрілкою) та виберіть «На початковий екран» (+).',
-                      style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            loc.translate('settings_pwa_install'),
+                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
+                          ),
+                          Text(
+                            loc.translate('settings_pwa_install_sub'),
+                            style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(sheetCtx);
-                    PwaService.triggerInstallPrompt();
-                  },
-                  icon: const Icon(Icons.download_rounded, size: 18),
-                  label: const Text('Встановити додаток зараз'),
+                const SizedBox(height: 18),
+                ...PwaService.pwaFeatures.map((feat) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(feat.icon, style: const TextStyle(fontSize: 18)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                feat.title,
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
+                              ),
+                              const SizedBox(height: 1),
+                              Text(
+                                feat.desc,
+                                style: TextStyle(fontSize: 11.5, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('💡 PWA:', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: accentColor, letterSpacing: 0.8)),
+                      const SizedBox(height: 6),
+                      Text(
+                        '• Android / Chrome: Натисніть «Встановити» або в меню браузера оберіть «Встановити додаток».',
+                        style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkText : Colors.black87),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '• iOS / Safari: Натисніть кнопку «Поділитися» та виберіть «На початковий екран» (+).',
+                        style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkText : Colors.black87),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(sheetCtx);
+                      PwaService.triggerInstallPrompt();
+                    },
+                    icon: const Icon(Icons.download_rounded, size: 18),
+                    label: Text(loc.translate('settings_pwa_install')),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -336,6 +500,7 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
 
   void _showOfflineInfoDialog() {
     final theme = context.read<ThemeService>();
+    final loc = LocalizationService.instance;
     final isDark = theme.isDarkMode(context);
 
     showDialog(
@@ -347,35 +512,39 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           children: [
             const Icon(Icons.offline_bolt_rounded, color: Color(0xFF16A34A)),
             const SizedBox(width: 10),
-            Text('Офлайн-режим (PWA)', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+            Expanded(
+              child: Text(
+                loc.translate('settings_pwa_offline'),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
+              ),
+            ),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'У Vestora налаштовано розумний Service Worker із кешуванням Cache-First:',
-              style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87),
-            ),
-            const SizedBox(height: 12),
-            Text('✅ Весь гардероб і фото речей зберігаються локально на пристрої.', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87)),
-            const SizedBox(height: 6),
-            Text('✅ Капсульна матриця 3х3 та поєднання кольорів працюють без зв\'язку.', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87)),
-            const SizedBox(height: 6),
-            Text('✅ Енциклопедія догляду за тканинами та бірки доступні в авіарежимі.', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(color: const Color(0xFF16A34A).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-              child: const Text('Статус Service Worker: АКТИВНИЙ (v1.0.0)', style: TextStyle(color: Color(0xFF16A34A), fontSize: 11, fontWeight: FontWeight.bold)),
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                loc.translate('settings_offline_body'),
+                style: TextStyle(fontSize: 12.5, height: 1.45, color: isDark ? AppTheme.darkText : Colors.black87),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: const Color(0xFF16A34A).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+                child: Text(
+                  'Service Worker: ACTIVE (v1.2.0)',
+                  style: TextStyle(color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A), fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Зрозуміло'),
+            child: Text(loc.translate('common_close')),
           ),
         ],
       ),
@@ -385,7 +554,8 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
   void _showImportBackupDialog() {
     final theme = context.read<ThemeService>();
     final isDark = theme.isDarkMode(context);
-    final textCtrl = TextEditingController();
+    final chipSelectedBg = isDark ? AppTheme.darkAccentLight : const Color(0xFFFEF3C7);
+    final chipSelectedText = isDark ? AppTheme.darkAccent : AppTheme.accent;
     BackupValidationResult? validation;
     bool replaceAll = true;
 
@@ -394,243 +564,252 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
       isScrollControlled: true,
       backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (sheetCtx) => StatefulBuilder(
-        builder: (ctx, setSheetState) {
-          return Padding(
-            padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(sheetCtx).viewInsets.bottom + 24),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF3F3F46) : Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
+      builder: (sheetCtx) => ControllerScope(
+        create: () => [TextEditingController()],
+        builder: (scopeCtx, controllers) {
+          final textCtrl = controllers[0];
+          return StatefulBuilder(
+            builder: (ctx, setSheetState) {
+              return Padding(
+                padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(sheetCtx).viewInsets.bottom + 24),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.restore_page_outlined, color: Color(0xFF0284C7), size: 22),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Імпорт гардероба (.vestora)',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.black,
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF3F3F46) : Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Вставте вміст файлу резервної копії .vestora або JSON-код нижче:',
-                    style: TextStyle(fontSize: 12, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
-                  ),
-                  const SizedBox(height: 14),
-
-                  TextField(
-                    controller: textCtrl,
-                    maxLines: 5,
-                    style: TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 11,
-                      color: isDark ? Colors.white70 : Colors.black87,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: '{\n  "format": "VESTORA_BACKUP",\n  "version": "1.0",\n  "items": [...]\n}',
-                      hintStyle: TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 11,
-                        color: isDark ? Colors.white30 : Colors.grey.shade400,
-                      ),
-                      filled: true,
-                      fillColor: isDark ? const Color(0xFF1E1E24) : const Color(0xFFF4F4F5),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-                    ),
-                    onChanged: (val) {
-                      if (validation != null) {
-                        setSheetState(() => validation = null);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 8),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      TextButton.icon(
-                        icon: const Icon(Icons.paste_rounded, size: 16),
-                        label: const Text('Вставити зразок'),
-                        onPressed: () {
-                          final sampleJson = BackupService.generateBackupJson(
-                            wardrobe: context.read<WardrobeProvider>(),
-                            profile: _profile,
-                          );
-                          textCtrl.text = sampleJson;
-                          setSheetState(() {
-                            validation = BackupService.validateBackup(sampleJson);
-                          });
-                        },
-                      ),
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.fact_check_outlined, size: 16),
-                        label: const Text('Перевірити файл'),
-                        onPressed: () {
-                          setSheetState(() {
-                            validation = BackupService.validateBackup(textCtrl.text);
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (validation != null) ...[
-                    if (validation!.isValid) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF16A34A).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: 0.4)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 18),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Резервна копія валідна!',
-                                  style: TextStyle(
-                                    color: Color(0xFF16A34A),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '👗 Речей у файлі: ${validation!.items.length}\n'
-                              '🔥 Стрік активності: ${validation!.streakDays} днів\n'
-                              '✨ Стиль: ${validation!.preferredStyle ?? _profile.preferredStyle} · ${validation!.currency ?? _profile.currency}',
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                color: isDark ? Colors.white70 : Colors.black87,
-                                height: 1.35,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-
-                      // Replace or Merge options
+                      const SizedBox(height: 16),
                       Row(
                         children: [
-                          Expanded(
-                            child: ChoiceChip(
-                              label: const Text('Замінити гардероб'),
-                              selected: replaceAll,
-                              onSelected: (val) => setSheetState(() => replaceAll = true),
-                              selectedColor: const Color(0xFFFEF3C7),
-                              labelStyle: TextStyle(
-                                color: replaceAll ? AppTheme.accent : (isDark ? Colors.white70 : Colors.black87),
-                                fontWeight: replaceAll ? FontWeight.bold : FontWeight.normal,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
+                          const Icon(Icons.restore_page_outlined, color: Color(0xFF0284C7), size: 22),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: ChoiceChip(
-                              label: const Text('Об\'єднати речі'),
-                              selected: !replaceAll,
-                              onSelected: (val) => setSheetState(() => replaceAll = false),
-                              selectedColor: const Color(0xFFFEF3C7),
-                              labelStyle: TextStyle(
-                                color: !replaceAll ? AppTheme.accent : (isDark ? Colors.white70 : Colors.black87),
-                                fontWeight: !replaceAll ? FontWeight.bold : FontWeight.normal,
-                                fontSize: 11,
+                            child: Text(
+                              '${context.tr('settings_import_btn')} (.vestora)',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : Colors.black,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Вставте вміст файлу резервної копії .vestora або JSON-код нижче:',
+                        style: TextStyle(fontSize: 12, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                      ),
+                      const SizedBox(height: 14),
 
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF16A34A),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      TextField(
+                        controller: textCtrl,
+                        maxLines: 5,
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                          color: isDark ? AppTheme.darkText : Colors.black87,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: '{\n  "format": "VESTORA_BACKUP",\n  "version": "1.0",\n  "items": [...]\n}',
+                          hintStyle: TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 11,
+                            color: isDark ? AppTheme.darkMuted : Colors.grey.shade500,
                           ),
-                          icon: const Icon(Icons.cloud_upload_rounded),
-                          label: Text(
-                            replaceAll ? 'Відновити та перезаписати' : 'Об\'єднати з поточним гардеробом',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          onPressed: () async {
-                            final wardrobeProvider = context.read<WardrobeProvider>();
-                            final messenger = ScaffoldMessenger.of(context);
-                            final nav = Navigator.of(sheetCtx);
-                            final res = await BackupService.restoreBackup(
-                              wardrobe: wardrobeProvider,
-                              rawJson: textCtrl.text,
-                              replaceAll: replaceAll,
-                            );
+                          filled: true,
+                          fillColor: isDark ? const Color(0xFF1E1E24) : const Color(0xFFF4F4F5),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                        ),
+                        onChanged: (val) {
+                          if (validation != null) {
+                            setSheetState(() => validation = null);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 8),
 
-                            if (mounted) {
-                              nav.pop();
-                              messenger.showSnackBar(
-                                SnackBar(
-                                  content: Text(res.message),
-                                  backgroundColor: res.success ? const Color(0xFF16A34A) : Colors.redAccent,
-                                  behavior: SnackBarBehavior.floating,
-                                ),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.spaceBetween,
+                        children: [
+                          TextButton.icon(
+                            icon: const Icon(Icons.paste_rounded, size: 16),
+                            label: const Text('Вставити зразок'),
+                            onPressed: () {
+                              final sampleJson = BackupService.generateBackupJson(
+                                wardrobe: context.read<WardrobeProvider>(),
+                                profile: _profile,
                               );
-                            }
-                          },
-                        ),
+                              textCtrl.text = sampleJson;
+                              setSheetState(() {
+                                validation = BackupService.validateBackup(sampleJson);
+                              });
+                            },
+                          ),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.fact_check_outlined, size: 16),
+                            label: const Text('Перевірити файл'),
+                            onPressed: () {
+                              setSheetState(() {
+                                validation = BackupService.validateBackup(textCtrl.text);
+                              });
+                            },
+                          ),
+                        ],
                       ),
-                    ] else ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFDC2626).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.4)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 18),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                validation!.errorMessage ?? 'Помилка валідації резервної копії.',
-                                style: const TextStyle(color: Color(0xFFDC2626), fontSize: 12),
-                              ),
+                      const SizedBox(height: 12),
+
+                      if (validation != null) ...[
+                        if (validation!.isValid) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: 0.4)),
                             ),
-                          ],
-                        ),
-                      ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.check_circle_rounded, color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A), size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Резервна копія валідна!',
+                                        style: TextStyle(
+                                          color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '👗 Речей у файлі: ${validation!.items.length}\n'
+                                  '🔥 Стрік активності: ${validation!.streakDays} днів\n'
+                                  '✨ Стиль: ${validation!.preferredStyle ?? _profile.preferredStyle} · ${validation!.currency ?? _profile.currency}',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: isDark ? AppTheme.darkText : Colors.black87,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Replace or Merge options
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              ChoiceChip(
+                                label: const Text('Замінити гардероб'),
+                                selected: replaceAll,
+                                onSelected: (val) => setSheetState(() => replaceAll = true),
+                                selectedColor: chipSelectedBg,
+                                labelStyle: TextStyle(
+                                  color: replaceAll ? chipSelectedText : (isDark ? AppTheme.darkText : Colors.black87),
+                                  fontWeight: replaceAll ? FontWeight.bold : FontWeight.normal,
+                                  fontSize: 11,
+                                ),
+                              ),
+                              ChoiceChip(
+                                label: const Text('Об\'єднати речі'),
+                                selected: !replaceAll,
+                                onSelected: (val) => setSheetState(() => replaceAll = false),
+                                selectedColor: chipSelectedBg,
+                                labelStyle: TextStyle(
+                                  color: !replaceAll ? chipSelectedText : (isDark ? AppTheme.darkText : Colors.black87),
+                                  fontWeight: !replaceAll ? FontWeight.bold : FontWeight.normal,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF16A34A),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                              icon: const Icon(Icons.cloud_upload_rounded),
+                              label: Text(
+                                replaceAll ? 'Відновити та перезаписати' : 'Об\'єднати з поточним гардеробом',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              onPressed: () async {
+                                final wardrobeProvider = context.read<WardrobeProvider>();
+                                final messenger = ScaffoldMessenger.of(context);
+                                final nav = Navigator.of(sheetCtx);
+                                final res = await BackupService.restoreBackup(
+                                  wardrobe: wardrobeProvider,
+                                  rawJson: textCtrl.text,
+                                  replaceAll: replaceAll,
+                                );
+
+                                if (mounted) {
+                                  nav.pop();
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text(res.message),
+                                      backgroundColor: res.success ? const Color(0xFF16A34A) : Colors.redAccent,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        ] else ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDC2626).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.4)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.error_outline_rounded, color: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626), size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    validation!.errorMessage ?? 'Помилка валідації резервної копії.',
+                                    style: TextStyle(color: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626), fontSize: 12),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     ],
-                  ],
-                ],
-              ),
-            ),
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
@@ -640,10 +819,6 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
   void _showSupabaseConfigDialog() {
     final theme = context.read<ThemeService>();
     final isDark = theme.isDarkMode(context);
-    final urlCtrl = TextEditingController(text: SupabaseService.configuredUrl ?? '');
-    final keyCtrl = TextEditingController(text: SupabaseService.configuredAnonKey ?? '');
-    final emailCtrl = TextEditingController();
-    final passCtrl = TextEditingController();
     bool autoSync = SupabaseService.autoSyncEnabled;
     bool isSubmitting = false;
     String? statusMessage;
@@ -653,365 +828,389 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
       isScrollControlled: true,
       backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (sheetCtx) => StatefulBuilder(
-        builder: (ctx, setSheetState) {
-          final isConfigured = SupabaseService.isConfigured;
-          final isAuth = SupabaseService.isAuthenticated;
+      builder: (sheetCtx) => ControllerScope(
+        create: () => [
+          TextEditingController(text: SupabaseService.configuredUrl ?? ''),
+          TextEditingController(text: SupabaseService.configuredAnonKey ?? ''),
+          TextEditingController(),
+          TextEditingController(),
+        ],
+        builder: (scopeCtx, controllers) {
+          final urlCtrl = controllers[0];
+          final keyCtrl = controllers[1];
+          final emailCtrl = controllers[2];
+          final passCtrl = controllers[3];
+          return StatefulBuilder(
+            builder: (ctx, setSheetState) {
+              final isConfigured = SupabaseService.isConfigured;
+              final isAuth = SupabaseService.isAuthenticated;
 
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-              left: 20,
-              right: 20,
-              top: 20,
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+                  left: 20,
+                  right: 20,
+                  top: 20,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF3ECF8E).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.storage_rounded, color: Color(0xFF3ECF8E), size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Supabase PostgreSQL Cloud',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : Colors.black87,
-                              ),
-                            ),
-                            Text(
-                              'Хмарна синхронізація, автентифікація та резервне копіювання',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: isDark ? AppTheme.darkMuted : AppTheme.muted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isConfigured
-                              ? const Color(0xFF16A34A).withValues(alpha: 0.15)
-                              : const Color(0xFF71717A).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          isConfigured ? '🟢 Активно' : '⚪ Офлайн',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: isConfigured ? const Color(0xFF16A34A) : const Color(0xFFA1A1AA),
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-
-                  if (isConfigured) ...[
-                    // Configured State
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 16),
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.link_rounded, size: 16, color: Color(0xFF3ECF8E)),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  SupabaseService.configuredUrl ?? '',
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF3ECF8E).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.storage_rounded, color: Color(0xFF3ECF8E), size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Supabase PostgreSQL Cloud',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 17,
                                     fontWeight: FontWeight.bold,
                                     color: isDark ? Colors.white : Colors.black87,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  'Хмарна синхронізація, автентифікація та резервне копіювання',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark ? AppTheme.darkMuted : AppTheme.muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isConfigured
+                                  ? const Color(0xFF16A34A).withValues(alpha: 0.15)
+                                  : const Color(0xFF71717A).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              isConfigured ? '🟢 Активно' : '⚪ Офлайн',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isConfigured ? (isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A)) : const Color(0xFFA1A1AA),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+
+                      if (isConfigured) ...[
+                        // Configured State
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.link_rounded, size: 16, color: Color(0xFF3ECF8E)),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      SupabaseService.configuredUrl ?? '',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark ? Colors.white : Colors.black87,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                isAuth
+                                    ? '👤 Увійшли як: ${SupabaseService.currentUser?.email}'
+                                    : '🔒 База підключена, але сесія відсутня (увійдіть нижче)',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: isAuth ? (isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A)) : (isDark ? AppTheme.darkAccent : const Color(0xFFD97706)),
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            isAuth
-                                ? '👤 Увійшли як: ${SupabaseService.currentUser?.email}'
-                                : '🔒 База підключена, але сесія відсутня (увійдіть нижче)',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: isAuth ? const Color(0xFF16A34A) : const Color(0xFFD97706),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
+                        ),
+                        const SizedBox(height: 14),
 
-                    if (!isAuth) ...[
-                      // Login / Signup inputs
-                      TextField(
-                        controller: emailCtrl,
-                        keyboardType: TextInputType.emailAddress,
-                        style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
-                        decoration: InputDecoration(
-                          labelText: 'Email для Supabase Auth',
-                          prefixIcon: const Icon(Icons.email_outlined, size: 18),
-                          filled: true,
-                          fillColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: passCtrl,
-                        obscureText: true,
-                        style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
-                        decoration: InputDecoration(
-                          labelText: 'Пароль',
-                          prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
-                          filled: true,
-                          fillColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF3ECF8E),
-                                foregroundColor: Colors.black,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                              onPressed: isSubmitting
-                                  ? null
-                                  : () async {
-                                      setSheetState(() => isSubmitting = true);
-                                      final res = await SupabaseService.signInWithPassword(
-                                        email: emailCtrl.text,
-                                        password: passCtrl.text,
-                                      );
-                                      setSheetState(() {
-                                        isSubmitting = false;
-                                        statusMessage = res.success
-                                            ? '✅ Успішний вхід!'
-                                            : '❌ ${res.error ?? 'Помилка входу'}';
-                                      });
-                                    },
-                              child: const Text('Увійти', style: TextStyle(fontWeight: FontWeight.bold)),
+                        if (!isAuth) ...[
+                          // Login / Signup inputs
+                          TextField(
+                            controller: emailCtrl,
+                            keyboardType: TextInputType.emailAddress,
+                            style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
+                            decoration: InputDecoration(
+                              labelText: 'Email для Supabase Auth',
+                              prefixIcon: const Icon(Icons.email_outlined, size: 18),
+                              filled: true,
+                              fillColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFF3ECF8E),
-                                side: const BorderSide(color: Color(0xFF3ECF8E)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                              onPressed: isSubmitting
-                                  ? null
-                                  : () async {
-                                      setSheetState(() => isSubmitting = true);
-                                      final res = await SupabaseService.signUp(
-                                        email: emailCtrl.text,
-                                        password: passCtrl.text,
-                                      );
-                                      setSheetState(() {
-                                        isSubmitting = false;
-                                        statusMessage = res.success
-                                            ? '✅ Реєстрація успішна! Перевірте пошту для підтвердження.'
-                                            : '❌ ${res.error ?? 'Помилка реєстрації'}';
-                                      });
-                                    },
-                              child: const Text('Реєстрація', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: passCtrl,
+                            obscureText: true,
+                            style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
+                            decoration: InputDecoration(
+                              labelText: 'Пароль',
+                              prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
+                              filled: true,
+                              fillColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                             ),
                           ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF3ECF8E),
+                                    foregroundColor: Colors.black,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  onPressed: isSubmitting
+                                      ? null
+                                      : () async {
+                                          setSheetState(() => isSubmitting = true);
+                                          final res = await SupabaseService.signInWithPassword(
+                                            email: emailCtrl.text,
+                                            password: passCtrl.text,
+                                          );
+                                          setSheetState(() {
+                                            isSubmitting = false;
+                                            statusMessage = res.success
+                                                ? '✅ Успішний вхід!'
+                                                : '❌ ${res.error ?? 'Помилка входу'}';
+                                          });
+                                        },
+                                  child: const Text('Увійти', style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: isDark ? const Color(0xFF3ECF8E) : const Color(0xFF047857),
+                                    side: const BorderSide(color: Color(0xFF3ECF8E)),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  onPressed: isSubmitting
+                                      ? null
+                                      : () async {
+                                          setSheetState(() => isSubmitting = true);
+                                          final res = await SupabaseService.signUp(
+                                            email: emailCtrl.text,
+                                            password: passCtrl.text,
+                                          );
+                                          setSheetState(() {
+                                            isSubmitting = false;
+                                            statusMessage = res.success
+                                                ? '✅ Реєстрація успішна! Перевірте пошту для підтвердження.'
+                                                : '❌ ${res.error ?? 'Помилка реєстрації'}';
+                                          });
+                                        },
+                                  child: const Text('Реєстрація', style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (statusMessage != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              statusMessage!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: statusMessage!.startsWith('✅') ? (isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A)) : Colors.redAccent,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                        ] else ...[
+                          // Logged In Actions
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.logout_rounded, size: 16),
+                              label: const Text('Вийти з акаунту Supabase'),
+                              onPressed: () async {
+                                await SupabaseService.signOut();
+                                setSheetState(() {});
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 10),
                         ],
-                      ),
-                      if (statusMessage != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          statusMessage!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: statusMessage!.startsWith('✅') ? const Color(0xFF16A34A) : Colors.redAccent,
+
+                        SizedBox(
+                          width: double.infinity,
+                          child: TextButton.icon(
+                            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                            icon: const Icon(Icons.link_off_rounded, size: 16),
+                            label: const Text('Відключити Supabase (Offline Mode)'),
+                            onPressed: () async {
+                              await SupabaseService.disconnect();
+                              if (!ctx.mounted) return;
+                              if (mounted) setState(() {});
+                              Navigator.pop(ctx);
+                            },
+                          ),
+                        ),
+                      ] else ...[
+                        // Not Configured State: Setup Inputs
+                        TextField(
+                          controller: urlCtrl,
+                          style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
+                          decoration: InputDecoration(
+                            labelText: 'Supabase Project URL',
+                            hintText: 'https://xxxxxx.supabase.co',
+                            prefixIcon: const Icon(Icons.public_rounded, size: 18),
+                            filled: true,
+                            fillColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: keyCtrl,
+                          style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
+                          decoration: InputDecoration(
+                            labelText: 'Supabase Anon Public Key',
+                            hintText: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                            prefixIcon: const Icon(Icons.key_rounded, size: 18),
+                            filled: true,
+                            fillColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SwitchListTile.adaptive(
+                          contentPadding: EdgeInsets.zero,
+                          value: autoSync,
+                          title: const Text('Автоматична синхронізація', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                          subtitle: const Text('Фонова реплікація речей при наявності зв\'язку', style: TextStyle(fontSize: 11)),
+                          activeTrackColor: const Color(0xFF3ECF8E),
+                          onChanged: (val) => setSheetState(() => autoSync = val),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Setup guide box
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.help_outline_rounded, size: 15, color: isDark ? const Color(0xFF3ECF8E) : const Color(0xFF047857)),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'ЯК НАЛАШТУВАТИ ЗА 2 ХВИЛИНИ:',
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark ? const Color(0xFF3ECF8E) : const Color(0xFF047857),
+                                        letterSpacing: 0.8,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '1. Створіть безкоштовний проект на supabase.com\n'
+                                '2. Відкрийте Project Settings -> API\n'
+                                '3. Скопіюйте Project URL та anon public key сюди\n'
+                                '4. У SQL Editor проекту виконайте готову SQL-схему Vestora.',
+                                style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkText : Colors.black87, height: 1.4),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF3ECF8E),
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(vertical: 13),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            icon: const Icon(Icons.check_rounded, size: 18),
+                            label: const Text('Зберегти та підключити', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            onPressed: () async {
+                              final url = urlCtrl.text.trim();
+                              final key = keyCtrl.text.trim();
+                              if (url.isEmpty || key.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Вкажіть Project URL та Anon Key')),
+                                );
+                                return;
+                              }
+
+                              final ok = await SupabaseService.saveCredentials(url: url, anonKey: key, autoSync: autoSync);
+                              if (mounted && ctx.mounted) {
+                                setState(() {});
+                                Navigator.pop(ctx);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(ok ? '⚡ Supabase підключено успішно!' : '⚠️ Помилка з\'єднання. Перевірте правильність URL та ключа.'),
+                                    backgroundColor: ok ? const Color(0xFF16A34A) : Colors.redAccent,
+                                  ),
+                                );
+                              }
+                            },
                           ),
                         ),
                       ],
-                      const SizedBox(height: 12),
-                    ] else ...[
-                      // Logged In Actions
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.logout_rounded, size: 16),
-                          label: const Text('Вийти з акаунту Supabase'),
-                          onPressed: () async {
-                            await SupabaseService.signOut();
-                            setSheetState(() {});
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 10),
                     ],
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: TextButton.icon(
-                        style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-                        icon: const Icon(Icons.link_off_rounded, size: 16),
-                        label: const Text('Відключити Supabase (Offline Mode)'),
-                        onPressed: () async {
-                          await SupabaseService.disconnect();
-                          if (!ctx.mounted) return;
-                          if (mounted) setState(() {});
-                          Navigator.pop(ctx);
-                        },
-                      ),
-                    ),
-                  ] else ...[
-                    // Not Configured State: Setup Inputs
-                    TextField(
-                      controller: urlCtrl,
-                      style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
-                      decoration: InputDecoration(
-                        labelText: 'Supabase Project URL',
-                        hintText: 'https://xxxxxx.supabase.co',
-                        prefixIcon: const Icon(Icons.public_rounded, size: 18),
-                        filled: true,
-                        fillColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: keyCtrl,
-                      style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
-                      decoration: InputDecoration(
-                        labelText: 'Supabase Anon Public Key',
-                        hintText: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-                        prefixIcon: const Icon(Icons.key_rounded, size: 18),
-                        filled: true,
-                        fillColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      value: autoSync,
-                      title: const Text('Автоматична синхронізація', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                      subtitle: const Text('Фонова реплікація речей при наявності зв\'язку', style: TextStyle(fontSize: 11)),
-                      activeTrackColor: const Color(0xFF3ECF8E),
-                      onChanged: (val) => setSheetState(() => autoSync = val),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Setup guide box
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Row(
-                            children: [
-                              Icon(Icons.help_outline_rounded, size: 15, color: Color(0xFF3ECF8E)),
-                              SizedBox(width: 6),
-                              Text('ЯК НАЛАШТУВАТИ ЗА 2 ХВИЛИНИ:', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF3ECF8E), letterSpacing: 0.8)),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '1. Створіть безкоштовний проект на supabase.com\n'
-                            '2. Відкрийте Project Settings -> API\n'
-                            '3. Скопіюйте Project URL та anon public key сюди\n'
-                            '4. У SQL Editor проекту виконайте готову SQL-схему Vestora.',
-                            style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87, height: 1.4),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF3ECF8E),
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        icon: const Icon(Icons.check_rounded, size: 18),
-                        label: const Text('Зберегти та підключити', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        onPressed: () async {
-                          final url = urlCtrl.text.trim();
-                          final key = keyCtrl.text.trim();
-                          if (url.isEmpty || key.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Вкажіть Project URL та Anon Key')),
-                            );
-                            return;
-                          }
-
-                          final ok = await SupabaseService.saveCredentials(url: url, anonKey: key, autoSync: autoSync);
-                          if (mounted && ctx.mounted) {
-                            setState(() {});
-                            Navigator.pop(ctx);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(ok ? '⚡ Supabase підключено успішно!' : '⚠️ Помилка з\'єднання. Перевірте правильність URL та ключа.'),
-                                backgroundColor: ok ? const Color(0xFF16A34A) : Colors.redAccent,
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
@@ -1077,7 +1276,9 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           children: [
             Icon(Icons.terminal_rounded, color: Color(0xFF3ECF8E), size: 22),
             SizedBox(width: 8),
-            Text('SQL-схема для Supabase', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Expanded(
+              child: Text('SQL-схема для Supabase', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
           ],
         ),
         content: SizedBox(
@@ -1146,103 +1347,130 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
     String selectedStyle = _profile.preferredStyle;
     String selectedCurrency = _profile.currency;
     String selectedSize = _profile.sizeSystem;
+    final loc = LocalizationService.instance;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedColor = isDark ? AppTheme.darkMuted : AppTheme.muted;
+    final chipSelectedBg = isDark ? AppTheme.darkAccentLight : const Color(0xFFFEF3C7);
+    final chipSelectedText = isDark ? AppTheme.darkAccent : AppTheme.accent;
+    final chipUnselectedText = isDark ? AppTheme.darkText : Colors.black87;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (sheetCtx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-              ),
-              const SizedBox(height: 16),
-              const Row(
-                children: [
-                  Icon(Icons.palette_outlined, color: AppTheme.accent),
-                  SizedBox(width: 8),
-                  Text('Персоналізація стилю', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Text('ОСНОВНИЙ СТИЛЬ ГАРДЕРОБУ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: ['Quiet Luxury', 'Мінімалізм', 'Smart Casual', 'Old Money', 'Streetwear'].map((st) {
-                  final isSel = selectedStyle == st;
-                  return ChoiceChip(
-                    label: Text(st),
-                    selected: isSel,
-                    onSelected: (val) => setSheetState(() => selectedStyle = st),
-                    selectedColor: const Color(0xFFFEF3C7),
-                    labelStyle: TextStyle(color: isSel ? AppTheme.accent : Colors.black87, fontWeight: isSel ? FontWeight.bold : FontWeight.normal),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              const Text('ВАЛЮТА ВИТРАТ ТА ОКУПНОСТІ (CPW)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: ['UAH (₴)', 'USD (\$)', 'EUR (€)'].map((curr) {
-                  final isSel = selectedCurrency == curr;
-                  return ChoiceChip(
-                    label: Text(curr),
-                    selected: isSel,
-                    onSelected: (val) => setSheetState(() => selectedCurrency = curr),
-                    selectedColor: const Color(0xFFFEF3C7),
-                    labelStyle: TextStyle(color: isSel ? AppTheme.accent : Colors.black87, fontWeight: isSel ? FontWeight.bold : FontWeight.normal),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              const Text('СИСТЕМА РОЗМІРІВ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.muted)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: ['EUR (36-44)', 'US (XS-XL)', 'UK (8-16)'].map((sz) {
-                  final isSel = selectedSize == sz;
-                  return ChoiceChip(
-                    label: Text(sz),
-                    selected: isSel,
-                    onSelected: (val) => setSheetState(() => selectedSize = sz),
-                    selectedColor: const Color(0xFFFEF3C7),
-                    labelStyle: TextStyle(color: isSel ? AppTheme.accent : Colors.black87, fontWeight: isSel ? FontWeight.bold : FontWeight.normal),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final nav = Navigator.of(sheetCtx);
-                    final messenger = ScaffoldMessenger.of(context);
-                    await UserProfileService.saveProfile(
-                      preferredStyle: selectedStyle,
-                      currency: selectedCurrency,
-                      sizeSystem: selectedSize,
-                    );
-                    if (!mounted) return;
-                    setState(() {
-                      _profile = UserProfileService.profile;
-                    });
-                    nav.pop();
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Налаштування персоналізації збережено!'), backgroundColor: Color(0xFF16A34A)),
-                    );
-                  },
-                  child: const Text('Застосувати налаштування'),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Icon(Icons.palette_outlined, color: chipSelectedText),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        context.tr('settings_personalization'),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? AppTheme.darkText : Colors.black,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(loc.translate('settings_style_label'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: mutedColor)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: ['Quiet Luxury', 'Мінімалізм', 'Smart Casual', 'Old Money', 'Streetwear'].map((st) {
+                    final isSel = selectedStyle == st;
+                    return ChoiceChip(
+                      label: Text(st),
+                      selected: isSel,
+                      onSelected: (val) => setSheetState(() => selectedStyle = st),
+                      selectedColor: chipSelectedBg,
+                      labelStyle: TextStyle(color: isSel ? chipSelectedText : chipUnselectedText, fontWeight: isSel ? FontWeight.bold : FontWeight.normal),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                Text(loc.translate('settings_currency_label'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: mutedColor)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: ['UAH (₴)', 'USD (\$)', 'EUR (€)'].map((curr) {
+                    final isSel = selectedCurrency == curr;
+                    return ChoiceChip(
+                      label: Text(curr),
+                      selected: isSel,
+                      onSelected: (val) => setSheetState(() => selectedCurrency = curr),
+                      selectedColor: chipSelectedBg,
+                      labelStyle: TextStyle(color: isSel ? chipSelectedText : chipUnselectedText, fontWeight: isSel ? FontWeight.bold : FontWeight.normal),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                Text(loc.translate('settings_size_label'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: mutedColor)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: ['EUR (36-44)', 'US (XS-XL)', 'UK (8-16)'].map((sz) {
+                    final isSel = selectedSize == sz;
+                    return ChoiceChip(
+                      label: Text(sz),
+                      selected: isSel,
+                      onSelected: (val) => setSheetState(() => selectedSize = sz),
+                      selectedColor: chipSelectedBg,
+                      labelStyle: TextStyle(color: isSel ? chipSelectedText : chipUnselectedText, fontWeight: isSel ? FontWeight.bold : FontWeight.normal),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final nav = Navigator.of(sheetCtx);
+                      final messenger = ScaffoldMessenger.of(context);
+                      await UserProfileService.saveProfile(
+                        preferredStyle: selectedStyle,
+                        currency: selectedCurrency,
+                        sizeSystem: selectedSize,
+                      );
+                      if (!mounted) return;
+                      setState(() {
+                        _profile = UserProfileService.profile;
+                      });
+                      nav.pop();
+                      messenger.showSnackBar(
+                        SnackBar(content: Text(loc.translate('settings_profile_saved')), backgroundColor: AppTheme.success),
+                      );
+                    },
+                    child: Text(loc.translate('settings_apply_btn')),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1253,94 +1481,100 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
     final theme = ThemeService.instance;
     final loc = LocalizationService.instance;
     final isDark = theme.isDarkMode(context);
+    final accentColor = isDark ? AppTheme.darkAccent : AppTheme.accent;
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (sheetCtx) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF3F3F46) : Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                const Icon(Icons.palette_rounded, color: AppTheme.accent),
-                const SizedBox(width: 8),
-                Text(
-                  loc.translate('settings_appearance'),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF3F3F46) : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 18),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Icon(Icons.palette_rounded, color: accentColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      loc.translate('settings_appearance'),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
 
-            // Light Option
-            _buildThemeOption(
-              icon: Icons.light_mode_rounded,
-              title: '${loc.translate('settings_theme_light')} (Ivory & Gold)',
-              subtitle: 'Класичний світлий преміальний стиль Vestora',
-              isSelected: theme.themeMode == ThemeMode.light,
-              isDark: isDark,
-              onTap: () async {
-                final nav = Navigator.of(sheetCtx);
-                await theme.setThemeMode(ThemeMode.light);
-                if (!mounted) return;
-                setState(() {});
-                nav.pop();
-              },
-            ),
-            const SizedBox(height: 8),
+              // Light Option
+              _buildThemeOption(
+                icon: Icons.light_mode_rounded,
+                title: '${loc.translate('settings_theme_light')} (Ivory & Gold)',
+                subtitle: 'Ivory Cashmere · Vestora Editorial',
+                isSelected: theme.themeMode == ThemeMode.light,
+                isDark: isDark,
+                onTap: () async {
+                  final nav = Navigator.of(sheetCtx);
+                  await theme.setThemeMode(ThemeMode.light);
+                  if (!mounted) return;
+                  setState(() {});
+                  nav.pop();
+                },
+              ),
+              const SizedBox(height: 8),
 
-            // Dark Option
-            _buildThemeOption(
-              icon: Icons.dark_mode_rounded,
-              title: '${loc.translate('settings_theme_dark')} (Obsidian Luxury)',
-              subtitle: 'Глибокий чорний онікс із теплими золотими акцентами',
-              isSelected: theme.themeMode == ThemeMode.dark,
-              isDark: isDark,
-              onTap: () async {
-                final nav = Navigator.of(sheetCtx);
-                await theme.setThemeMode(ThemeMode.dark);
-                if (!mounted) return;
-                setState(() {});
-                nav.pop();
-              },
-            ),
-            const SizedBox(height: 8),
+              // Dark Option
+              _buildThemeOption(
+                icon: Icons.dark_mode_rounded,
+                title: '${loc.translate('settings_theme_dark')} (Obsidian Luxury)',
+                subtitle: 'Obsidian Onyx · Warm Champagne Gold',
+                isSelected: theme.themeMode == ThemeMode.dark,
+                isDark: isDark,
+                onTap: () async {
+                  final nav = Navigator.of(sheetCtx);
+                  await theme.setThemeMode(ThemeMode.dark);
+                  if (!mounted) return;
+                  setState(() {});
+                  nav.pop();
+                },
+              ),
+              const SizedBox(height: 8),
 
-            // System Option
-            _buildThemeOption(
-              icon: Icons.brightness_auto_rounded,
-              title: loc.translate('settings_theme_system'),
-              subtitle: 'Автоматична синхронізація з налаштуваннями пристрою',
-              isSelected: theme.themeMode == ThemeMode.system,
-              isDark: isDark,
-              onTap: () async {
-                final nav = Navigator.of(sheetCtx);
-                await theme.setThemeMode(ThemeMode.system);
-                if (!mounted) return;
-                setState(() {});
-                nav.pop();
-              },
-            ),
-          ],
+              // System Option
+              _buildThemeOption(
+                icon: Icons.brightness_auto_rounded,
+                title: loc.translate('settings_theme_system'),
+                subtitle: 'Auto OS Appearance',
+                isSelected: theme.themeMode == ThemeMode.system,
+                isDark: isDark,
+                onTap: () async {
+                  final nav = Navigator.of(sheetCtx);
+                  await theme.setThemeMode(ThemeMode.system);
+                  if (!mounted) return;
+                  setState(() {});
+                  nav.pop();
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1354,6 +1588,7 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
     required bool isDark,
     required VoidCallback onTap,
   }) {
+    final accentColor = isDark ? AppTheme.darkAccent : AppTheme.accent;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -1365,13 +1600,13 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
               : (isDark ? const Color(0xFF1E1E24) : const Color(0xFFF4F4F5)),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? AppTheme.accent : Colors.transparent,
+            color: isSelected ? accentColor : Colors.transparent,
             width: 1.5,
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, color: isSelected ? AppTheme.accent : (isDark ? Colors.white70 : Colors.black87)),
+            Icon(icon, color: isSelected ? accentColor : (isDark ? AppTheme.darkText : Colors.black87)),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -1392,7 +1627,7 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                 ],
               ),
             ),
-            if (isSelected) const Icon(Icons.check_circle_rounded, color: AppTheme.accent, size: 20),
+            if (isSelected) Icon(Icons.check_circle_rounded, color: accentColor, size: 20),
           ],
         ),
       ),
@@ -1405,96 +1640,101 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (sheetCtx) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF3F3F46) : Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF3F3F46) : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                const Icon(Icons.language_rounded, color: Color(0xFF0284C7)),
-                const SizedBox(width: 8),
-                Text(
-                  loc.translate('settings_language'),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ...AppLanguage.values.map((lang) {
-              final isSel = loc.currentLanguage == lang;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: InkWell(
-                  onTap: () async {
-                    final nav = Navigator.of(sheetCtx);
-                    await loc.setLanguage(lang);
-                    if (!mounted) return;
-                    setState(() {});
-                    nav.pop();
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: isSel
-                          ? (isDark ? const Color(0xFF2E2E38) : const Color(0xFFE0F2FE))
-                          : (isDark ? const Color(0xFF1E1E24) : const Color(0xFFF4F4F5)),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isSel ? const Color(0xFF0284C7) : Colors.transparent,
-                        width: 1.5,
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(Icons.language_rounded, color: Color(0xFF0284C7)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      loc.translate('settings_language'),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black,
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Text(lang.flag, style: const TextStyle(fontSize: 24)),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                lang.label,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: isDark ? Colors.white : Colors.black,
-                                ),
-                              ),
-                              Text(
-                                lang.subtitle,
-                                style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
-                              ),
-                            ],
-                          ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ...AppLanguage.values.map((lang) {
+                final isSel = loc.currentLanguage == lang;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: InkWell(
+                    onTap: () async {
+                      final nav = Navigator.of(sheetCtx);
+                      await loc.setLanguage(lang);
+                      if (!mounted) return;
+                      setState(() {});
+                      nav.pop();
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isSel
+                            ? (isDark ? const Color(0xFF2E2E38) : const Color(0xFFE0F2FE))
+                            : (isDark ? const Color(0xFF1E1E24) : const Color(0xFFF4F4F5)),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSel ? const Color(0xFF0284C7) : Colors.transparent,
+                          width: 1.5,
                         ),
-                        if (isSel) const Icon(Icons.check_circle_rounded, color: Color(0xFF0284C7), size: 20),
-                      ],
+                      ),
+                      child: Row(
+                        children: [
+                          Text(lang.flag, style: const TextStyle(fontSize: 24)),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  lang.label,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                ),
+                                Text(
+                                  lang.subtitle,
+                                  style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isSel) Icon(Icons.check_circle_rounded, color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7), size: 20),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              );
-            }),
-          ],
+                );
+              }),
+            ],
+          ),
         ),
       ),
     );
@@ -1504,71 +1744,94 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
     bool morning = _profile.pushDailyStylist;
     bool streak = _profile.pushStreakReminder;
     bool eco = _profile.emailEcoReport;
+    final loc = LocalizationService.instance;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (sheetCtx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
-              const SizedBox(height: 16),
-              const Row(
-                children: [
-                  Icon(Icons.notifications_active_outlined, color: Color(0xFF16A34A)),
-                  SizedBox(width: 8),
-                  Text('Сповіщення та Нагадування', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              SwitchListTile(
-                title: const Text('Ранковий лук о 08:00', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                subtitle: const Text('Готова капсула під погоду за вікном кожного ранку', style: TextStyle(fontSize: 11)),
-                value: morning,
-                onChanged: (val) => setSheetState(() => morning = val),
-              ),
-              SwitchListTile(
-                title: const Text('Нагадування стріку о 20:00', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                subtitle: const Text('Не дайте згоріти вашому прогресу носіння гардероба', style: TextStyle(fontSize: 11)),
-                value: streak,
-                onChanged: (val) => setSheetState(() => streak = val),
-              ),
-              SwitchListTile(
-                title: const Text('Тижневий еко-звіт та CPW', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                subtitle: const Text('Підсумок вартості виходів та рекомендації щодо розхламлення', style: TextStyle(fontSize: 11)),
-                value: eco,
-                onChanged: (val) => setSheetState(() => eco = val),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final nav = Navigator.of(sheetCtx);
-                    final messenger = ScaffoldMessenger.of(context);
-                    await UserProfileService.saveNotifications(
-                      pushDailyStylist: morning,
-                      pushStreakReminder: streak,
-                      emailEcoReport: eco,
-                    );
-                    if (!mounted) return;
-                    setState(() {
-                      _profile = UserProfileService.profile;
-                    });
-                    nav.pop();
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Параметри сповіщень збережено!'), backgroundColor: Color(0xFF16A34A)),
-                    );
-                  },
-                  child: const Text('Зберегти налаштування'),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Icon(Icons.notifications_active_outlined, color: isDark ? const Color(0xFF4ADE80) : AppTheme.success),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        context.tr('settings_notifications'),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? AppTheme.darkText : Colors.black,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SwitchListTile(
+                  title: Text(loc.translate('settings_notif_morning'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: Text(loc.translate('settings_notif_morning_sub'), style: const TextStyle(fontSize: 11)),
+                  value: morning,
+                  onChanged: (val) => setSheetState(() => morning = val),
+                ),
+                SwitchListTile(
+                  title: Text(loc.translate('settings_notif_streak'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: Text(loc.translate('settings_notif_streak_sub'), style: const TextStyle(fontSize: 11)),
+                  value: streak,
+                  onChanged: (val) => setSheetState(() => streak = val),
+                ),
+                SwitchListTile(
+                  title: Text(loc.translate('settings_notif_eco'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: Text(loc.translate('settings_notif_eco_sub'), style: const TextStyle(fontSize: 11)),
+                  value: eco,
+                  onChanged: (val) => setSheetState(() => eco = val),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final nav = Navigator.of(sheetCtx);
+                      final messenger = ScaffoldMessenger.of(context);
+                      await UserProfileService.saveNotifications(
+                        pushDailyStylist: morning,
+                        pushStreakReminder: streak,
+                        emailEcoReport: eco,
+                      );
+                      if (!mounted) return;
+                      setState(() {
+                        _profile = UserProfileService.profile;
+                      });
+                      nav.pop();
+                      messenger.showSnackBar(
+                        SnackBar(content: Text(loc.translate('settings_notif_saved')), backgroundColor: AppTheme.success),
+                      );
+                    },
+                    child: Text(context.tr('common_save')),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1581,11 +1844,12 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
     final loc = context.watch<LocalizationService>();
 
     final isDark = theme.isDarkMode(context);
+    final sectionHeaderColor = isDark ? AppTheme.darkMuted : AppTheme.muted;
     final hasAiKey = AiConfigService.hasCustomKey;
     final adCredits = AiConfigService.adCredits;
 
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkBackground : const Color(0xFFF9FAFB),
+      backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.background,
       appBar: AppBar(
         title: Text(loc.translate('settings_title')),
         elevation: 0,
@@ -1614,16 +1878,20 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                   children: [
                     Stack(
                       children: [
-                        CircleAvatar(
-                          radius: 34,
-                          backgroundImage: vestoraImageProvider(_profile.avatarUrl),
+                        Semantics(
+                          image: true,
+                          label: 'Аватар профілю ${_profile.name}',
+                          child: CircleAvatar(
+                            radius: 34,
+                            backgroundImage: vestoraImageProvider(_profile.avatarUrl),
+                          ),
                         ),
                         Positioned(
                           bottom: 0,
                           right: 0,
                           child: Container(
                             padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(color: Color(0xFF16A34A), shape: BoxShape.circle),
+                            decoration: const BoxDecoration(color: AppTheme.success, shape: BoxShape.circle),
                             child: const Icon(Icons.check, size: 12, color: Colors.white),
                           ),
                         ),
@@ -1636,9 +1904,13 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                         children: [
                           Row(
                             children: [
-                              Text(
-                                _profile.name,
-                                style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800),
+                              Flexible(
+                                child: Text(
+                                  _profile.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800),
+                                ),
                               ),
                               const SizedBox(width: 8),
                               Container(
@@ -1647,18 +1919,33 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                                   color: const Color(0xFFF59E0B),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Text('VIP PRO', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
+                                child: const Text(
+                                  'VIP PRO',
+                                  style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w800),
+                                ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 2),
-                          Text(_profile.email, style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 12)),
+                          Text(
+                            _profile.email,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 12),
+                          ),
                           const SizedBox(height: 4),
                           Row(
                             children: [
                               const Icon(Icons.location_on, size: 13, color: Color(0xFFFDE68A)),
                               const SizedBox(width: 4),
-                              Text(_profile.location, style: const TextStyle(color: Color(0xFFE4E4E7), fontSize: 11.5)),
+                              Expanded(
+                                child: Text(
+                                  _profile.location,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Color(0xFFE4E4E7), fontSize: 11.5),
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 6),
@@ -1675,15 +1962,36 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                                 if (AuthService.instance.currentMethod == AuthMethod.google) ...[
                                   const GoogleLogoWidget(size: 13),
                                   const SizedBox(width: 6),
-                                  const Text('Вхід через Google', style: TextStyle(color: Color(0xFF93C5FD), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                                  const Flexible(
+                                    child: Text(
+                                      'Вхід через Google',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(color: Color(0xFF93C5FD), fontSize: 10.5, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
                                 ] else if (AuthService.instance.currentMethod == AuthMethod.email) ...[
                                   const Icon(Icons.email_outlined, size: 13, color: Color(0xFFFDE68A)),
                                   const SizedBox(width: 6),
-                                  const Text('Вхід через Email & Пароль', style: TextStyle(color: Color(0xFFFDE68A), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                                  const Flexible(
+                                    child: Text(
+                                      'Вхід через Email & Пароль',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(color: Color(0xFFFDE68A), fontSize: 10.5, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
                                 ] else ...[
                                   const Icon(Icons.person_outline, size: 13, color: Color(0xFFA1A1AA)),
                                   const SizedBox(width: 6),
-                                  const Text('Демо-режим гостя', style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                                  const Flexible(
+                                    child: Text(
+                                      'Демо-режим гостя',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 10.5, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
                                 ],
                               ],
                             ),
@@ -1702,12 +2010,18 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
+                          minimumSize: const Size(48, 48),
                           side: const BorderSide(color: Color(0xFF52525B)),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         icon: const Icon(Icons.edit_outlined, size: 16),
-                        label: Text(loc.translate('settings_edit_profile'), style: const TextStyle(fontSize: 12)),
+                        label: Text(
+                          loc.translate('settings_edit_profile'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        ),
                         onPressed: _showEditProfileDialog,
                       ),
                     ),
@@ -1716,12 +2030,18 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
+                          minimumSize: const Size(48, 48),
                           side: const BorderSide(color: Color(0xFF52525B)),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         icon: const Icon(Icons.vpn_key_outlined, size: 16),
-                        label: Text(loc.translate('settings_change_pwd'), style: const TextStyle(fontSize: 12)),
+                        label: Text(
+                          loc.translate('settings_change_pwd'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        ),
                         onPressed: _showChangePasswordDialog,
                       ),
                     ),
@@ -1729,6 +2049,7 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                     IconButton(
                       style: IconButton.styleFrom(
                         backgroundColor: const Color(0xFF27272A),
+                        minimumSize: const Size(48, 48),
                         side: const BorderSide(color: Color(0xFF52525B)),
                         padding: const EdgeInsets.all(10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1747,11 +2068,10 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           // 2. Settings Hub Menu Tiles
           Text(
             loc.translate('settings_personalization').toUpperCase(),
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.muted, letterSpacing: 1),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: sectionHeaderColor, letterSpacing: 1),
           ),
           const SizedBox(height: 10),
 
-          // Tile: Appearance / Dark Mode
           _buildSettingsTile(
             icon: isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
             iconColor: const Color(0xFFEAB308),
@@ -1767,7 +2087,6 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Tile: Language Selection (Top 5 + Ukrainian)
           _buildSettingsTile(
             icon: Icons.language_rounded,
             iconColor: const Color(0xFF0284C7),
@@ -1779,7 +2098,6 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Tile 0: Account & Authentication
           _buildSettingsTile(
             icon: Icons.account_circle_outlined,
             iconColor: const Color(0xFF2563EB),
@@ -1787,22 +2105,21 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
             subtitle: AuthService.instance.currentMethod == AuthMethod.google
                 ? 'Google: ${_profile.email}'
                 : (AuthService.instance.currentMethod == AuthMethod.email
-                    ? 'Email & Пароль: ${_profile.email}'
-                    : 'Демо-режим гостя'),
+                    ? 'Email: ${_profile.email}'
+                    : _profile.email),
             trailingBadge: AuthService.instance.currentMethod == AuthMethod.google ? 'Google 🌐' : 'Email ✉️',
             isDark: isDark,
             onTap: _confirmSignOutDialog,
           ),
           const SizedBox(height: 10),
 
-          // Tile 1: AI & Gemini Vision Hub
           _buildSettingsTile(
             icon: Icons.auto_awesome,
             iconColor: const Color(0xFF4F46E5),
             title: loc.translate('settings_ai_engine'),
             subtitle: hasAiKey
-                ? 'Підключено особистий ключ Google Gemini'
-                : (adCredits > 0 ? 'Gemini Vision ($adCredits бонусів за відео)' : 'Локальний евристичний парсер'),
+                ? 'Google Gemini (${AiConfigService.maskedApiKey ?? "BYOK"})'
+                : (adCredits > 0 ? 'Gemini Vision ($adCredits ⚡)' : 'Local Heuristic Engine'),
             trailingBadge: hasAiKey ? 'BYOK ✅' : '$adCredits ⚡',
             isDark: isDark,
             onTap: () async {
@@ -1812,10 +2129,9 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Tile 2: Personalization & Wardrobe Preferences
           _buildSettingsTile(
             icon: Icons.palette_outlined,
-            iconColor: const Color(0xFFD97706),
+            iconColor: isDark ? AppTheme.darkAccent : AppTheme.accent,
             title: loc.translate('settings_personalization'),
             subtitle: '${_profile.preferredStyle} · ${_profile.currency} · ${_profile.sizeSystem}',
             isDark: isDark,
@@ -1823,11 +2139,10 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Tile 2b: AI Virtual Try-On Fitting Room & Face Photo
           _buildSettingsTile(
             icon: Icons.face_retouching_natural_rounded,
             iconColor: const Color(0xFFD4AF37),
-            title: 'AI Примірочна та Фото Обличчя',
+            title: loc.translate('fitting_title'),
             subtitle: _profile.tryOnFaceUrl != null
                 ? 'Власне фото обличчя підключено до віртуальної примірочної'
                 : 'Завантажте фото або оберіть типаж для примірки речей',
@@ -1845,13 +2160,12 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Tile 2c: 3x3 Capsule Matrix
           _buildSettingsTile(
             icon: Icons.grid_on_rounded,
             iconColor: const Color(0xFF8B5CF6),
             title: loc.translate('stylist_matrix_tool'),
-            subtitle: 'Математика гардероба: 9 базових речей генерують 18 луків',
-            trailingBadge: '96% Луків',
+            subtitle: '3x3 · 9 items → 18 outfits',
+            trailingBadge: '96%',
             isDark: isDark,
             onTap: () {
               Navigator.push(
@@ -1862,13 +2176,12 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Tile 2d: Fabric Care Encyclopedia
           _buildSettingsTile(
             icon: Icons.dry_cleaning_outlined,
             iconColor: const Color(0xFF0D9488),
             title: loc.translate('tool_fabric_care'),
-            subtitle: 'Розшифровка символів прання, порятунок плям, кашемір та шовк',
-            trailingBadge: 'Гід 🏷️',
+            subtitle: 'ISO 3758 · Cashmere · Silk · Wool',
+            trailingBadge: '🏷️',
             isDark: isDark,
             onTap: () {
               Navigator.push(
@@ -1879,18 +2192,17 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Tile 3: Notifications & Alarms
           _buildSettingsTile(
             icon: Icons.notifications_active_outlined,
-            iconColor: const Color(0xFF16A34A),
-            title: 'Сповіщення (Push & Email)',
-            subtitle: 'Ранковий образ о 08:00, нагадування стріку, еко-звіти',
+            iconColor: AppTheme.success,
+            title: loc.translate('settings_notifications'),
+            subtitle: loc.translate('settings_notifications_sub'),
             isDark: isDark,
             onTap: _showNotificationsDialog,
           ),
           const SizedBox(height: 10),
 
-          // Tile 4: Security & 2FA
+          // Security & 2FA
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -1904,10 +2216,10 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
+                    color: isDark ? const Color(0xFF2563EB).withValues(alpha: 0.2) : const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.security_rounded, color: Color(0xFF2563EB)),
+                  child: Icon(Icons.security_rounded, color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB)),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -1924,10 +2236,12 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        _profile.twoFactorAuth ? '2FA Активовано (захист по SMS / Email)' : 'Вимкнено (рекомендується увімкнути)',
+                        _profile.twoFactorAuth ? '2FA Active (SMS / Email)' : '2FA Off',
                         style: TextStyle(
                           fontSize: 11.5,
-                          color: _profile.twoFactorAuth ? const Color(0xFF16A34A) : (isDark ? AppTheme.darkMuted : AppTheme.muted),
+                          color: _profile.twoFactorAuth
+                              ? (isDark ? const Color(0xFF4ADE80) : AppTheme.success)
+                              : (isDark ? AppTheme.darkMuted : AppTheme.muted),
                         ),
                       ),
                     ],
@@ -1943,8 +2257,8 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                       setState(() => _profile.twoFactorAuth = val);
                       messenger.showSnackBar(
                         SnackBar(
-                          content: Text(val ? '2FA успішно активовано!' : '2FA вимкнено.'),
-                          backgroundColor: val ? const Color(0xFF16A34A) : AppTheme.primary,
+                          content: Text(val ? '2FA Active!' : '2FA Off.'),
+                          backgroundColor: val ? AppTheme.success : AppTheme.primary,
                         ),
                       );
                     }
@@ -1956,23 +2270,26 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           const SizedBox(height: 22),
 
           // 3. Data & Storage
-          const Text('ДАНІ ТА РЕЗЕРВНІ КОПІЇ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.muted, letterSpacing: 1)),
+          Text(
+            loc.translate('settings_backup_hub').toUpperCase(),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: sectionHeaderColor, letterSpacing: 1),
+          ),
           const SizedBox(height: 10),
 
           _buildSettingsTile(
             icon: Icons.cloud_download_outlined,
             iconColor: const Color(0xFF0284C7),
-            title: 'Експорт гардеробу (.vestora)',
-            subtitle: 'Зберегти повну копію гардероба, аутфітів та профілю на пристрій',
-            trailingBadge: '⬇️ Експорт',
+            title: loc.translate('settings_export_btn'),
+            subtitle: '.vestora JSON archive',
+            trailingBadge: '⬇️ .vestora',
             isDark: isDark,
             onTap: () {
               final wardrobe = context.read<WardrobeProvider>();
               BackupService.exportBackupFile(wardrobe: wardrobe, profile: _profile);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('📦 Файл резервної копії (.vestora) сформовано та завантажено!'),
-                  backgroundColor: Color(0xFF16A34A),
+                  content: Text('📦 .vestora exported!'),
+                  backgroundColor: AppTheme.success,
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -1982,10 +2299,10 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
 
           _buildSettingsTile(
             icon: Icons.restore_page_outlined,
-            iconColor: const Color(0xFF16A34A),
-            title: 'Імпорт та відновлення (.vestora)',
-            subtitle: 'Відновити речі або об\'єднати капсулу з файлу бекапу чи JSON',
-            trailingBadge: '⬆️ Імпорт',
+            iconColor: AppTheme.success,
+            title: loc.translate('settings_import_btn'),
+            subtitle: '.vestora / JSON',
+            trailingBadge: '⬆️ JSON',
             isDark: isDark,
             onTap: _showImportBackupDialog,
           ),
@@ -1993,21 +2310,24 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
 
           _buildSettingsTile(
             icon: Icons.cleaning_services_outlined,
-            iconColor: const Color(0xFFDC2626),
-            title: 'Скинути фільтри та оновити кеш',
-            subtitle: 'Очистити збережені тимчасові файли та завантажити свіжі дані',
+            iconColor: isDark ? AppTheme.darkAccent : AppTheme.accent,
+            title: loc.translate('settings_reset_cache'),
+            subtitle: loc.translate('settings_reset_cache_sub'),
             isDark: isDark,
             onTap: () {
               context.read<WardrobeProvider>().loadDemoCapsule();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('✨ Кеш оновлено! Гардероб синхронізовано.')),
+                SnackBar(content: Text(loc.translate('settings_reset_cache'))),
               );
             },
           ),
           const SizedBox(height: 22),
 
           // 4. Supabase Cloud Sync & SQL Database
-          const Text('ХМАРНА БАЗА ДАНИХ ТА СИНХРОНІЗАЦІЯ (SUPABASE)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.muted, letterSpacing: 1)),
+          Text(
+            loc.translate('settings_cloud_sync').toUpperCase(),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: sectionHeaderColor, letterSpacing: 1),
+          ),
           const SizedBox(height: 10),
 
           _buildSettingsTile(
@@ -2016,12 +2336,12 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
             title: 'Supabase Cloud (PostgreSQL)',
             subtitle: SupabaseService.isConfigured
                 ? (SupabaseService.isAuthenticated
-                    ? 'Підключено: ${SupabaseService.currentUserEmail ?? "Сесія активна"}'
-                    : 'Підключено до проекту · Потрібен вхід')
-                : 'Підключити хмарну базу даних PostgreSQL та акаунт',
+                    ? (SupabaseService.currentUserEmail ?? 'Active')
+                    : 'Configured · Sign in required')
+                : 'PostgreSQL + RLS + S3 Storage',
             trailingBadge: SupabaseService.isConfigured
-                ? (SupabaseService.isAuthenticated ? '🟢 Хмара' : '🟡 Увійти')
-                : '⚙️ Налаштувати',
+                ? (SupabaseService.isAuthenticated ? '🟢 Cloud' : '🟡 Auth')
+                : '⚙️ Setup',
             isDark: isDark,
             onTap: _showSupabaseConfigDialog,
           ),
@@ -2030,8 +2350,8 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           _buildSettingsTile(
             icon: Icons.sync_rounded,
             iconColor: const Color(0xFF0284C7),
-            title: 'Синхронізувати зараз (Хмара ⇄ Локально)',
-            subtitle: 'Двостороння реплікація речей гардеробу та капсул із PostgreSQL',
+            title: loc.translate('settings_sync_now'),
+            subtitle: loc.translate('settings_sync_now_sub'),
             trailingBadge: '🔄 Sync',
             isDark: isDark,
             onTap: _syncWithSupabase,
@@ -2041,8 +2361,8 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           _buildSettingsTile(
             icon: Icons.terminal_rounded,
             iconColor: const Color(0xFF8B5CF6),
-            title: 'SQL-схема для Supabase Dashboard',
-            subtitle: 'Готовий DDL-скрипт з RLS-політиками для вставки в SQL Editor',
+            title: loc.translate('settings_sql_schema'),
+            subtitle: loc.translate('settings_sql_schema_sub'),
             trailingBadge: '📄 DDL',
             isDark: isDark,
             onTap: _showSqlSchemaDialog,
@@ -2050,15 +2370,18 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           const SizedBox(height: 22),
 
           // 5. PWA & Offline Capabilities
-          const Text('ДОДАТОК ТА ОФЛАЙН-РЕЖИМ (PWA)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.muted, letterSpacing: 1)),
+          Text(
+            loc.translate('settings_pwa_section'),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: sectionHeaderColor, letterSpacing: 1),
+          ),
           const SizedBox(height: 10),
 
           _buildSettingsTile(
             icon: Icons.install_mobile_rounded,
-            iconColor: const Color(0xFF16A34A),
-            title: 'Встановити як додаток (PWA)',
-            subtitle: 'Миттєвий запуск з робочого столу смартфона чи ПК',
-            trailingBadge: '📲 1-Клік',
+            iconColor: AppTheme.success,
+            title: loc.translate('settings_pwa_install'),
+            subtitle: loc.translate('settings_pwa_install_sub'),
+            trailingBadge: '📲 PWA',
             isDark: isDark,
             onTap: _showPwaInstallDialog,
           ),
@@ -2066,12 +2389,57 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
 
           _buildSettingsTile(
             icon: Icons.offline_bolt_rounded,
-            iconColor: const Color(0xFFD97706),
-            title: 'Офлайн-доступ та Service Worker',
-            subtitle: 'Гардероб, комбінації та кольоротип працюють без інтернету',
-            trailingBadge: 'v1.0 Активний',
+            iconColor: isDark ? AppTheme.darkAccent : AppTheme.accent,
+            title: loc.translate('settings_pwa_offline'),
+            subtitle: loc.translate('settings_pwa_offline_sub'),
+            trailingBadge: 'v1.2 Wasm',
             isDark: isDark,
             onTap: _showOfflineInfoDialog,
+          ),
+          const SizedBox(height: 22),
+
+          // 6. Legal, Open-Source Licenses & Mandatory 1-Click Account Deletion (App Store / Google Play)
+          Text(
+            loc.translate('settings_legal_section').toUpperCase(),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: sectionHeaderColor, letterSpacing: 1),
+          ),
+          const SizedBox(height: 10),
+
+          _buildSettingsTile(
+            icon: Icons.verified_user_outlined,
+            iconColor: const Color(0xFF0284C7),
+            title: loc.translate('settings_privacy_policy'),
+            subtitle: loc.translate('settings_privacy_sub'),
+            isDark: isDark,
+            onTap: _showPrivacyPolicyDialog,
+          ),
+          const SizedBox(height: 10),
+
+          _buildSettingsTile(
+            icon: Icons.description_outlined,
+            iconColor: const Color(0xFF8B5CF6),
+            title: loc.translate('settings_licenses'),
+            subtitle: loc.translate('settings_licenses_sub'),
+            isDark: isDark,
+            onTap: () {
+              showLicensePage(
+                context: context,
+                applicationName: 'Vestora · Smart Wardrobe',
+                applicationVersion: '1.0.0+1',
+                applicationLegalese: '© 2026 Vestora Digital Closet. All rights reserved.',
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+
+          _buildSettingsTile(
+            icon: Icons.delete_forever_rounded,
+            iconColor: AppTheme.danger,
+            title: loc.translate('settings_delete_account'),
+            subtitle: loc.translate('settings_delete_account_sub'),
+            trailingBadge: '⚠️ GDPR',
+            isDark: isDark,
+            onTap: _confirmDeleteAccountDialog,
           ),
           const SizedBox(height: 26),
 
@@ -2081,10 +2449,13 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
               children: [
                 Text(
                   'Vestora · Smart Wardrobe Luxury Edition',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkMuted : Colors.grey.shade700),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkText : AppTheme.secondary),
                 ),
                 const SizedBox(height: 2),
-                Text('Версія 4.5 · Build 2026.10', style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF52525B) : Colors.grey.shade500)),
+                Text(
+                  'Версія 1.0.0+1 · Build 2026.10 (Wasm Ready)',
+                  style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                ),
               ],
             ),
           ),

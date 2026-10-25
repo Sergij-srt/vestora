@@ -107,6 +107,7 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
   @override
   Widget build(BuildContext context) {
     final d = widget.initialData;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -164,9 +165,9 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? AppTheme.darkSurface : Colors.white,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.border),
+              border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
               boxShadow: AppTheme.softShadow,
             ),
             child: Column(
@@ -189,6 +190,7 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
                     children: [
                       // Photo 1: Clothing Item
                       _buildPhotoCard(
+                        isDark: isDark,
                         title: 'Фото речі',
                         imageUrl: d.itemPhoto,
                         badgeColor: AppTheme.primary,
@@ -198,6 +200,7 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
                       // Photo 2: Label / Care Tag
                       if (d.labelPhoto != null) ...[
                         _buildPhotoCard(
+                          isDark: isDark,
                           title: 'Етикетка / Бірка',
                           imageUrl: d.labelPhoto,
                           badgeColor: const Color(0xFF2563EB),
@@ -208,6 +211,7 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
                       // Photo 3: Receipt
                       if (d.receiptPhoto != null) ...[
                         _buildPhotoCard(
+                          isDark: isDark,
                           title: 'Чек покупки',
                           imageUrl: d.receiptPhoto,
                           badgeColor: const Color(0xFF16A34A),
@@ -226,9 +230,11 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFFEF3C7),
+              color: isDark ? const Color(0xFF272011) : const Color(0xFFFEF3C7),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFFDE68A)),
+              border: Border.all(
+                color: isDark ? AppTheme.accent.withValues(alpha: 0.4) : const Color(0xFFFDE68A),
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,15 +244,23 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
                         'ШІ автоматично розпізнав атрибути',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF92400E)),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                        ),
                       ),
-                      SizedBox(height: 3),
+                      const SizedBox(height: 3),
                       Text(
                         'Бренд, розмір, склад тканини вичитано з бірки; ціну, дату та магазин витягнуто з чека. Будь ласка, перевірте дані нижче.',
-                        style: TextStyle(fontSize: 11.5, color: Color(0xFF78350F), height: 1.35),
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: isDark ? const Color(0xFFE4E4E7) : const Color(0xFF78350F),
+                          height: 1.35,
+                        ),
                       ),
                     ],
                   ),
@@ -384,6 +398,7 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
   }
 
   Widget _buildPhotoCard({
+    required bool isDark,
     required String title,
     required String? imageUrl,
     required Color badgeColor,
@@ -392,9 +407,9 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
     return Container(
       width: 110,
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F4F5),
+        color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -477,15 +492,20 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
 
   Widget _buildDropdownCategory() {
     return DropdownButtonFormField<ClothingCategory>(
+      isExpanded: true,
       initialValue: _category,
       decoration: const InputDecoration(
         labelText: 'Категорія',
-        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
       items: ClothingCategory.values.map((cat) {
         return DropdownMenuItem(
           value: cat,
-          child: Text('${cat.icon} ${cat.label}', style: const TextStyle(fontSize: 13)),
+          child: Text(
+            '${cat.icon} ${cat.label}',
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13),
+          ),
         );
       }).toList(),
       onChanged: (val) {
@@ -496,15 +516,20 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
 
   Widget _buildDropdownSeason() {
     return DropdownButtonFormField<Season>(
+      isExpanded: true,
       initialValue: _season,
       decoration: const InputDecoration(
         labelText: 'Сезон',
-        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
       items: Season.values.map((s) {
         return DropdownMenuItem(
           value: s,
-          child: Text(s.label, style: const TextStyle(fontSize: 13)),
+          child: Text(
+            s.label,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13),
+          ),
         );
       }).toList(),
       onChanged: (val) {

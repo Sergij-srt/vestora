@@ -178,6 +178,11 @@ class PlannedDayOutfit {
 
 class OutfitCalendarService {
   static const _storageKey = 'vestora_calendar_planned_days_v1';
+  static const _deletedDatesKey = 'vestora_calendar_deleted_dates_v1';
+
+  static Future<void> initialize() async {
+    await getAllPlans();
+  }
 
   static String formatDate(DateTime dt) {
     final y = dt.year.toString().padLeft(4, '0');
@@ -189,6 +194,31 @@ class OutfitCalendarService {
   static DateTime startOfWeek(DateTime date) {
     // Week starts on Monday
     return DateTime(date.year, date.month, date.day).subtract(Duration(days: date.weekday - 1));
+  }
+
+  /// Returns set of locally deleted date keys awaiting cloud tombstone deletion.
+  static Future<Set<String>> getDeletedDates() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_deletedDatesKey);
+      return list != null ? list.toSet() : <String>{};
+    } catch (_) {
+      return <String>{};
+    }
+  }
+
+  /// Clears deleted date tombstones once propagated to Supabase `public.outfits`.
+  static Future<void> markDeletedDatesSynced(Iterable<String> syncedDates) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final current = await getDeletedDates();
+      current.removeAll(syncedDates);
+      if (current.isEmpty) {
+        await prefs.remove(_deletedDatesKey);
+      } else {
+        await prefs.setStringList(_deletedDatesKey, current.toList());
+      }
+    } catch (_) {}
   }
 
   /// Load all saved planned days from storage
@@ -210,7 +240,7 @@ class OutfitCalendarService {
     }
   }
 
-  /// Save or update a single planned day
+  /// Save or update a single planned day (clearing any prior deletion tombstone for that date)
   static Future<void> savePlan(PlannedDayOutfit plan) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -218,10 +248,19 @@ class OutfitCalendarService {
       all[plan.dateStr] = plan;
       final encoded = json.encode(all.map((k, v) => MapEntry(k, v.toJson())));
       await prefs.setString(_storageKey, encoded);
+
+      final deleted = await getDeletedDates();
+      if (deleted.remove(plan.dateStr)) {
+        if (deleted.isEmpty) {
+          await prefs.remove(_deletedDatesKey);
+        } else {
+          await prefs.setStringList(_deletedDatesKey, deleted.toList());
+        }
+      }
     } catch (_) {}
   }
 
-  /// Remove a planned day
+  /// Remove a planned day and record a tombstone so cloud sync will not resurrect it
   static Future<void> removePlan(String dateStr) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -231,6 +270,54 @@ class OutfitCalendarService {
         final encoded = json.encode(all.map((k, v) => MapEntry(k, v.toJson())));
         await prefs.setString(_storageKey, encoded);
       }
+      if (dateStr.trim().isNotEmpty) {
+        final deleted = await getDeletedDates();
+        deleted.add(dateStr.trim());
+        await prefs.setStringList(_deletedDatesKey, deleted.toList());
+      }
+    } catch (_) {}
+  }
+
+  /// Merges pulled cloud plans into local storage while respecting local deletion tombstones
+  /// and reconciling `isWorn` state without overwriting newer local edits.
+  static Future<int> mergeCloudPlans(List<PlannedDayOutfit> cloudPlans) async {
+    if (cloudPlans.isEmpty) return 0;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final all = await getAllPlans();
+      final deleted = await getDeletedDates();
+      int added = 0;
+      bool modifiedExisting = false;
+      for (final plan in cloudPlans) {
+        if (deleted.contains(plan.dateStr)) {
+          // Tombstone guard: never resurrect locally deleted planned outfits!
+          continue;
+        }
+        final existing = all[plan.dateStr];
+        if (existing == null) {
+          all[plan.dateStr] = plan;
+          added++;
+        } else if (plan.isWorn && !existing.isWorn) {
+          all[plan.dateStr] = existing.copyWith(isWorn: true);
+          modifiedExisting = true;
+        }
+      }
+      if (added > 0 || modifiedExisting) {
+        final encoded = json.encode(all.map((k, v) => MapEntry(k, v.toJson())));
+        await prefs.setString(_storageKey, encoded);
+      }
+      return added;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Clears all saved calendar plans and tombstones (used during account deletion)
+  static Future<void> clearAllPlans() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_storageKey);
+      await prefs.remove(_deletedDatesKey);
     } catch (_) {}
   }
 

@@ -15,6 +15,10 @@ class DeclutterHubScreen extends StatelessWidget {
     final wardrobe = context.watch<WardrobeProvider>();
     final report = DeclutterService.evaluateDeclutterAndEco(wardrobe: wardrobe.items);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppTheme.darkSurface : Colors.white;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Розхламлення & Еко-Хаб'),
@@ -40,15 +44,19 @@ class DeclutterHubScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'СПЛЯЧИЙ КАПІТАЛ У ШАФІ',
-                      style: TextStyle(
-                        color: Color(0xFFA1A1AA),
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
+                    const Flexible(
+                      child: Text(
+                        'СПЛЯЧИЙ КАПІТАЛ У ШАФІ',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Color(0xFFA1A1AA),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
@@ -66,20 +74,24 @@ class DeclutterHubScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${report.totalDormantValue.toStringAsFixed(0)} ₴',
-                          style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'Заблоковано в гардеробі',
-                          style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 12),
-                        ),
-                      ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${report.totalDormantValue.toStringAsFixed(0)} ₴',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Заблоковано в гардеробі',
+                            style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 12),
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -112,9 +124,9 @@ class DeclutterHubScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0FDF4),
+              color: isDark ? const Color(0xFF064E3B).withValues(alpha: 0.35) : const Color(0xFFF0FDF4),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFBBF7D0)),
+              border: Border.all(color: isDark ? const Color(0xFF047857) : const Color(0xFFBBF7D0)),
             ),
             child: Row(
               children: [
@@ -122,52 +134,76 @@ class DeclutterHubScreen extends StatelessWidget {
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isDark ? const Color(0xFF18181B) : Colors.white,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Text('💧', style: TextStyle(fontSize: 22)),
+                        child: const Text('💧', style: TextStyle(fontSize: 20)),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               '${report.waterSavedLiters} л',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF166534)),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534),
+                              ),
                             ),
-                            const Text('Збережено води', style: TextStyle(fontSize: 11, color: Color(0xFF15803D))),
+                            Text(
+                              'Збережено води',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? const Color(0xFFBBF7D0) : const Color(0xFF15803D),
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                Container(width: 1, height: 36, color: const Color(0xFFBBF7D0)),
-                const SizedBox(width: 12),
+                Container(width: 1, height: 36, color: isDark ? const Color(0xFF047857) : const Color(0xFFBBF7D0)),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isDark ? const Color(0xFF18181B) : Colors.white,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Text('🌿', style: TextStyle(fontSize: 22)),
+                        child: const Text('🌿', style: TextStyle(fontSize: 20)),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               '${report.co2AvoidedKg.toStringAsFixed(1)} кг',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF166534)),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534),
+                              ),
                             ),
-                            const Text('Уникнено CO2', style: TextStyle(fontSize: 11, color: Color(0xFF15803D))),
+                            Text(
+                              'Уникнено CO2',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? const Color(0xFFBBF7D0) : const Color(0xFF15803D),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -183,10 +219,14 @@ class DeclutterHubScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'КАНДИДАТИ НА РЕСЕЙЛ (НЕНОШЕНІ)',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.muted, letterSpacing: 0.8),
+              const Flexible(
+                child: Text(
+                  'КАНДИДАТИ НА РЕСЕЙЛ (НЕНОШЕНІ)',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.muted, letterSpacing: 0.8),
+                ),
               ),
+              const SizedBox(width: 8),
               Text(
                 '${report.dormantItems.length} шт.',
                 style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.accent),
@@ -198,9 +238,9 @@ class DeclutterHubScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardColor,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.border),
+                border: Border.all(color: borderColor),
               ),
               child: const Center(
                 child: Text('Чудово! У вашій шафі немає "мертвого вантажу" — всі речі активно носяться 💎'),
@@ -213,9 +253,9 @@ class DeclutterHubScreen extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: cardColor,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppTheme.border),
+                  border: Border.all(color: borderColor),
                 ),
                 child: Row(
                   children: [
@@ -251,6 +291,7 @@ class DeclutterHubScreen extends StatelessWidget {
                         ],
                       ),
                     ),
+                    const SizedBox(width: 8),
                     ElevatedButton.icon(
                       onPressed: () {
                         final listing = GamificationService.generateResaleListing(item);
@@ -264,8 +305,6 @@ class DeclutterHubScreen extends StatelessWidget {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       ),
                       icon: const Icon(Icons.copy_rounded, size: 14),
@@ -288,9 +327,9 @@ class DeclutterHubScreen extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardColor,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.border),
+                border: Border.all(color: borderColor),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,10 +343,13 @@ class DeclutterHubScreen extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              reminder.title,
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                            Expanded(
+                              child: Text(
+                                reminder.title,
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                              ),
                             ),
+                            const SizedBox(width: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(

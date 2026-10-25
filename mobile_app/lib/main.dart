@@ -7,6 +7,7 @@ import 'services/auth_service.dart';
 import 'services/theme_service.dart';
 import 'services/localization_service.dart';
 import 'services/supabase_service.dart';
+import 'services/outfit_calendar_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/closet_screen.dart';
 import 'screens/add_item_screen.dart';
@@ -22,6 +23,7 @@ void main() async {
   await UserProfileService.initialize();
   await ThemeService.initialize();
   await LocalizationService.initialize();
+  await OutfitCalendarService.initialize();
   await SupabaseService.initialize();
   runApp(const SmartWardrobeApp());
 }
@@ -68,7 +70,7 @@ class ResponsiveAppWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth > 520;
-    final isDark = ThemeService.instance.isDarkMode(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (!isDesktop) {
       return child;
@@ -166,27 +168,42 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           destinations: [
             NavigationDestination(
               icon: const Icon(Icons.checkroom_outlined),
-              selectedIcon: const Icon(Icons.checkroom_rounded, color: AppTheme.accent),
+              selectedIcon: Icon(
+                Icons.checkroom_rounded,
+                color: isDark ? AppTheme.darkAccent : AppTheme.accent,
+              ),
               label: loc.translate('tab_wardrobe'),
             ),
             NavigationDestination(
               icon: const Icon(Icons.style_outlined),
-              selectedIcon: const Icon(Icons.style_rounded, color: AppTheme.accent),
+              selectedIcon: Icon(
+                Icons.style_rounded,
+                color: isDark ? AppTheme.darkAccent : AppTheme.accent,
+              ),
               label: loc.translate('tab_stylist'),
             ),
             NavigationDestination(
               icon: const Icon(Icons.add_circle_outline_rounded),
-              selectedIcon: const Icon(Icons.add_circle_rounded, color: AppTheme.accent),
+              selectedIcon: Icon(
+                Icons.add_circle_rounded,
+                color: isDark ? AppTheme.darkAccent : AppTheme.accent,
+              ),
               label: loc.translate('tab_add'),
             ),
             NavigationDestination(
               icon: const Icon(Icons.auto_awesome_outlined),
-              selectedIcon: const Icon(Icons.auto_awesome_rounded, color: AppTheme.accent),
+              selectedIcon: Icon(
+                Icons.auto_awesome_rounded,
+                color: isDark ? AppTheme.darkAccent : AppTheme.accent,
+              ),
               label: loc.translate('tab_community'),
             ),
             NavigationDestination(
               icon: const Icon(Icons.insights_rounded),
-              selectedIcon: const Icon(Icons.insights_rounded, color: AppTheme.accent),
+              selectedIcon: Icon(
+                Icons.insights_rounded,
+                color: isDark ? AppTheme.darkAccent : AppTheme.accent,
+              ),
               label: loc.translate('tab_analytics'),
             ),
           ],

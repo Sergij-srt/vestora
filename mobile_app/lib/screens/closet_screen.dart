@@ -8,6 +8,7 @@ import '../services/localization_service.dart';
 import '../services/daily_stylist_service.dart';
 import '../services/user_profile_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/controller_scope.dart';
 import '../widgets/vestora_image.dart';
 import 'purchase_advisor_screen.dart';
 import 'brand_story_dialog.dart';
@@ -29,18 +30,25 @@ class ClosetScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 12,
         title: InkWell(
           borderRadius: BorderRadius.circular(8),
           onTap: () => showVestoraBrandStory(context),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: const [
-              Text(
-                'VESTORA',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2,
-                  fontSize: 19,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'VESTORA',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.2,
+                      fontSize: 19,
+                    ),
+                  ),
                 ),
               ),
               SizedBox(width: 6),
@@ -217,48 +225,64 @@ class ClosetScreen extends StatelessWidget {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    context.tr('closet_title'),
-                                    style: const TextStyle(
-                                      color: Color(0xFFA1A1AA),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 1.2,
+                                  Flexible(
+                                    child: Text(
+                                      context.tr('closet_title'),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Color(0xFFA1A1AA),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 1.2,
+                                      ),
                                     ),
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF3F3F46),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Text('🔥', style: TextStyle(fontSize: 12)),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${wardrobe.streakDays} ${context.tr('closet_streak')}',
-                                          style: const TextStyle(
-                                            color: Color(0xFFFDE68A),
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 11,
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF3F3F46),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Text('🔥', style: TextStyle(fontSize: 12)),
+                                          const SizedBox(width: 4),
+                                          Flexible(
+                                            child: Text(
+                                              '${wardrobe.streakDays} ${context.tr('closet_streak')}',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                color: Color(0xFFFDE68A),
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 11,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.end,
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                alignment: WrapAlignment.spaceBetween,
+                                crossAxisAlignment: WrapCrossAlignment.end,
                                 children: [
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         '${wardrobe.totalWardrobeValue.toStringAsFixed(0)} ₴',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 26,
@@ -268,6 +292,8 @@ class ClosetScreen extends StatelessWidget {
                                       const SizedBox(height: 2),
                                       Text(
                                         '${wardrobe.totalItemsCount} ${context.tr('closet_active_items')}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 12),
                                       ),
                                     ],
@@ -280,6 +306,8 @@ class ClosetScreen extends StatelessWidget {
                                     ),
                                     child: Text(
                                       '${context.tr('closet_health')} ${wardrobe.healthReport.healthScore}/100',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w800,
@@ -324,42 +352,49 @@ class ClosetScreen extends StatelessWidget {
 
                 // 3. "Should I Buy This?" Quick Advisor Banner
                 SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const PurchaseAdvisorScreen()),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF0FDF4),
+                  child: Builder(
+                    builder: (context) {
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        child: InkWell(
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFBBF7D0)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.shield_outlined, color: Color(0xFF16A34A), size: 20),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                context.tr('closet_purchase_banner'),
-                                style: const TextStyle(
-                                  color: Color(0xFF166534),
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const PurchaseAdvisorScreen()),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF064E3B).withValues(alpha: 0.4) : const Color(0xFFF0FDF4),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isDark ? const Color(0xFF047857) : const Color(0xFFBBF7D0),
                               ),
                             ),
-                            const Icon(Icons.chevron_right_rounded, color: Color(0xFF16A34A), size: 18),
-                          ],
+                            child: Row(
+                              children: [
+                                Icon(Icons.shield_outlined, color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A), size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    context.tr('closet_purchase_banner'),
+                                    style: TextStyle(
+                                      color: isDark ? const Color(0xFFDCFCE7) : const Color(0xFF166534),
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                Icon(Icons.chevron_right_rounded, color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A), size: 18),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
 
@@ -487,92 +522,133 @@ class ClosetScreen extends StatelessWidget {
 
                 // 4b. Usability Toolbar: Items counter, Season, Sorting & Reset
                 SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${wardrobe.filteredItems.length} ${context.tr('closet_items_count')} ${wardrobe.items.length} ${context.tr('closet_items_suffix')}',
-                          style: const TextStyle(fontSize: 12, color: AppTheme.muted, fontWeight: FontWeight.w600),
-                        ),
-                        Row(
+                  child: Builder(
+                    builder: (context) {
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+                      final chipBg = isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5);
+                      final chipText = isDark ? const Color(0xFFD4D4D8) : AppTheme.secondary;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            // Season Chip
-                            InkWell(
-                              borderRadius: BorderRadius.circular(10),
-                              onTap: () => _showSeasonFilterDialog(context),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: wardrobe.selectedSeason != null ? const Color(0xFFFEF3C7) : const Color(0xFFF4F4F5),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: wardrobe.selectedSeason != null ? AppTheme.accent : AppTheme.border),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.cloud_outlined, size: 13, color: AppTheme.secondary),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      wardrobe.selectedSeason != null ? wardrobe.selectedSeason!.label : context.tr('closet_all_seasons'),
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: wardrobe.selectedSeason != null ? const Color(0xFF92400E) : AppTheme.secondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                            Text(
+                              '${wardrobe.filteredItems.length} ${context.tr('closet_items_count')} ${wardrobe.items.length} ${context.tr('closet_items_suffix')}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? AppTheme.darkMuted : AppTheme.muted,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            // Sort Chip
-                            InkWell(
-                              borderRadius: BorderRadius.circular(10),
-                              onTap: () => _showSortDialog(context),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: wardrobe.sortOption != WardrobeSortOption.newest ? const Color(0xFFEFF6FF) : const Color(0xFFF4F4F5),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                // Season Chip
+                                InkWell(
                                   borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: wardrobe.sortOption != WardrobeSortOption.newest ? const Color(0xFF3B82F6) : AppTheme.border),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.sort_rounded, size: 13, color: AppTheme.secondary),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      wardrobe.sortOption.label.split(' ')[0],
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: wardrobe.sortOption != WardrobeSortOption.newest ? const Color(0xFF1D4ED8) : AppTheme.secondary,
+                                  onTap: () => _showSeasonFilterDialog(context),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: wardrobe.selectedSeason != null ? const Color(0xFFFEF3C7) : chipBg,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: wardrobe.selectedSeason != null ? AppTheme.accent : borderColor,
                                       ),
                                     ),
-                                  ],
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.cloud_outlined,
+                                          size: 13,
+                                          color: wardrobe.selectedSeason != null ? const Color(0xFF92400E) : chipText,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          wardrobe.selectedSeason != null
+                                              ? wardrobe.selectedSeason!.label
+                                              : context.tr('closet_all_seasons'),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: wardrobe.selectedSeason != null
+                                                ? const Color(0xFF92400E)
+                                                : chipText,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                // Sort Chip
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(10),
+                                  onTap: () => _showSortDialog(context),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: wardrobe.sortOption != WardrobeSortOption.newest
+                                          ? const Color(0xFFEFF6FF)
+                                          : chipBg,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: wardrobe.sortOption != WardrobeSortOption.newest
+                                            ? const Color(0xFF3B82F6)
+                                            : borderColor,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.sort_rounded,
+                                          size: 13,
+                                          color: wardrobe.sortOption != WardrobeSortOption.newest
+                                              ? const Color(0xFF1D4ED8)
+                                              : chipText,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          wardrobe.sortOption.label.split(' ')[0],
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: wardrobe.sortOption != WardrobeSortOption.newest
+                                                ? const Color(0xFF1D4ED8)
+                                                : chipText,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                if (wardrobe.selectedCategory != null ||
+                                    wardrobe.selectedSeason != null ||
+                                    wardrobe.searchQuery.isNotEmpty ||
+                                    wardrobe.sortOption != WardrobeSortOption.newest)
+                                  IconButton(
+                                    constraints: const BoxConstraints(),
+                                    padding: const EdgeInsets.all(4),
+                                    icon: const Icon(Icons.close_rounded, size: 18, color: Colors.redAccent),
+                                    tooltip: 'Скинути всі фільтри',
+                                    onPressed: () {
+                                      HapticFeedback.lightImpact();
+                                      wardrobe.resetAllFilters();
+                                    },
+                                  ),
+                              ],
                             ),
-                            if (wardrobe.selectedCategory != null ||
-                                wardrobe.selectedSeason != null ||
-                                wardrobe.searchQuery.isNotEmpty ||
-                                wardrobe.sortOption != WardrobeSortOption.newest) ...[
-                              const SizedBox(width: 4),
-                              IconButton(
-                                constraints: const BoxConstraints(),
-                                padding: const EdgeInsets.all(4),
-                                icon: const Icon(Icons.close_rounded, size: 18, color: Colors.redAccent),
-                                tooltip: 'Скинути всі фільтри',
-                                onPressed: () {
-                                  HapticFeedback.lightImpact();
-                                  wardrobe.resetAllFilters();
-                                },
-                              ),
-                            ],
                           ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ),
 
@@ -581,59 +657,64 @@ class ClosetScreen extends StatelessWidget {
                 // 5. Grid or Zero Dead-Ends Setup Hero Card
                 wardrobe.items.isEmpty
                     ? SliverToBoxAdapter(
-                        child: Container(
-                          margin: const EdgeInsets.all(16),
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: AppTheme.border),
-                            boxShadow: AppTheme.softShadow,
-                          ),
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 64,
-                                height: 64,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFFEF3C7),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Center(
-                                  child: Icon(Icons.checkroom_rounded, size: 32, color: AppTheme.accent),
-                                ),
+                        child: Builder(
+                          builder: (context) {
+                            final isDark = Theme.of(context).brightness == Brightness.dark;
+                            return Container(
+                              margin: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppTheme.darkSurface : Colors.white,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
+                                boxShadow: AppTheme.softShadow,
                               ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Ваш гардероб поки що порожній',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                                textAlign: TextAlign.center,
+                              child: Column(
+                                children: [
+                                  Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFFEF3C7),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Center(
+                                      child: Icon(Icons.checkroom_rounded, size: 32, color: AppTheme.accent),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const Text(
+                                    'Ваш гардероб поки що порожній',
+                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Спробуйте магію Vestora миттєво: завантажте готову дизайнерську демо-капсулу (Zara, Massimo Dutti, COS) або додайте власні речі за посиланням.',
+                                    style: TextStyle(fontSize: 13, color: AppTheme.muted, height: 1.4),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 20),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      onPressed: () {
+                                        context.read<WardrobeProvider>().loadDemoCapsule();
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Готову дизайнерську капсулу завантажено!'),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(Icons.auto_awesome, size: 18),
+                                      label: const Text('Завантажити готову капсулу (1 клік)'),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Спробуйте магію Vestora миттєво: завантажте готову дизайнерську демо-капсулу (Zara, Massimo Dutti, COS) або додайте власні речі за посиланням.',
-                                style: TextStyle(fontSize: 13, color: AppTheme.muted, height: 1.4),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 20),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    context.read<WardrobeProvider>().loadDemoCapsule();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Готову дизайнерську капсулу завантажено!'),
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.auto_awesome, size: 18),
-                                  label: const Text('Завантажити готову капсулу (1 клік)'),
-                                ),
-                              ),
-                            ],
-                          ),
+                            );
+                          },
                         ),
                       )
                     : wardrobe.filteredItems.isEmpty
@@ -648,8 +729,10 @@ class ClosetScreen extends StatelessWidget {
                                     Container(
                                       width: 64,
                                       height: 64,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFFF4F4F5),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? const Color(0xFF27272A)
+                                            : const Color(0xFFF4F4F5),
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Center(
@@ -738,21 +821,24 @@ class ClosetScreen extends StatelessWidget {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: ChoiceChip(
         label: Text(label),
         selected: isSelected,
         onSelected: (_) => onTap(),
-        selectedColor: AppTheme.primary,
+        selectedColor: isDark ? AppTheme.accent : AppTheme.primary,
         labelStyle: TextStyle(
-          color: isSelected ? Colors.white : AppTheme.primary,
+          color: isSelected ? Colors.white : (isDark ? Colors.white : AppTheme.primary),
           fontSize: 13,
           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
         side: BorderSide(
-          color: isSelected ? AppTheme.primary : AppTheme.border,
+          color: isSelected
+              ? (isDark ? AppTheme.accent : AppTheme.primary)
+              : (isDark ? AppTheme.darkBorder : AppTheme.border),
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
@@ -764,47 +850,57 @@ class ClosetScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 14),
-            const Text('Сортування гардеробу', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            ...WardrobeSortOption.values.map((opt) {
-              final isSel = wardrobe.sortOption == opt;
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  isSel ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
-                  color: isSel ? AppTheme.accent : AppTheme.muted,
-                ),
-                title: Text(
-                  opt.label,
-                  style: TextStyle(
-                    fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
-                    color: isSel ? AppTheme.primary : AppTheme.secondary,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.darkBorder : AppTheme.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  wardrobe.setSortOption(opt);
-                  Navigator.pop(ctx);
-                },
-              );
-            }),
-          ],
-        ),
-      ),
+                const SizedBox(height: 14),
+                const Text('Сортування гардеробу', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                ...WardrobeSortOption.values.map((opt) {
+                  final isSel = wardrobe.sortOption == opt;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      isSel ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                      color: isSel ? AppTheme.accent : AppTheme.muted,
+                    ),
+                    title: Text(
+                      opt.label,
+                      style: TextStyle(
+                        fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
+                        color: isSel
+                            ? (isDark ? Colors.white : AppTheme.primary)
+                            : (isDark ? const Color(0xFFD4D4D8) : AppTheme.secondary),
+                      ),
+                    ),
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      wardrobe.setSortOption(opt);
+                      Navigator.pop(ctx);
+                    },
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -813,60 +909,70 @@ class ClosetScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 14),
-            const Text('Фільтр за сезоном', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                wardrobe.selectedSeason == null ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
-                color: wardrobe.selectedSeason == null ? AppTheme.accent : AppTheme.muted,
-              ),
-              title: const Text('Всі сезони (Повний гардероб)', style: TextStyle(fontWeight: FontWeight.w700)),
-              onTap: () {
-                HapticFeedback.lightImpact();
-                wardrobe.setSeasonFilter(null);
-                Navigator.pop(ctx);
-              },
-            ),
-            ...Season.values.map((s) {
-              final isSel = wardrobe.selectedSeason == s;
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  isSel ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
-                  color: isSel ? AppTheme.accent : AppTheme.muted,
-                ),
-                title: Text(
-                  s.label,
-                  style: TextStyle(
-                    fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
-                    color: isSel ? AppTheme.primary : AppTheme.secondary,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.darkBorder : AppTheme.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  wardrobe.setSeasonFilter(s);
-                  Navigator.pop(ctx);
-                },
-              );
-            }),
-          ],
-        ),
-      ),
+                const SizedBox(height: 14),
+                const Text('Фільтр за сезоном', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    wardrobe.selectedSeason == null ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                    color: wardrobe.selectedSeason == null ? AppTheme.accent : AppTheme.muted,
+                  ),
+                  title: const Text('Всі сезони (Повний гардероб)', style: TextStyle(fontWeight: FontWeight.w700)),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    wardrobe.setSeasonFilter(null);
+                    Navigator.pop(ctx);
+                  },
+                ),
+                ...Season.values.map((s) {
+                  final isSel = wardrobe.selectedSeason == s;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      isSel ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                      color: isSel ? AppTheme.accent : AppTheme.muted,
+                    ),
+                    title: Text(
+                      s.label,
+                      style: TextStyle(
+                        fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
+                        color: isSel
+                            ? (isDark ? Colors.white : AppTheme.primary)
+                            : (isDark ? const Color(0xFFD4D4D8) : AppTheme.secondary),
+                      ),
+                    ),
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      wardrobe.setSeasonFilter(s);
+                      Navigator.pop(ctx);
+                    },
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -877,6 +983,8 @@ class _ClothingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final placeholderBg = isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5);
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -895,7 +1003,7 @@ class _ClothingCard extends StatelessWidget {
                     width: double.infinity,
                     height: double.infinity,
                     placeholder: (context, url) => Container(
-                      color: const Color(0xFFF4F4F5),
+                      color: placeholderBg,
                       child: const Center(
                         child: SizedBox(
                           width: 24,
@@ -905,7 +1013,7 @@ class _ClothingCard extends StatelessWidget {
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      color: const Color(0xFFF4F4F5),
+                      color: placeholderBg,
                       child: const Icon(Icons.broken_image_rounded, color: AppTheme.muted),
                     ),
                   ),
@@ -975,20 +1083,29 @@ class _ClothingCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '${item.price.toStringAsFixed(0)} ${item.currency}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: AppTheme.primary,
+                      Flexible(
+                        child: Text(
+                          '${item.price.toStringAsFixed(0)} ${item.currency}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: isDark ? Colors.white : AppTheme.primary,
+                          ),
                         ),
                       ),
-                      Text(
-                        '${item.costPerWear.toStringAsFixed(0)} ₴/лук',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: AppTheme.accent,
-                          fontWeight: FontWeight.w600,
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          '${item.costPerWear.toStringAsFixed(0)} ₴/лук',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppTheme.accent,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
@@ -1003,10 +1120,11 @@ class _ClothingCard extends StatelessWidget {
   }
 
   void _showItemDetails(BuildContext context, ClothingItem item) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1046,9 +1164,13 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, color: Colors.white, size: 20),
@@ -1081,12 +1203,14 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
   }
 
   void _showResaleDialog(BuildContext context, ClothingItem item) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final listingText = GamificationService.generateResaleListing(item);
     final suggestedPrice = (item.price * 0.6).round();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1101,23 +1225,26 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
+                    color: isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.storefront_rounded, color: AppTheme.accent),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'ШІ-Оголошення для Shafa / OLX',
                         style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
                       ),
                       Text(
                         'Згенеровано на основі етикетки та вартості',
-                        style: TextStyle(fontSize: 11.5, color: AppTheme.muted),
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: isDark ? AppTheme.darkMuted : AppTheme.muted,
+                        ),
                       ),
                     ],
                   ),
@@ -1128,9 +1255,11 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4),
+                color: isDark ? const Color(0xFF14532D).withValues(alpha: 0.35) : const Color(0xFFF0FDF4),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFBBF7D0)),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF166534) : const Color(0xFFBBF7D0),
+                ),
               ),
               child: Row(
                 children: [
@@ -1139,8 +1268,8 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                   Expanded(
                     child: Text(
                       'Рекомендована ціна продажу: $suggestedPrice ₴ (Знижка 40% від початкових ${item.price.toStringAsFixed(0)} ₴)',
-                      style: const TextStyle(
-                        color: Color(0xFF166534),
+                      style: TextStyle(
+                        color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534),
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1154,14 +1283,18 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
               constraints: const BoxConstraints(maxHeight: 180),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF4F4F5),
+                color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.border),
+                border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
               ),
               child: SingleChildScrollView(
                 child: SelectableText(
                   listingText,
-                  style: const TextStyle(fontSize: 12, height: 1.45, color: Color(0xFF27272A)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.45,
+                    color: isDark ? const Color(0xFFE4E4E7) : const Color(0xFF27272A),
+                  ),
                 ),
               ),
             ),
@@ -1191,137 +1324,142 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
   }
 
   void _showEditDialog(BuildContext context, ClothingItem item) {
-    final titleCtrl = TextEditingController(text: item.title);
-    final brandCtrl = TextEditingController(text: item.brand);
-    final priceCtrl = TextEditingController(text: item.price.toStringAsFixed(0));
-    final sizeCtrl = TextEditingController(text: item.size ?? '');
-    final fabricCtrl = TextEditingController(text: item.fabricComposition ?? '');
-    final colorCtrl = TextEditingController(text: item.color);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder: (_) => ControllerScope(
+        create: () => [
+          TextEditingController(text: item.title),
+          TextEditingController(text: item.brand),
+          TextEditingController(text: item.price.toStringAsFixed(0)),
+          TextEditingController(text: item.size ?? ''),
+          TextEditingController(text: item.fabricComposition ?? ''),
+          TextEditingController(text: item.color),
+        ],
+        builder: (ctx, ctrls) {
+          final titleCtrl = ctrls[0];
+          final brandCtrl = ctrls[1];
+          final priceCtrl = ctrls[2];
+          final sizeCtrl = ctrls[3];
+          final fabricCtrl = ctrls[4];
+          final colorCtrl = ctrls[5];
+          return Padding(
+            padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Редагувати річ',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: titleCtrl,
-                decoration: const InputDecoration(labelText: 'Назва товару'),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: brandCtrl,
-                      decoration: const InputDecoration(labelText: 'Бренд'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: priceCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Ціна (₴)'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: sizeCtrl,
-                      decoration: const InputDecoration(labelText: 'Розмір (EUR / US)'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: colorCtrl,
-                      decoration: const InputDecoration(labelText: 'Колір'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: fabricCtrl,
-                decoration: const InputDecoration(labelText: 'Склад тканини (з етикетки)'),
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    final updated = ClothingItem(
-                      id: item.id,
-                      title: titleCtrl.text.trim().isNotEmpty ? titleCtrl.text.trim() : item.title,
-                      brand: brandCtrl.text.trim().isNotEmpty ? brandCtrl.text.trim() : item.brand,
-                      price: double.tryParse(priceCtrl.text.trim()) ?? item.price,
-                      currency: item.currency,
-                      imageUrl: item.imageUrl,
-                      category: item.category,
-                      season: item.season,
-                      color: colorCtrl.text.trim().isNotEmpty ? colorCtrl.text.trim() : item.color,
-                      size: sizeCtrl.text.trim().isNotEmpty ? sizeCtrl.text.trim() : item.size,
-                      fabricComposition: fabricCtrl.text.trim().isNotEmpty ? fabricCtrl.text.trim() : item.fabricComposition,
-                      countryOfOrigin: item.countryOfOrigin,
-                      careInstructions: item.careInstructions,
-                      storeName: item.storeName,
-                      labelPhotoUrl: item.labelPhotoUrl,
-                      receiptPhotoUrl: item.receiptPhotoUrl,
-                      wearCount: item.wearCount,
-                    );
-                    context.read<WardrobeProvider>().updateItem(updated);
-                    Navigator.pop(ctx);
-                    Navigator.pop(context); // Close bottom sheet
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Дані речі успішно оновлено!'),
-                        behavior: SnackBarBehavior.floating,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Редагувати річ',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                        ),
                       ),
-                    );
-                  },
-                  child: const Text('Зберегти зміни'),
-                ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: titleCtrl,
+                    decoration: const InputDecoration(labelText: 'Назва товару'),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: brandCtrl,
+                          decoration: const InputDecoration(labelText: 'Бренд'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: priceCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Ціна (₴)'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: sizeCtrl,
+                          decoration: const InputDecoration(labelText: 'Розмір (EUR / US)'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: colorCtrl,
+                          decoration: const InputDecoration(labelText: 'Колір'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: fabricCtrl,
+                    decoration: const InputDecoration(labelText: 'Склад тканини (з етикетки)'),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final updated = item.copyWith(
+                          title: titleCtrl.text.trim().isNotEmpty ? titleCtrl.text.trim() : item.title,
+                          brand: brandCtrl.text.trim().isNotEmpty ? brandCtrl.text.trim() : item.brand,
+                          price: double.tryParse(priceCtrl.text.trim()) ?? item.price,
+                          color: colorCtrl.text.trim().isNotEmpty ? colorCtrl.text.trim() : item.color,
+                          size: sizeCtrl.text.trim().isNotEmpty ? sizeCtrl.text.trim() : item.size,
+                          fabricComposition: fabricCtrl.text.trim().isNotEmpty ? fabricCtrl.text.trim() : item.fabricComposition,
+                        );
+                        context.read<WardrobeProvider>().updateItem(updated);
+                        Navigator.pop(ctx);
+                        Navigator.pop(context); // Close bottom sheet
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Дані речі успішно оновлено!'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      child: const Text('Зберегти зміни'),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildSpecItem(IconData icon, String label, String value) {
+  Widget _buildSpecItem(IconData icon, String label, String value, {required bool isDark}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
+        color: isDark ? const Color(0xFF27272A) : const Color(0xFFF9FAFB),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
       ),
       child: Row(
         children: [
@@ -1334,13 +1472,23 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(fontSize: 10, color: AppTheme.muted, fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isDark ? AppTheme.darkMuted : AppTheme.muted,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 Text(
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : AppTheme.primary,
+                  ),
                 ),
               ],
             ),
@@ -1352,6 +1500,8 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isNarrow = MediaQuery.of(context).size.width < 360;
     final item = widget.item;
     final simulatedWears = item.wearCount + _extraWears.round();
     final simulatedCPW = simulatedWears > 0 ? (item.price / simulatedWears) : item.price;
@@ -1372,7 +1522,7 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppTheme.border,
+                  color: isDark ? AppTheme.darkBorder : AppTheme.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1405,8 +1555,8 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                               item.brand.toUpperCase(),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppTheme.muted,
+                              style: TextStyle(
+                                color: isDark ? AppTheme.darkMuted : AppTheme.muted,
                                 fontWeight: FontWeight.w800,
                                 fontSize: 11,
                                 letterSpacing: 0.8,
@@ -1417,7 +1567,7 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                             icon: const Icon(Icons.edit_outlined, size: 18, color: AppTheme.accent),
                             tooltip: 'Редагувати',
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                             onPressed: () => _showEditDialog(context, item),
                           ),
                         ],
@@ -1433,22 +1583,32 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
                             '${item.price.toStringAsFixed(0)} ${item.currency}',
-                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppTheme.primary),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                              color: isDark ? Colors.white : AppTheme.primary,
+                            ),
                           ),
-                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFEF3C7),
+                              color: isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               '${item.wearCount} носінь',
-                              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF92400E)),
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                              ),
                             ),
                           ),
                         ],
@@ -1461,13 +1621,13 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
             const SizedBox(height: 16),
 
             // Luxury Specification Grid (Data read from Labels & Receipts)
-            const Text(
+            Text(
               'ХАРАКТЕРИСТИКИ ТА ЕТИКЕТКА',
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1,
-                color: AppTheme.muted,
+                color: isDark ? AppTheme.darkMuted : AppTheme.muted,
               ),
             ),
             const SizedBox(height: 8),
@@ -1475,45 +1635,60 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
               crossAxisCount: 2,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 2.5,
+              childAspectRatio: isNarrow ? 2.0 : 2.5,
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
               children: [
-                _buildSpecItem(Icons.straighten_rounded, 'Розмір', item.size ?? 'EUR 38 / M'),
-                _buildSpecItem(Icons.public_rounded, 'Походження', item.countryOfOrigin ?? 'Made in Portugal'),
-                _buildSpecItem(Icons.texture_rounded, 'Склад тканини', item.fabricComposition ?? '100% Вовна'),
-                _buildSpecItem(Icons.local_laundry_service_outlined, 'Правила догляду', item.careInstructions ?? 'Делікатне прання'),
-                _buildSpecItem(Icons.palette_outlined, 'Колір & Сезон', '${item.color} · ${item.season.label}'),
-                _buildSpecItem(Icons.storefront_outlined, 'Місце покупки', item.storeName ?? item.brand),
+                _buildSpecItem(Icons.straighten_rounded, 'Розмір', item.size ?? 'EUR 38 / M', isDark: isDark),
+                _buildSpecItem(Icons.public_rounded, 'Походження', item.countryOfOrigin ?? 'Made in Portugal', isDark: isDark),
+                _buildSpecItem(Icons.texture_rounded, 'Склад тканини', item.fabricComposition ?? '100% Вовна', isDark: isDark),
+                _buildSpecItem(Icons.local_laundry_service_outlined, 'Правила догляду', item.careInstructions ?? 'Делікатне прання', isDark: isDark),
+                _buildSpecItem(Icons.palette_outlined, 'Колір & Сезон', '${item.color} · ${item.season.label}', isDark: isDark),
+                _buildSpecItem(Icons.storefront_outlined, 'Місце покупки', item.storeName ?? item.brand, isDark: isDark),
               ],
             ),
             const SizedBox(height: 14),
 
             // Photos from Tag & Receipt if present
             if (item.labelPhotoUrl != null || item.receiptPhotoUrl != null) ...[
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  const Text(
-                    'ФОТО-ПІДТВЕРДЖЕННЯ: ',
-                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppTheme.muted),
+                  Text(
+                    'ФОТО-ПІДТВЕРДЖЕННЯ:',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? AppTheme.darkMuted : AppTheme.muted,
+                    ),
                   ),
-                  const Spacer(),
                   if (item.labelPhotoUrl != null)
                     InkWell(
                       onTap: () => _showImagePreview(context, item.labelPhotoUrl!, 'Фото етикетки'),
                       child: Container(
-                        margin: const EdgeInsets.only(left: 6),
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF0FDF4),
+                          color: isDark ? const Color(0xFF14532D).withValues(alpha: 0.4) : const Color(0xFFF0FDF4),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFBBF7D0)),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF166534) : const Color(0xFFBBF7D0),
+                          ),
                         ),
-                        child: const Row(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('🏷️', style: TextStyle(fontSize: 11)),
-                            SizedBox(width: 4),
-                            Text('Етикетка', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF166534))),
+                            const Text('🏷️', style: TextStyle(fontSize: 11)),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Етикетка',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1522,18 +1697,27 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                     InkWell(
                       onTap: () => _showImagePreview(context, item.receiptPhotoUrl!, 'Фото чека'),
                       child: Container(
-                        margin: const EdgeInsets.only(left: 6),
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFAF5FF),
+                          color: isDark ? const Color(0xFF3B0764).withValues(alpha: 0.4) : const Color(0xFFFAF5FF),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFE9D5FF)),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF6B21A8) : const Color(0xFFE9D5FF),
+                          ),
                         ),
-                        child: const Row(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('🧾', style: TextStyle(fontSize: 11)),
-                            SizedBox(width: 4),
-                            Text('Чек покупки', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF6B21A8))),
+                            const Text('🧾', style: TextStyle(fontSize: 11)),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Чек покупки',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? const Color(0xFFD8B4FE) : const Color(0xFF6B21A8),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1547,9 +1731,9 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8F9FA),
+                color: isDark ? const Color(0xFF27272A) : const Color(0xFFF8F9FA),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.border),
+                border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1557,15 +1741,20 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'СИМУЛЯТОР ОКУПНОСТІ (CPW)',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1,
-                          color: AppTheme.accent,
+                      const Expanded(
+                        child: Text(
+                          'СИМУЛЯТОР ОКУПНОСТІ (CPW)',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1,
+                            color: AppTheme.accent,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
                         '+${_extraWears.round()} виходів',
                         style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
@@ -1583,13 +1772,30 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Зараз: ${item.costPerWear.toStringAsFixed(0)} ₴ / носіння',
-                        style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+                      Flexible(
+                        child: Text(
+                          'Зараз: ${item.costPerWear.toStringAsFixed(0)} ₴ / носіння',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? AppTheme.darkMuted : AppTheme.muted,
+                          ),
+                        ),
                       ),
-                      Text(
-                        'Прогноз: ${simulatedCPW.toStringAsFixed(0)} ₴ (-${percentSavings.toStringAsFixed(0)}%)',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'Прогноз: ${simulatedCPW.toStringAsFixed(0)} ₴ (-${percentSavings.toStringAsFixed(0)}%)',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.end,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF16A34A),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1606,10 +1812,25 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 11),
                       side: const BorderSide(color: Color(0xFFD4AF37)),
-                      backgroundColor: const Color(0xFFFFFBEB),
+                      backgroundColor: isDark
+                          ? const Color(0xFF451A03).withValues(alpha: 0.45)
+                          : const Color(0xFFFFFBEB),
                     ),
-                    icon: const Icon(Icons.face_retouching_natural_rounded, size: 17, color: Color(0xFFB45309)),
-                    label: const Text('Приміряти (Virtual Try-On)', style: TextStyle(color: Color(0xFFB45309), fontSize: 12, fontWeight: FontWeight.w700)),
+                    icon: Icon(
+                      Icons.face_retouching_natural_rounded,
+                      size: 17,
+                      color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
+                    ),
+                    label: Text(
+                      'Приміряти (Virtual Try-On)',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     onPressed: () {
                       Navigator.pop(context);
                       Navigator.push(
@@ -1635,8 +1856,15 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: isNarrow ? 10 : 16, vertical: 12),
+                    ),
                     icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
-                    label: const Text('Вдягнути (+1)'),
+                    label: const Text(
+                      'Вдягнути (+1)',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     onPressed: () {
                       context.read<WardrobeProvider>().recordWear(item.id);
                       Navigator.pop(context);
@@ -1651,6 +1879,9 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                 ),
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: isNarrow ? 10 : 14, vertical: 12),
+                  ),
                   icon: const Icon(Icons.sell_outlined, size: 16),
                   label: const Text('Продати'),
                   onPressed: () => _showResaleDialog(context, item),
@@ -1721,96 +1952,103 @@ class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
   }
 
   void _showCityPickerDialog() {
-    final controller = TextEditingController();
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1C1917),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFFD4AF37), width: 1.2),
-        ),
-        title: const Row(
-          children: [
-            Icon(Icons.location_on_rounded, color: Color(0xFFD4AF37), size: 22),
-            SizedBox(width: 8),
-            Text(
-              'Місто та погода',
-              style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+      builder: (_) => ControllerScope(
+        create: () => [TextEditingController()],
+        builder: (ctx, ctrls) {
+          final controller = ctrls[0];
+          return AlertDialog(
+            backgroundColor: const Color(0xFF1C1917),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: Color(0xFFD4AF37), width: 1.2),
             ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Оберіть або введіть місто для отримання живого прогнозу погоди (Open-Meteo API):',
-                style: TextStyle(color: Color(0xFFA8A29E), fontSize: 13),
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: defaultFashionCities.map((city) {
-                  final isCurrent = _digest?.city.toLowerCase() == city.name.toLowerCase();
-                  return ChoiceChip(
-                    label: Text(city.name),
-                    selected: isCurrent,
-                    selectedColor: const Color(0xFFD4AF37),
-                    backgroundColor: const Color(0xFF292524),
-                    labelStyle: TextStyle(
-                      color: isCurrent ? Colors.black : Colors.white,
-                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                      fontSize: 12,
-                    ),
-                    onSelected: (_) async {
-                      Navigator.pop(ctx);
-                      await UserProfileService.saveProfile(location: city.name);
-                      _loadDigest(forceRefresh: true, overrideCity: city.name);
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: 'Введіть інше місто (напр. Чернівці)',
-                  hintStyle: const TextStyle(color: Color(0xFF78716C), fontSize: 13),
-                  filled: true,
-                  fillColor: const Color(0xFF292524),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            title: const Row(
+              children: [
+                Icon(Icons.location_on_rounded, color: Color(0xFFD4AF37), size: 22),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Місто та погода',
+                    style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                  ),
                 ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Оберіть або введіть місто для отримання живого прогнозу погоди (Open-Meteo API):',
+                    style: TextStyle(color: Color(0xFFA8A29E), fontSize: 13),
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: defaultFashionCities.map((city) {
+                      final isCurrent = _digest?.city.toLowerCase() == city.name.toLowerCase();
+                      return ChoiceChip(
+                        label: Text(city.name),
+                        selected: isCurrent,
+                        selectedColor: const Color(0xFFD4AF37),
+                        backgroundColor: const Color(0xFF292524),
+                        labelStyle: TextStyle(
+                          color: isCurrent ? Colors.black : Colors.white,
+                          fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 12,
+                        ),
+                        onSelected: (_) async {
+                          Navigator.pop(ctx);
+                          await UserProfileService.saveProfile(location: city.name);
+                          _loadDigest(forceRefresh: true, overrideCity: city.name);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'Введіть інше місто (напр. Чернівці)',
+                      hintStyle: const TextStyle(color: Color(0xFFA8A29E), fontSize: 13),
+                      filled: true,
+                      fillColor: const Color(0xFF292524),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Скасувати', style: TextStyle(color: Color(0xFFA8A29E))),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD4AF37),
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () async {
+                  final text = controller.text.trim();
+                  Navigator.pop(ctx);
+                  if (text.isNotEmpty) {
+                    await UserProfileService.saveProfile(location: text);
+                    _loadDigest(forceRefresh: true, overrideCity: text);
+                  }
+                },
+                child: const Text('Застосувати', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Скасувати', style: TextStyle(color: Color(0xFFA8A29E))),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD4AF37),
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () async {
-              final text = controller.text.trim();
-              Navigator.pop(ctx);
-              if (text.isNotEmpty) {
-                await UserProfileService.saveProfile(location: text);
-                _loadDigest(forceRefresh: true, overrideCity: text);
-              }
-            },
-            child: const Text('Застосувати', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -1911,50 +2149,67 @@ class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
           children: [
             // Top Bar: Weather + Title + Actions
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                InkWell(
-                  onTap: _showCityPickerDialog,
-                  borderRadius: BorderRadius.circular(10),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF44403C),
-                          borderRadius: BorderRadius.circular(10),
+                Expanded(
+                  child: InkWell(
+                    onTap: _showCityPickerDialog,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF44403C),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('⛅', style: TextStyle(fontSize: 12)),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  digest.weatherSummary,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFFFDE68A),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: Row(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text('⛅', style: TextStyle(fontSize: 12)),
-                            const SizedBox(width: 4),
-                            Text(
-                              digest.weatherSummary,
-                              style: const TextStyle(
-                                color: Color(0xFFFDE68A),
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
+                            const Icon(Icons.location_on_outlined, size: 12, color: Color(0xFFD4AF37)),
+                            const SizedBox(width: 2),
+                            Flexible(
+                              child: Text(
+                                digest.city,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Color(0xFFA8A29E), fontSize: 11, fontWeight: FontWeight.w600),
                               ),
                             ),
+                            const Icon(Icons.arrow_drop_down_rounded, size: 16, color: Color(0xFFA8A29E)),
                           ],
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.location_on_outlined, size: 12, color: Color(0xFFD4AF37)),
-                          const SizedBox(width: 2),
-                          Text(
-                            digest.city,
-                            style: const TextStyle(color: Color(0xFFA8A29E), fontSize: 11, fontWeight: FontWeight.w600),
-                          ),
-                          const Icon(Icons.arrow_drop_down_rounded, size: 16, color: Color(0xFFA8A29E)),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
+                const SizedBox(width: 6),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
                       icon: const Icon(Icons.refresh_rounded, color: Color(0xFFA8A29E), size: 18),
@@ -1987,12 +2242,16 @@ class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
               children: [
                 Icon(Icons.auto_awesome, color: Color(0xFFD4AF37), size: 15),
                 SizedBox(width: 6),
-                Text(
-                  'Ранковий AI-асистент · Лук дня',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
+                Expanded(
+                  child: Text(
+                    'Ранковий AI-асистент · Лук дня',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ],
@@ -2044,6 +2303,8 @@ class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
                               child: Text(
                                 item.category.label,
                                 textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 8.5,
@@ -2062,14 +2323,15 @@ class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
             const SizedBox(height: 12),
 
             // Actions
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
+            if (MediaQuery.of(context).size.width < 360)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: digest.isWorn ? const Color(0xFF16A34A) : const Color(0xFFD4AF37),
                       foregroundColor: digest.isWorn ? Colors.white : Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     icon: Icon(
@@ -2078,28 +2340,68 @@ class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
                     ),
                     label: Text(
                       digest.isWorn ? 'Вдягнено (+1)' : 'Вдягнути сьогодні (+1)',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
                     ),
                     onPressed: digest.isWorn ? null : () => _wearOutfit(wardrobe),
                   ),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFFDE68A),
-                    side: const BorderSide(color: Color(0xFFD4AF37)),
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFFDE68A),
+                      side: const BorderSide(color: Color(0xFFD4AF37)),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.face_retouching_natural_rounded, size: 16),
+                    label: const Text('Примірка', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    onPressed: _openTryOn,
                   ),
-                  icon: const Icon(Icons.face_retouching_natural_rounded, size: 16),
-                  label: const Text('Примірка', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  onPressed: _openTryOn,
-                ),
-              ],
-            ),
+                ],
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: digest.isWorn ? const Color(0xFF16A34A) : const Color(0xFFD4AF37),
+                        foregroundColor: digest.isWorn ? Colors.white : Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: Icon(
+                        digest.isWorn ? Icons.check_circle_rounded : Icons.check_rounded,
+                        size: 16,
+                      ),
+                      label: Text(
+                        digest.isWorn ? 'Вдягнено (+1)' : 'Вдягнути сьогодні (+1)',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                      ),
+                      onPressed: digest.isWorn ? null : () => _wearOutfit(wardrobe),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFFDE68A),
+                      side: const BorderSide(color: Color(0xFFD4AF37)),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.face_retouching_natural_rounded, size: 16),
+                    label: const Text('Примірка', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    onPressed: _openTryOn,
+                  ),
+                ],
+              ),
           ],
         ),
       ),
     );
   }
 }
+

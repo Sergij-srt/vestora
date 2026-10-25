@@ -134,6 +134,7 @@ class _PurchaseAdvisorScreenState extends State<PurchaseAdvisorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Should I Buy This? (AI Радник)'),
@@ -192,7 +193,8 @@ class _PurchaseAdvisorScreenState extends State<PurchaseAdvisorScreen> {
               hintText: 'https://zara.com/... або kasta.ua/...',
               prefixIcon: const Icon(Icons.link_rounded),
               suffixIcon: IconButton(
-                icon: const Icon(Icons.send_rounded, color: AppTheme.primary),
+                icon: Icon(Icons.send_rounded, color: isDark ? AppTheme.accent : AppTheme.primary),
+                tooltip: 'Проаналізувати URL',
                 onPressed: _isAnalyzing ? null : _analyzeFromUrl,
               ),
             ),
@@ -236,11 +238,17 @@ class _PurchaseAdvisorScreenState extends State<PurchaseAdvisorScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
+                color: isDark ? const Color(0xFF450A0A) : Colors.red.shade50,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.red.shade200),
+                border: Border.all(color: isDark ? const Color(0xFF991B1B) : Colors.red.shade200),
               ),
-              child: Text(_error!, style: TextStyle(color: Colors.red.shade800, fontSize: 13)),
+              child: Text(
+                _error!,
+                style: TextStyle(
+                  color: isDark ? const Color(0xFFFECACA) : Colors.red.shade800,
+                  fontSize: 13,
+                ),
+              ),
             ),
           ],
 
@@ -275,14 +283,17 @@ class _PurchaseAdvisorScreenState extends State<PurchaseAdvisorScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        _report!.verdict.title,
-                        style: TextStyle(
-                          color: Color(_report!.verdict.textColor),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
+                      Expanded(
+                        child: Text(
+                          _report!.verdict.title,
+                          style: TextStyle(
+                            color: Color(_report!.verdict.textColor),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
@@ -320,6 +331,7 @@ class _PurchaseAdvisorScreenState extends State<PurchaseAdvisorScreen> {
               children: [
                 Expanded(
                   child: _buildMetricTile(
+                    isDark: isDark,
                     label: 'НОВИХ ОБРАЗІВ',
                     value: '+${_report!.synergyOutfitsCount}',
                     icon: Icons.auto_awesome_rounded,
@@ -329,6 +341,7 @@ class _PurchaseAdvisorScreenState extends State<PurchaseAdvisorScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildMetricTile(
+                    isDark: isDark,
                     label: 'ДУБЛІКАТІВ У ШАФІ',
                     value: '${_report!.duplicateItems.length}',
                     icon: Icons.copy_rounded,
@@ -351,9 +364,9 @@ class _PurchaseAdvisorScreenState extends State<PurchaseAdvisorScreen> {
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? AppTheme.darkSurface : Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red.shade200),
+                    border: Border.all(color: isDark ? const Color(0xFF991B1B) : Colors.red.shade200),
                   ),
                   child: Row(
                     children: [
@@ -430,6 +443,7 @@ class _PurchaseAdvisorScreenState extends State<PurchaseAdvisorScreen> {
   }
 
   Widget _buildMetricTile({
+    required bool isDark,
     required String label,
     required String value,
     required IconData icon,
@@ -438,9 +452,9 @@ class _PurchaseAdvisorScreenState extends State<PurchaseAdvisorScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -448,7 +462,15 @@ class _PurchaseAdvisorScreenState extends State<PurchaseAdvisorScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.muted)),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.muted),
+                ),
+              ),
+              const SizedBox(width: 4),
               Icon(icon, size: 16, color: color),
             ],
           ),

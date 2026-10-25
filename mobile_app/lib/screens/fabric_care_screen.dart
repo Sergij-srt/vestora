@@ -40,6 +40,8 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isNarrow = MediaQuery.of(context).size.width < 360;
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -48,6 +50,8 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
         ),
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: isNarrow,
+          tabAlignment: isNarrow ? TabAlignment.start : TabAlignment.fill,
           labelColor: AppTheme.accent,
           unselectedLabelColor: AppTheme.muted,
           indicatorColor: AppTheme.accent,
@@ -64,20 +68,20 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
         controller: _tabController,
         children: [
           // Tab 1: Care Symbols Decoder
-          _buildSymbolsTab(),
+          _buildSymbolsTab(isDark),
 
           // Tab 2: Stain Rescue Emergency Guide
-          _buildStainRescueTab(),
+          _buildStainRescueTab(isDark),
 
           // Tab 3: Fabric Longevity Guides
-          _buildFabricGuidesTab(),
+          _buildFabricGuidesTab(isDark),
         ],
       ),
     );
   }
 
   // TAB 1: SYMBOLS DECODER
-  Widget _buildSymbolsTab() {
+  Widget _buildSymbolsTab(bool isDark) {
     final list = _filteredSymbols;
 
     return ListView(
@@ -91,7 +95,7 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
             prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.muted),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: isDark ? AppTheme.darkSurface : Colors.white,
             suffixIcon: _symbolSearchQuery.isNotEmpty
                 ? IconButton(
                     icon: const Icon(Icons.close_rounded, size: 18),
@@ -110,9 +114,12 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
               ChoiceChip(
                 label: const Text('Всі значки'),
                 selected: _selectedCategory == null,
-                selectedColor: AppTheme.primary,
+                selectedColor: isDark ? AppTheme.accent : AppTheme.primary,
+                backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
                 labelStyle: TextStyle(
-                  color: _selectedCategory == null ? Colors.white : AppTheme.primary,
+                  color: _selectedCategory == null
+                      ? Colors.white
+                      : (isDark ? Colors.white : AppTheme.primary),
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
                 ),
@@ -126,9 +133,10 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
                   child: ChoiceChip(
                     label: Text(cat.label),
                     selected: isSel,
-                    selectedColor: AppTheme.primary,
+                    selectedColor: isDark ? AppTheme.accent : AppTheme.primary,
+                    backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
                     labelStyle: TextStyle(
-                      color: isSel ? Colors.white : AppTheme.primary,
+                      color: isSel ? Colors.white : (isDark ? Colors.white : AppTheme.primary),
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
                     ),
@@ -149,19 +157,19 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
             ),
           )
         else
-          ...list.map((item) => _buildSymbolCard(item)),
+          ...list.map((item) => _buildSymbolCard(item, isDark)),
       ],
     );
   }
 
-  Widget _buildSymbolCard(CareSymbolItem item) {
+  Widget _buildSymbolCard(CareSymbolItem item, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
         boxShadow: AppTheme.softShadow,
       ),
       child: Row(
@@ -192,10 +200,11 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
                         style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
                       ),
                     ),
+                    const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF4F4F5),
+                        color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -208,24 +217,32 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
                 const SizedBox(height: 4),
                 Text(
                   item.description,
-                  style: const TextStyle(fontSize: 12.5, color: AppTheme.secondary, height: 1.35),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: isDark ? const Color(0xFFD4D4D8) : AppTheme.secondary,
+                    height: 1.35,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0FDF4),
+                    color: isDark ? const Color(0xFF064E3B).withValues(alpha: 0.4) : const Color(0xFFF0FDF4),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                    border: Border.all(color: isDark ? const Color(0xFF047857) : const Color(0xFFBBF7D0)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.lightbulb_outline_rounded, size: 14, color: Color(0xFF16A34A)),
+                      Icon(Icons.lightbulb_outline_rounded, size: 14, color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A)),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           item.tip,
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF166534), fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? const Color(0xFFDCFCE7) : const Color(0xFF166534),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
@@ -240,25 +257,29 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
   }
 
   // TAB 2: STAIN RESCUE
-  Widget _buildStainRescueTab() {
+  Widget _buildStainRescueTab(bool isDark) {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFFFEF2F2),
+            color: isDark ? const Color(0xFF450A0A) : const Color(0xFFFEF2F2),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFFECACA)),
+            border: Border.all(color: isDark ? const Color(0xFF991B1B) : const Color(0xFFFECACA)),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 24),
-              SizedBox(width: 12),
+              Icon(Icons.warning_amber_rounded, color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626), size: 24),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Головне правило порятунку: ніколи не тріть пляму із силою та уникайте гарячої води до розчинення пігменту!',
-                  style: TextStyle(color: Color(0xFF991B1B), fontSize: 12.5, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: isDark ? const Color(0xFFFECACA) : const Color(0xFF991B1B),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -266,19 +287,19 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
         ),
         const SizedBox(height: 16),
 
-        ...FabricCareService.stainGuides.map((guide) => _buildStainCard(guide)),
+        ...FabricCareService.stainGuides.map((guide) => _buildStainCard(guide, isDark)),
       ],
     );
   }
 
-  Widget _buildStainCard(StainRescueGuide guide) {
+  Widget _buildStainCard(StainRescueGuide guide, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
         boxShadow: AppTheme.softShadow,
       ),
       child: Column(
@@ -320,7 +341,11 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
                 padding: const EdgeInsets.symmetric(vertical: 2.5),
                 child: Text(
                   step,
-                  style: const TextStyle(fontSize: 12.5, color: AppTheme.secondary, height: 1.35),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: isDark ? const Color(0xFFD4D4D8) : AppTheme.secondary,
+                    height: 1.35,
+                  ),
                 ),
               )),
           const SizedBox(height: 8),
@@ -328,17 +353,21 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF1F2),
+              color: isDark ? const Color(0xFF4C0519) : const Color(0xFFFFF1F2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFFE11D48)),
+                Icon(Icons.info_outline_rounded, size: 14, color: isDark ? const Color(0xFFFDA4AF) : const Color(0xFFE11D48)),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     guide.warning,
-                    style: const TextStyle(fontSize: 11, color: Color(0xFFBE123C), fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? const Color(0xFFFECDD3) : const Color(0xFFBE123C),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -350,21 +379,21 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
   }
 
   // TAB 3: FABRICS LONGEVITY
-  Widget _buildFabricGuidesTab() {
+  Widget _buildFabricGuidesTab(bool isDark) {
     return ListView(
       padding: const EdgeInsets.all(16),
-      children: FabricCareService.fabricGuides.map((guide) => _buildFabricCard(guide)).toList(),
+      children: FabricCareService.fabricGuides.map((guide) => _buildFabricCard(guide, isDark)).toList(),
     );
   }
 
-  Widget _buildFabricCard(FabricGuideItem guide) {
+  Widget _buildFabricCard(FabricGuideItem guide, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
         boxShadow: AppTheme.softShadow,
       ),
       child: Column(
@@ -373,16 +402,22 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Text(guide.iconEmoji, style: const TextStyle(fontSize: 24)),
-                  const SizedBox(width: 10),
-                  Text(
-                    guide.fabricName,
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                  ),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    Text(guide.iconEmoji, style: const TextStyle(fontSize: 24)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        guide.fabricName,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -400,19 +435,19 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
           const Divider(height: 1),
           const SizedBox(height: 12),
 
-          _buildFabricSpecRow('🧺 Прання:', guide.washingRule),
+          _buildFabricSpecRow('🧺 Прання:', guide.washingRule, isDark),
           const SizedBox(height: 8),
-          _buildFabricSpecRow('🌬️ Сушіння:', guide.dryingRule),
+          _buildFabricSpecRow('🌬️ Сушіння:', guide.dryingRule, isDark),
           const SizedBox(height: 8),
-          _buildFabricSpecRow('🚪 Зберігання:', guide.storageRule),
+          _buildFabricSpecRow('🚪 Зберігання:', guide.storageRule, isDark),
           const SizedBox(height: 12),
 
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
+              color: isDark ? const Color(0xFF27272A) : const Color(0xFFF8F9FA),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.border),
+              border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,11 +458,18 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
                   child: RichText(
                     text: TextSpan(
                       text: 'Секрет стиліста: ',
-                      style: const TextStyle(fontWeight: FontWeight.w800, color: AppTheme.primary, fontSize: 12),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : AppTheme.primary,
+                        fontSize: 12,
+                      ),
                       children: [
                         TextSpan(
                           text: guide.proStylistSecret,
-                          style: const TextStyle(fontWeight: FontWeight.normal, color: AppTheme.secondary),
+                          style: TextStyle(
+                            fontWeight: FontWeight.normal,
+                            color: isDark ? const Color(0xFFD4D4D8) : AppTheme.secondary,
+                          ),
                         ),
                       ],
                     ),
@@ -441,7 +483,7 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildFabricSpecRow(String label, String text) {
+  Widget _buildFabricSpecRow(String label, String text, bool isDark) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -455,7 +497,11 @@ class _FabricCareScreenState extends State<FabricCareScreen> with SingleTickerPr
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(fontSize: 12, color: AppTheme.secondary, height: 1.35),
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? const Color(0xFFD4D4D8) : AppTheme.secondary,
+              height: 1.35,
+            ),
           ),
         ),
       ],

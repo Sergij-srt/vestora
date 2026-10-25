@@ -5,9 +5,14 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' https: http: data: blob:; connect-src 'self' https: http://127.0.0.1:* http://localhost:* wss:;">
   <meta name="description" content="Vestora — ШІ-гардероб преміум-класу: розумна капсула, віртуальна примірочна, персональний стиліст під погоду та аналітика Cost-Per-Wear.">
   <meta name="keywords" content="smart wardrobe, digital closet, quiet luxury, капсульний гардероб, AI стиліст, віртуальна примірочна">
+
+  <!-- Preconnect for Web Fonts & LCP Optimization -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
   <!-- OpenGraph / Social Cards -->
   <meta property="og:type" content="website">
@@ -42,7 +47,6 @@
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       -webkit-tap-highlight-color: transparent;
-      user-select: none;
     }
 
     /* Luxury Splash Screen / Preloader */
@@ -58,6 +62,7 @@
       align-items: center;
       justify-content: center;
       z-index: 99999;
+      user-select: none;
       transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
@@ -191,10 +196,15 @@
     .pwa-close {
       background: transparent;
       border: none;
-      color: #71717A;
+      color: #D4D4D8;
       cursor: pointer;
       font-size: 18px;
-      padding: 2px 6px;
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
     }
 
     @keyframes fadeInScale {
@@ -221,13 +231,13 @@
 </head>
 <body>
   <!-- Luxury Preloader -->
-  <div id="vestora-splash">
+  <div id="vestora-splash" role="status" aria-label="Завантаження Vestora">
     <div class="splash-content">
       <div class="splash-logo-container">
         <div class="splash-glow"></div>
         <div class="splash-badge">
           <!-- Hanger Icon SVG -->
-          <svg class="splash-hanger-svg" viewBox="0 0 24 24">
+          <svg class="splash-hanger-svg" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 4a3 3 0 0 0-3 3c0 .8.4 1.5 1 2l-7.5 7.5a2 2 0 0 0 1.4 3.4h19.2a2 2 0 0 0 1.4-3.4L14 9c.6-.5 1-1.2 1-2a3 3 0 0 0-3-3z"/>
           </svg>
         </div>
@@ -241,10 +251,10 @@
   </div>
 
   <!-- PWA Install Prompt Banner -->
-  <div id="pwa-install-banner">
+  <div id="pwa-install-banner" role="region" aria-label="Встановлення PWA">
     <span>📲 Встановити Vestora як додаток</span>
-    <button class="pwa-btn" id="pwa-install-btn">Встановити</button>
-    <button class="pwa-close" id="pwa-dismiss-btn" title="Закрити">✕</button>
+    <button class="pwa-btn" id="pwa-install-btn" type="button">Встановити</button>
+    <button class="pwa-close" id="pwa-dismiss-btn" type="button" title="Закрити" aria-label="Закрити банер встановлення">✕</button>
   </div>
 
   <!-- Service Worker & PWA Logic -->

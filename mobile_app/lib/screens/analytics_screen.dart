@@ -17,6 +17,10 @@ class AnalyticsScreen extends StatelessWidget {
     final wardrobe = context.watch<WardrobeProvider>();
     final health = wardrobe.healthReport;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppTheme.darkSurface : Colors.white;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Аналітика Гардероба'),
@@ -90,15 +94,19 @@ VESTORA · Звіт про Гардероб ✨
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'ІНДЕКС ЗДОРОВ\'Я ШАФИ',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
-                        color: Color(0xFFD4D4D8),
+                    const Flexible(
+                      child: Text(
+                        'ІНДЕКС ЗДОРОВ\'Я ШАФИ',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                          color: Color(0xFFD4D4D8),
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
@@ -213,9 +221,9 @@ VESTORA · Звіт про Гардероб ✨
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cardColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.border),
+              border: Border.all(color: borderColor),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,20 +241,24 @@ VESTORA · Звіт про Гардероб ✨
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '${wardrobe.totalWardrobeValue.toStringAsFixed(0)} ₴',
-                      style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+                    Flexible(
+                      child: Text(
+                        '${wardrobe.totalWardrobeValue.toStringAsFixed(0)} ₴',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDCFCE7),
+                        color: isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         '${wardrobe.totalItemsCount} одиниць',
-                        style: const TextStyle(
-                          color: Color(0xFF166534),
+                        style: TextStyle(
+                          color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534),
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
                         ),
@@ -282,10 +294,12 @@ VESTORA · Звіт про Гардероб ✨
                   width: 140,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: badge.isUnlocked ? Colors.white : const Color(0xFFF4F4F5),
+                    color: badge.isUnlocked
+                        ? cardColor
+                        : (isDark ? const Color(0xFF141418) : const Color(0xFFF4F4F5)),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: badge.isUnlocked ? AppTheme.accent.withValues(alpha: 0.6) : AppTheme.border,
+                      color: badge.isUnlocked ? AppTheme.accent.withValues(alpha: 0.6) : borderColor,
                     ),
                   ),
                   child: Column(
@@ -313,7 +327,9 @@ VESTORA · Звіт про Гардероб ✨
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: badge.isUnlocked ? AppTheme.primary : AppTheme.muted,
+                              color: badge.isUnlocked
+                                  ? (isDark ? Colors.white : AppTheme.primary)
+                                  : AppTheme.muted,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -346,10 +362,11 @@ VESTORA · Звіт про Гардероб ✨
           const SizedBox(height: 10),
           ...wardrobe.mostWornItems.take(3).map((item) {
             return _buildItemRow(
+              isDark: isDark,
               item: item,
               badgeText: '${item.costPerWear.toStringAsFixed(0)} ₴ / носіння',
-              badgeColor: const Color(0xFFDCFCE7),
-              badgeTextColor: const Color(0xFF166534),
+              badgeColor: isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7),
+              badgeTextColor: isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534),
             );
           }),
           const SizedBox(height: 20),
@@ -358,27 +375,38 @@ VESTORA · Звіт про Гардероб ✨
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFBEB),
+              color: isDark ? const Color(0xFF272011) : const Color(0xFFFFFBEB),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFFDE68A)),
+              border: Border.all(
+                color: isDark ? AppTheme.accent.withValues(alpha: 0.4) : const Color(0xFFFDE68A),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  children: const [
-                    Icon(Icons.inventory_2_outlined, color: AppTheme.accent),
-                    SizedBox(width: 8),
-                    Text(
-                      'КАНДИДАТИ НА РЕСЕЙЛ (НЕНОШЕНІ)',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF92400E)),
+                  children: [
+                    const Icon(Icons.inventory_2_outlined, color: AppTheme.accent),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'КАНДИДАТИ НА РЕСЕЙЛ (НЕНОШЕНІ)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                        ),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   'Ці речі одягалися найменше. Натисніть "Продати", щоб згенерувати готове оголошення для Shafa, OLX або Vinted.',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF78350F)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? const Color(0xFFE4E4E7) : const Color(0xFF78350F),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 ...wardrobe.leastWornItems.take(2).map((item) {
@@ -400,12 +428,18 @@ VESTORA · Звіт про Гардероб ✨
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(item.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                              Text(
+                                item.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                              ),
                               Text('${item.wearCount} носінь · ${item.price.toStringAsFixed(0)} ₴',
                                   style: const TextStyle(fontSize: 11, color: AppTheme.muted)),
                             ],
                           ),
                         ),
+                        const SizedBox(width: 8),
                         ElevatedButton(
                           onPressed: () {
                             final listingText = GamificationService.generateResaleListing(item);
@@ -419,7 +453,6 @@ VESTORA · Звіт про Гардероб ✨
                             );
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primary,
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           ),
                           child: const Text('Продати', style: TextStyle(fontSize: 12)),
@@ -447,9 +480,9 @@ VESTORA · Звіт про Гардероб ✨
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cardColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.border),
+              border: Border.all(color: borderColor),
             ),
             child: Column(
               children: ClothingCategory.values.map((cat) {
@@ -469,15 +502,21 @@ VESTORA · Звіт про Гардероб ✨
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(cat.label, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
+                                Flexible(
+                                  child: Text(
+                                    cat.label,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
+                                  ),
+                                ),
                                 Text('$count шт.', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                               ],
                             ),
                             const SizedBox(height: 4),
                             LinearProgressIndicator(
                               value: percentage,
-                              backgroundColor: AppTheme.background,
-                              valueColor: const AlwaysStoppedAnimation(AppTheme.primary),
+                              backgroundColor: isDark ? const Color(0xFF27272A) : AppTheme.background,
+                              valueColor: AlwaysStoppedAnimation(isDark ? AppTheme.accent : AppTheme.primary),
                               minHeight: 4,
                               borderRadius: BorderRadius.circular(2),
                             ),
@@ -506,9 +545,9 @@ VESTORA · Звіт про Гардероб ✨
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cardColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.border),
+              border: Border.all(color: borderColor),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -516,10 +555,13 @@ VESTORA · Звіт про Гардероб ✨
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Позачасова база (Quiet Luxury):',
-                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                    const Flexible(
+                      child: Text(
+                        'Позачасова база (Quiet Luxury):',
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
@@ -541,9 +583,9 @@ VESTORA · Звіт про Гардероб ✨
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF4F4F5),
+                        color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppTheme.border),
+                        border: Border.all(color: borderColor),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -554,7 +596,7 @@ VESTORA · Звіт про Гардероб ✨
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: _getColorFromName(entry.key),
-                              border: Border.all(color: Colors.black26),
+                              border: Border.all(color: isDark ? Colors.white24 : Colors.black26),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -571,18 +613,22 @@ VESTORA · Звіт про Гардероб ✨
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0FDF4),
+                    color: isDark ? const Color(0xFF064E3B).withValues(alpha: 0.4) : const Color(0xFFF0FDF4),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                    border: Border.all(color: isDark ? const Color(0xFF047857) : const Color(0xFFBBF7D0)),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.palette_outlined, color: Color(0xFF16A34A), size: 18),
-                      SizedBox(width: 8),
+                      Icon(Icons.palette_outlined, color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A), size: 18),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Гармонія палітри відмінна: кольори легко поєднуються за правилом трьох відтінків.',
-                          style: TextStyle(fontSize: 11.5, color: Color(0xFF166534), height: 1.35),
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: isDark ? const Color(0xFFDCFCE7) : const Color(0xFF166534),
+                            height: 1.35,
+                          ),
                         ),
                       ),
                     ],
@@ -611,6 +657,7 @@ VESTORA · Звіт про Гардероб ✨
   }
 
   Widget _buildItemRow({
+    required bool isDark,
     required ClothingItem item,
     required String badgeText,
     required Color badgeColor,
@@ -620,9 +667,9 @@ VESTORA · Звіт про Гардероб ✨
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
       ),
       child: Row(
         children: [
@@ -653,6 +700,7 @@ VESTORA · Звіт про Гардероб ✨
               ],
             ),
           ),
+          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(

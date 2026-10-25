@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/ai_config_service.dart';
@@ -28,6 +29,7 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
 
   Future<void> _loadConfig() async {
     await AiConfigService.initialize();
+    if (!mounted) return;
     setState(() {
       _apiKeyController.text = AiConfigService.apiKey ?? '';
       _adCredits = AiConfigService.adCredits;
@@ -81,7 +83,7 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
             ? 'API-ключ Google Gemini успішно збережено!'
             : 'Ключ видалено. Активовано локальний парсер / бонуси за рекламу.'),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: key.isNotEmpty ? const Color(0xFF16A34A) : AppTheme.primary,
+        backgroundColor: key.isNotEmpty ? AppTheme.success : AppTheme.primary,
       ),
     );
     setState(() {});
@@ -89,6 +91,7 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
 
   void _simulateWatchRewardedAd() {
     setState(() => _isWatchingAd = true);
+    Timer? countdownTimer;
 
     showDialog(
       context: context,
@@ -97,25 +100,31 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
         int secondsLeft = 4;
         return StatefulBuilder(
           builder: (dialogCtx, setModalState) {
-            Future.delayed(const Duration(seconds: 1), () {
+            countdownTimer ??= Timer.periodic(const Duration(seconds: 1), (timer) {
+              if (!dialogCtx.mounted) {
+                timer.cancel();
+                return;
+              }
               if (secondsLeft > 1) {
-                if (dialogCtx.mounted) {
-                  setModalState(() => secondsLeft--);
-                }
-              } else if (secondsLeft == 1) {
-                if (dialogCtx.mounted) {
-                  setModalState(() => secondsLeft = 0);
-                }
+                setModalState(() => secondsLeft--);
+              } else {
+                setModalState(() => secondsLeft = 0);
+                timer.cancel();
               }
             });
 
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: Row(
-                children: const [
+              title: const Row(
+                children: [
                   Icon(Icons.play_circle_filled_rounded, color: AppTheme.accent, size: 28),
                   SizedBox(width: 10),
-                  Text('Спонсорське відео', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                  Expanded(
+                    child: Text(
+                      'Спонсорське відео',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ],
               ),
               content: Column(
@@ -156,7 +165,7 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
               actions: [
                 if (secondsLeft == 0)
                   ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF16A34A)),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
                     onPressed: () async {
                       Navigator.pop(dialogCtx);
                       final updated = await AiConfigService.addRewardedAdCredits(3);
@@ -168,7 +177,7 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('🎉 Вам нараховано +3 повноцінних Vision ШІ-сканування!'),
-                            backgroundColor: Color(0xFF16A34A),
+                            backgroundColor: AppTheme.success,
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
@@ -180,21 +189,39 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                   TextButton(
                     onPressed: () {
                       Navigator.pop(dialogCtx);
-                      setState(() => _isWatchingAd = false);
+                      if (mounted) {
+                        setState(() => _isWatchingAd = false);
+                      }
                     },
-                    child: const Text('Закрити без винагороди', style: TextStyle(color: AppTheme.muted)),
+                    child: Text(
+                      'Закрити без винагороди',
+                      style: TextStyle(
+                        color: Theme.of(dialogCtx).brightness == Brightness.dark
+                            ? AppTheme.darkMuted
+                            : AppTheme.muted,
+                      ),
+                    ),
                   ),
               ],
             );
           },
         );
       },
-    );
+    ).whenComplete(() {
+      countdownTimer?.cancel();
+      if (mounted && _isWatchingAd) {
+        setState(() => _isWatchingAd = false);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final hasKey = AiConfigService.hasCustomKey;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppTheme.darkCard : Colors.white;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.border;
+    final mutedColor = isDark ? AppTheme.darkMuted : AppTheme.muted;
 
     return Scaffold(
       appBar: AppBar(
@@ -226,17 +253,22 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        hasKey ? 'АКТИВНИЙ ШІ: ВЛАСНИЙ КЛЮЧ' : (_adCredits > 0 ? 'БОНУСНИЙ ШІ' : 'ЛОКАЛЬНИЙ РЕЖИМ'),
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          hasKey ? 'АКТИВНИЙ ШІ: ВЛАСНИЙ КЛЮЧ' : (_adCredits > 0 ? 'БОНУСНИЙ ШІ' : 'ЛОКАЛЬНИЙ РЕЖИМ'),
+                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Icon(
                       hasKey ? Icons.verified_rounded : (_adCredits > 0 ? Icons.stars_rounded : Icons.offline_bolt_rounded),
                       color: Colors.white,
@@ -272,30 +304,32 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
           const SizedBox(height: 24),
 
           // 2. Bring Your Own Key (BYOK) Card
-          const Text(
+          Text(
             'ВЛАСНИЙ КЛЮЧ GOOGLE GEMINI (БЕЗКОШТОВНО)',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1, color: AppTheme.muted),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1, color: mutedColor),
           ),
           const SizedBox(height: 10),
 
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cardColor,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.border),
-              boxShadow: AppTheme.softShadow,
+              border: Border.all(color: borderColor),
+              boxShadow: isDark ? const [] : AppTheme.softShadow,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: const [
+                const Row(
+                  children: [
                     Icon(Icons.vpn_key_rounded, color: AppTheme.accent, size: 20),
                     SizedBox(width: 8),
-                    Text(
-                      'Gemini API Key',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    Expanded(
+                      child: Text(
+                        'Gemini API Key',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
@@ -305,16 +339,18 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                   obscureText: _obscureKey,
                   decoration: InputDecoration(
                     hintText: 'AIzaSy...',
-                    prefixIcon: const Icon(Icons.key_rounded, size: 20, color: AppTheme.muted),
+                    prefixIcon: Icon(Icons.key_rounded, size: 20, color: mutedColor),
                     suffixIcon: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
+                          tooltip: _obscureKey ? 'Показати ключ' : 'Приховати ключ',
                           icon: Icon(_obscureKey ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 20),
                           onPressed: () => setState(() => _obscureKey = !_obscureKey),
                         ),
                         if (_apiKeyController.text.isNotEmpty)
                           IconButton(
+                            tooltip: 'Очистити ключ',
                             icon: const Icon(Icons.clear_rounded, size: 20),
                             onPressed: () {
                               _apiKeyController.clear();
@@ -334,6 +370,7 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         initialValue: _selectedModel,
                         decoration: const InputDecoration(
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -341,11 +378,19 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                         items: const [
                           DropdownMenuItem(
                             value: 'gemini-2.5-flash',
-                            child: Text('Gemini 2.5 Flash (Рекомендовано)', style: TextStyle(fontSize: 12.5)),
+                            child: Text(
+                              'Gemini 2.5 Flash (Рекомендовано)',
+                              style: TextStyle(fontSize: 12.5),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 'gemini-2.5-flash-lite',
-                            child: Text('Gemini 2.5 Flash-Lite (Швидкісний)', style: TextStyle(fontSize: 12.5)),
+                            child: Text(
+                              'Gemini 2.5 Flash-Lite (Швидкісний)',
+                              style: TextStyle(fontSize: 12.5),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                         onChanged: (val) {
@@ -361,9 +406,12 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                 const SizedBox(height: 16),
 
                 // Action Buttons: Test & Save
-                Row(
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
                   children: [
-                    Expanded(
+                    SizedBox(
+                      width: 150,
                       child: OutlinedButton.icon(
                         onPressed: _isTestingKey ? null : _testKey,
                         icon: _isTestingKey
@@ -373,21 +421,25 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Icon(Icons.wifi_tethering_rounded, size: 18),
-                        label: Text(_isTestingKey ? 'Тестування...' : 'Перевірити ключ'),
+                        label: Text(
+                          _isTestingKey ? 'Тестування...' : 'Перевірити',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
+                    SizedBox(
+                      width: 140,
                       child: ElevatedButton.icon(
                         onPressed: _saveKey,
                         icon: const Icon(Icons.check_rounded, size: 18),
                         label: const Text('Зберегти'),
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          backgroundColor: AppTheme.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                          backgroundColor: isDark ? AppTheme.darkAccent : AppTheme.primary,
+                          foregroundColor: isDark ? Colors.black : Colors.white,
                         ),
                       ),
                     ),
@@ -401,13 +453,13 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: _isKeyValid == true
-                          ? const Color(0xFFF0FDF4)
-                          : const Color(0xFFFEF2F2),
+                          ? (isDark ? const Color(0xFF064E3B) : const Color(0xFFF0FDF4))
+                          : (isDark ? const Color(0xFF450A0A) : const Color(0xFFFEF2F2)),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: _isKeyValid == true
-                            ? const Color(0xFFBBF7D0)
-                            : const Color(0xFFFECACA),
+                            ? (isDark ? const Color(0xFF059669) : const Color(0xFFBBF7D0))
+                            : (isDark ? const Color(0xFFDC2626) : const Color(0xFFFECACA)),
                       ),
                     ),
                     child: Text(
@@ -415,8 +467,8 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                       style: TextStyle(
                         fontSize: 12,
                         color: _isKeyValid == true
-                            ? const Color(0xFF166534)
-                            : const Color(0xFF991B1B),
+                            ? (isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534))
+                            : (isDark ? const Color(0xFFFECACA) : const Color(0xFF991B1B)),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -431,33 +483,48 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFFEF3C7).withValues(alpha: 0.5),
+              color: isDark ? const Color(0xFF27272A) : const Color(0xFFFEF3C7).withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFFDE68A)),
+              border: Border.all(color: isDark ? const Color(0xFF78350F) : const Color(0xFFFDE68A)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  children: const [
-                    Icon(Icons.help_outline_rounded, color: Color(0xFFB45309), size: 18),
-                    SizedBox(width: 8),
-                    Text(
-                      'Як отримати безкоштовний ключ за 30 секунд:',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF92400E)),
+                  children: [
+                    Icon(
+                      Icons.help_outline_rounded,
+                      color: isDark ? AppTheme.darkAccent : const Color(0xFFB45309),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Як отримати безкоштовний ключ за 30 секунд:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          color: isDark ? AppTheme.darkAccent : const Color(0xFF92400E),
+                        ),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   '1. Перейдіть на aistudio.google.com з будь-якого Google-акаунта.\n'
                   '2. Натисніть кнопку "Get API key" → "Create API key".\n'
                   '3. Скопіюйте створений ключ (починається з AIzaSy...) та вставте його вище.\n'
                   '💳 Картка не потрібна. 100% безкоштовно (1 500 запитів/день).',
-                  style: TextStyle(fontSize: 11.5, color: Color(0xFF78350F), height: 1.4),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: isDark ? const Color(0xFFE4E4E7) : const Color(0xFF78350F),
+                    height: 1.4,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 InkWell(
+                  borderRadius: BorderRadius.circular(8),
                   onTap: () {
                     Clipboard.setData(const ClipboardData(text: 'https://aistudio.google.com/'));
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -467,21 +534,30 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                       ),
                     );
                   },
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.copy_rounded, size: 14, color: Color(0xFFB45309)),
-                      SizedBox(width: 6),
-                      Text(
-                        'Скопіювати лінк на Google AI Studio',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFFB45309),
-                          decoration: TextDecoration.underline,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.copy_rounded,
+                          size: 14,
+                          color: isDark ? AppTheme.darkAccent : const Color(0xFFB45309),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Скопіювати лінк на Google AI Studio',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? AppTheme.darkAccent : const Color(0xFFB45309),
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -490,19 +566,19 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
           const SizedBox(height: 24),
 
           // 4. Alternative: Rewarded Ad Scans (Free via Ads)
-          const Text(
+          Text(
             'БЕЗКОШТОВНІ СКАНУВАННЯ ЗА РЕКЛАМУ (REWARDED ADS)',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1, color: AppTheme.muted),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1, color: mutedColor),
           ),
           const SizedBox(height: 10),
 
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cardColor,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.border),
-              boxShadow: AppTheme.softShadow,
+              border: Border.all(color: borderColor),
+              boxShadow: isDark ? const [] : AppTheme.softShadow,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,14 +586,17 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Бонусний баланс Vision ШІ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                        const SizedBox(height: 2),
-                        Text('Залишилося: $_adCredits повноцінних сканувань', style: const TextStyle(fontSize: 12, color: AppTheme.muted)),
-                      ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Бонусний баланс Vision ШІ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          const SizedBox(height: 2),
+                          Text('Залишилося: $_adCredits повноцінних сканувань', style: TextStyle(fontSize: 12, color: mutedColor)),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
@@ -537,10 +616,15 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                   child: ElevatedButton.icon(
                     onPressed: _isWatchingAd ? null : _simulateWatchRewardedAd,
                     icon: const Icon(Icons.play_circle_outline_rounded, size: 20),
-                    label: const Text('Переглянути коротке відео (+3 сканування)'),
+                    label: const Text(
+                      'Переглянути коротке відео (+3 сканування)',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 10),
                       backgroundColor: const Color(0xFF4F46E5),
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                   ),
@@ -573,10 +657,10 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                   child: const Text('💎', style: TextStyle(fontSize: 22)),
                 ),
                 const SizedBox(width: 14),
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
                         'Vestora VIP Cloud (Незабаром)',
                         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),

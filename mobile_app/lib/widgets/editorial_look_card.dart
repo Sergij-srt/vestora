@@ -72,16 +72,21 @@ class EditorialLookCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'VESTORA',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 4,
+                    const Flexible(
+                      child: Text(
+                        'VESTORA',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 4,
+                        ),
                       ),
                     ),
                     IconButton(
+                      tooltip: 'Закрити',
                       icon: const Icon(Icons.close, color: Color(0xFFA1A1AA), size: 20),
                       onPressed: () => Navigator.pop(context),
                     ),
@@ -89,24 +94,33 @@ class EditorialLookCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'DAILY EDITORIAL · $temperatureText',
-                      style: const TextStyle(
-                        color: Color(0xFFD4D4D8),
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.5,
+                    Expanded(
+                      child: Text(
+                        'DAILY EDITORIAL · $temperatureText',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFFD4D4D8),
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                        ),
                       ),
                     ),
-                    Text(
-                      occasion.toUpperCase(),
-                      style: const TextStyle(
-                        color: Color(0xFFFDE68A),
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        occasion.toUpperCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
+                        style: const TextStyle(
+                          color: Color(0xFFFDE68A),
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                        ),
                       ),
                     ),
                   ],
@@ -158,34 +172,42 @@ class EditorialLookCard extends StatelessWidget {
                 border: Border.all(color: const Color(0xFF3F3F46)),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFD97706),
-                          borderRadius: BorderRadius.circular(8),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFB45309),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.auto_awesome, color: Colors.white, size: 14),
                         ),
-                        child: const Icon(Icons.auto_awesome, color: Colors.white, size: 14),
-                      ),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'STYLE CHECK RATIO',
-                            style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 9, fontWeight: FontWeight.w700),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'STYLE CHECK RATIO',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 9, fontWeight: FontWeight.w700),
+                              ),
+                              Text(
+                                '${styleScore.toStringAsFixed(1)} / 10 · Бездоганно',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
+                              ),
+                            ],
                           ),
-                          Text(
-                            '${styleScore.toStringAsFixed(1)} / 10 · Бездоганно',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [

@@ -129,8 +129,13 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                       Navigator.pop(ctx);
                       try {
                         final picker = ImagePicker();
-                        final photo = await picker.pickImage(source: ImageSource.camera);
-                        if (photo != null) {
+                        final photo = await picker.pickImage(
+                          source: ImageSource.camera,
+                          maxWidth: 1024,
+                          maxHeight: 1024,
+                          imageQuality: 78,
+                        );
+                        if (photo != null && mounted) {
                           _updateFace(photo.path);
                         }
                       } catch (_) {}
@@ -149,8 +154,13 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                       Navigator.pop(ctx);
                       try {
                         final picker = ImagePicker();
-                        final photo = await picker.pickImage(source: ImageSource.gallery);
-                        if (photo != null) {
+                        final photo = await picker.pickImage(
+                          source: ImageSource.gallery,
+                          maxWidth: 1024,
+                          maxHeight: 1024,
+                          imageQuality: 78,
+                        );
+                        if (photo != null && mounted) {
                           _updateFace(photo.path);
                         }
                       } catch (_) {}
@@ -1009,59 +1019,74 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Silhouette selector popup
-                PopupMenuButton<TryOnModelSilhouette>(
-                  initialValue: _silhouette,
-                  onSelected: (sil) {
-                    setState(() => _silhouette = sil);
-                    _runAnalysis();
-                  },
-                  itemBuilder: (_) => TryOnModelSilhouette.values
-                      .map((s) => PopupMenuItem(value: s, child: Text(s.label)))
-                      .toList(),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF3F3F46),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          _silhouette.label,
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 18),
-                      ],
+                Flexible(
+                  child: PopupMenuButton<TryOnModelSilhouette>(
+                    initialValue: _silhouette,
+                    onSelected: (sil) {
+                      setState(() => _silhouette = sil);
+                      _runAnalysis();
+                    },
+                    itemBuilder: (_) => TryOnModelSilhouette.values
+                        .map((s) => PopupMenuItem(value: s, child: Text(s.label)))
+                        .toList(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3F3F46),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _silhouette.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 18),
+                        ],
+                      ),
                     ),
                   ),
                 ),
+                const SizedBox(width: 8),
 
                 // Background selector popup
-                PopupMenuButton<TryOnBackground>(
-                  initialValue: _background,
-                  onSelected: (bg) {
-                    setState(() => _background = bg);
-                    _runAnalysis();
-                  },
-                  itemBuilder: (_) => TryOnBackground.values
-                      .map((b) => PopupMenuItem(value: b, child: Text(b.label)))
-                      .toList(),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF3F3F46),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          _background.label,
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 18),
-                      ],
+                Flexible(
+                  child: PopupMenuButton<TryOnBackground>(
+                    initialValue: _background,
+                    onSelected: (bg) {
+                      setState(() => _background = bg);
+                      _runAnalysis();
+                    },
+                    itemBuilder: (_) => TryOnBackground.values
+                        .map((b) => PopupMenuItem(value: b, child: Text(b.label)))
+                        .toList(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3F3F46),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _background.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 18),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1071,199 +1096,206 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
 
           // Central Visual Fitting Mirror
           Expanded(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Ambience Backdrop
-                Positioned.fill(
-                  child: Opacity(
-                    opacity: 0.25,
-                    child: VestoraImage(
-                      imageUrl: _background.imageUrl,
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-
-                // Luxury Mirror Frame
-                Container(
-                  width: 320,
-                  margin: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.04),
-                    borderRadius: BorderRadius.circular(32),
-                    border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.6), width: 2), // Gold mirror bezel
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        blurRadius: 28,
-                        spreadRadius: 4,
+            child: LayoutBuilder(
+              builder: (context, mirrorConstraints) {
+                final compactMirror = mirrorConstraints.maxHeight < 260;
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Ambience Backdrop
+                    Positioned.fill(
+                      child: Opacity(
+                        opacity: 0.25,
+                        child: VestoraImage(
+                          imageUrl: _background.imageUrl,
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
                       ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(30),
-                    child: Stack(
-                      alignment: Alignment.topCenter,
-                      children: [
-                        // Subtle Mannequin / Body Silhouette Contour
-                        Positioned.fill(
-                          child: CustomPaint(
-                            painter: _MannequinContourPainter(silhouette: _silhouette),
+                    ),
+
+                    // Luxury Mirror Frame
+                    Container(
+                      width: 320,
+                      margin: EdgeInsets.symmetric(vertical: compactMirror ? 4 : 12, horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(32),
+                        border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.6), width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            blurRadius: 28,
+                            spreadRadius: 4,
                           ),
-                        ),
-
-                        // Layered Clothes Display
-                        Positioned.fill(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(24, 75, 24, 20),
-                            child: Column(
-                              children: [
-                                // Upper Body Layer (Outerwear or Top)
-                                Expanded(
-                                  flex: 5,
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      // Top
-                                      if (_top != null)
-                                        _buildGarmentLayer(
-                                          item: _top!,
-                                          category: ClothingCategory.tops,
-                                          horizontalMargin: 20,
-                                          onTap: () => _showItemPicker(ClothingCategory.tops, (it) {
-                                            setState(() => _top = it);
-                                            _runAnalysis();
-                                          }),
-                                        )
-                                      else
-                                        _buildEmptySlotPill('Додати верх / топ', ClothingCategory.tops),
-
-                                      // Outerwear Layer over Top
-                                      if (_outerwear != null)
-                                        _buildGarmentLayer(
-                                          item: _outerwear!,
-                                          category: ClothingCategory.outerwear,
-                                          horizontalMargin: 8,
-                                          isOuterwear: true,
-                                          onTap: () => _showItemPicker(ClothingCategory.outerwear, (it) {
-                                            setState(() => _outerwear = it);
-                                            _runAnalysis();
-                                          }),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-
-                                // Bottom Layer (Pants, Skirt)
-                                Expanded(
-                                  flex: 6,
-                                  child: _bottom != null
-                                      ? _buildGarmentLayer(
-                                          item: _bottom!,
-                                          category: ClothingCategory.bottoms,
-                                          horizontalMargin: 24,
-                                          onTap: () => _showItemPicker(ClothingCategory.bottoms, (it) {
-                                            setState(() => _bottom = it);
-                                            _runAnalysis();
-                                          }),
-                                        )
-                                      : _buildEmptySlotPill('Додати брюки / низ', ClothingCategory.bottoms),
-                                ),
-                                const SizedBox(height: 6),
-
-                                // Shoes Layer
-                                Expanded(
-                                  flex: 2,
-                                  child: _shoes != null
-                                      ? _buildGarmentLayer(
-                                          item: _shoes!,
-                                          category: ClothingCategory.shoes,
-                                          horizontalMargin: 40,
-                                          onTap: () => _showItemPicker(ClothingCategory.shoes, (it) {
-                                            setState(() => _shoes = it);
-                                            _runAnalysis();
-                                          }),
-                                        )
-                                      : _buildEmptySlotPill('Взуття', ClothingCategory.shoes),
-                                ),
-                              ],
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: Stack(
+                          alignment: Alignment.topCenter,
+                          children: [
+                            // Subtle Mannequin / Body Silhouette Contour
+                            Positioned.fill(
+                              child: CustomPaint(
+                                painter: _MannequinContourPainter(silhouette: _silhouette),
+                              ),
                             ),
-                          ),
-                        ),
 
-                        // The User's Face / Portrait Overlay at Head position
-                        Positioned(
-                          top: 14 + _faceOffsetY,
-                          child: GestureDetector(
-                            onTap: _showFaceSelectionSheet,
-                            child: Transform.scale(
-                              scale: _faceScale,
-                              child: Container(
-                                width: 72,
-                                height: 86,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: const Color(0xFFFDE68A), width: 2),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFFD4AF37).withValues(alpha: 0.4),
-                                      blurRadius: 16,
-                                      spreadRadius: 2,
+                            // Layered Clothes Display
+                            Positioned.fill(
+                              child: Padding(
+                                padding: EdgeInsets.fromLTRB(
+                                  20,
+                                  compactMirror ? 46 : 75,
+                                  20,
+                                  compactMirror ? 8 : 20,
+                                ),
+                                child: Column(
+                                  children: [
+                                    // Upper Body Layer (Outerwear or Top)
+                                    Expanded(
+                                      flex: 5,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          if (_top != null)
+                                            _buildGarmentLayer(
+                                              item: _top!,
+                                              category: ClothingCategory.tops,
+                                              horizontalMargin: 20,
+                                              onTap: () => _showItemPicker(ClothingCategory.tops, (it) {
+                                                setState(() => _top = it);
+                                                _runAnalysis();
+                                              }),
+                                            )
+                                          else
+                                            _buildEmptySlotPill('Додати верх / топ', ClothingCategory.tops),
+                                          if (_outerwear != null)
+                                            _buildGarmentLayer(
+                                              item: _outerwear!,
+                                              category: ClothingCategory.outerwear,
+                                              horizontalMargin: 8,
+                                              isOuterwear: true,
+                                              onTap: () => _showItemPicker(ClothingCategory.outerwear, (it) {
+                                                setState(() => _outerwear = it);
+                                                _runAnalysis();
+                                              }),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    SizedBox(height: compactMirror ? 2 : 6),
+
+                                    // Bottom Layer (Pants, Skirt)
+                                    Expanded(
+                                      flex: 6,
+                                      child: _bottom != null
+                                          ? _buildGarmentLayer(
+                                              item: _bottom!,
+                                              category: ClothingCategory.bottoms,
+                                              horizontalMargin: 24,
+                                              onTap: () => _showItemPicker(ClothingCategory.bottoms, (it) {
+                                                setState(() => _bottom = it);
+                                                _runAnalysis();
+                                              }),
+                                            )
+                                          : _buildEmptySlotPill('Додати брюки / низ', ClothingCategory.bottoms),
+                                    ),
+                                    SizedBox(height: compactMirror ? 2 : 6),
+
+                                    // Shoes Layer
+                                    Expanded(
+                                      flex: 2,
+                                      child: _shoes != null
+                                          ? _buildGarmentLayer(
+                                              item: _shoes!,
+                                              category: ClothingCategory.shoes,
+                                              horizontalMargin: 40,
+                                              onTap: () => _showItemPicker(ClothingCategory.shoes, (it) {
+                                                setState(() => _shoes = it);
+                                                _runAnalysis();
+                                              }),
+                                            )
+                                          : _buildEmptySlotPill('Взуття', ClothingCategory.shoes),
                                     ),
                                   ],
                                 ),
-                                child: ClipOval(
-                                  child: VestoraImage(
-                                    imageUrl: _activeFaceUrl,
-                                    width: 76,
-                                    height: 76,
-                                    fit: BoxFit.cover,
+                              ),
+                            ),
+
+                            // The User's Face / Portrait Overlay at Head position
+                            Positioned(
+                              top: (compactMirror ? 4 : 14) + _faceOffsetY,
+                              child: GestureDetector(
+                                onTap: _showFaceSelectionSheet,
+                                child: Transform.scale(
+                                  scale: _faceScale,
+                                  child: Container(
+                                    width: compactMirror ? 52 : 72,
+                                    height: compactMirror ? 62 : 86,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: const Color(0xFFFDE68A), width: 2),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFFD4AF37).withValues(alpha: 0.4),
+                                          blurRadius: 16,
+                                          spreadRadius: 2,
+                                        ),
+                                      ],
+                                    ),
+                                    child: ClipOval(
+                                      child: VestoraImage(
+                                        imageUrl: _activeFaceUrl,
+                                        width: 76,
+                                        height: 76,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
 
-                        // Floating AI Harmony Score Badge
-                        if (_fittingResult != null)
-                          Positioned(
-                            top: 12,
-                            right: 12,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFD4AF37),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.3),
-                                    blurRadius: 6,
+                            // Floating AI Harmony Score Badge
+                            if (_fittingResult != null)
+                              Positioned(
+                                top: 12,
+                                right: 12,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFD4AF37),
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.3),
+                                        blurRadius: 6,
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.auto_awesome, color: Colors.black, size: 13),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${_fittingResult!.overallFitScore.toStringAsFixed(1)} / 10',
-                                    style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 11),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.auto_awesome, color: Colors.black, size: 13),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${_fittingResult!.overallFitScore.toStringAsFixed(1)} / 10',
+                                        style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 11),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ),
-                      ],
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
           ),
 
@@ -1285,134 +1317,182 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
           ),
 
           // AI Fit Analysis Drawer / Commentary Card
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header with Stylist feedback
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
+          Builder(
+            builder: (context) {
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              final secondaryTextColor = isDark ? const Color(0xFFE4E4E7) : AppTheme.secondary;
+              return ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.36,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.darkSurface : Colors.white,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.auto_awesome, color: AppTheme.accent, size: 18),
-                        SizedBox(width: 6),
-                        Text(
-                          'AI Дзеркало · Аналіз гармонії',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                        // Header with Stylist feedback
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Flexible(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.auto_awesome, color: AppTheme.accent, size: 18),
+                                  SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      'AI Дзеркало · Аналіз гармонії',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            if (_isEvaluating)
+                              const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                            else
+                              Text(
+                                _fittingResult?.usedGemini == true ? 'Gemini 2.5 Flash 🧠' : 'AI Fashion Stylist ✨',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? AppTheme.darkMuted : AppTheme.muted,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        if (_fittingResult != null) ...[
+                          Text(
+                            '🎨 Підтон: ${_fittingResult!.skinToneHarmony}',
+                            style: TextStyle(fontSize: 12, color: secondaryTextColor, height: 1.3),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '📐 Посадка: ${_fittingResult!.necklineFit}',
+                            style: TextStyle(fontSize: 12, color: secondaryTextColor, height: 1.3),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '💡 Порада: ${_fittingResult!.stylistTip}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? AppTheme.darkAccent : const Color(0xFF92400E),
+                              fontWeight: FontWeight.w600,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+
+                        // Photorealistic Deep AI Try-On Button
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF18181B),
+                              foregroundColor: const Color(0xFFFDE68A),
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: const BorderSide(color: Color(0xFFD4AF37), width: 1.5),
+                              ),
+                              elevation: 3,
+                            ),
+                            icon: const Icon(Icons.auto_awesome, color: Color(0xFFD4AF37), size: 18),
+                            label: const Text(
+                              '✨ Фотореалістична нейро-примірка (Deep AI 4K)',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.3),
+                            ),
+                            onPressed: _currentOutfit.isNotEmpty ? _showPhotorealisticTryOnSheet : null,
+                          ),
+                        ),
+
+                        // Bottom Action Buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isDark ? AppTheme.darkAccent : AppTheme.primary,
+                                  foregroundColor: isDark ? Colors.black : Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                                ),
+                                icon: const Icon(Icons.check_circle_rounded, size: 16),
+                                label: const Text(
+                                  'Вдягнути (+1)',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                onPressed: _currentOutfit.isNotEmpty ? _wearFittedOutfit : null,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                              ),
+                              onPressed: _currentOutfit.isNotEmpty ? _scheduleFittedOutfit : null,
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.calendar_today_outlined, size: 15, color: AppTheme.accent),
+                                  SizedBox(width: 4),
+                                  Text('План', style: TextStyle(fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                                side: const BorderSide(color: Color(0xFFD4AF37)),
+                              ),
+                              onPressed: _currentOutfit.isNotEmpty
+                                  ? () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => EditorialStoryScreen(
+                                            items: _currentOutfit,
+                                            occasion: 'Virtual Try-On',
+                                            styleScore: _fittingResult?.overallFitScore ?? 9.5,
+                                            customQuote: _fittingResult?.stylistTip,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  : null,
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.auto_stories_outlined, size: 15, color: Color(0xFFD4AF37)),
+                                  SizedBox(width: 4),
+                                  Text('Постер', style: TextStyle(fontSize: 12, color: Color(0xFFD4AF37))),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    if (_isEvaluating)
-                      const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                    else
-                      Text(
-                        _fittingResult?.usedGemini == true ? 'Gemini 2.5 Flash 🧠' : 'AI Fashion Stylist ✨',
-                        style: const TextStyle(fontSize: 11, color: AppTheme.muted, fontWeight: FontWeight.w600),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
-                if (_fittingResult != null) ...[
-                  Text(
-                    '🎨 Підтон: ${_fittingResult!.skinToneHarmony}',
-                    style: const TextStyle(fontSize: 12, color: AppTheme.secondary, height: 1.3),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '📐 Посадка: ${_fittingResult!.necklineFit}',
-                    style: const TextStyle(fontSize: 12, color: AppTheme.secondary, height: 1.3),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '💡 Порада: ${_fittingResult!.stylistTip}',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF92400E), fontWeight: FontWeight.w600, height: 1.3),
-                  ),
-                ],
-                const SizedBox(height: 12),
-
-                // Photorealistic Deep AI Try-On Button
-                Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF18181B),
-                      foregroundColor: const Color(0xFFFDE68A),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        side: const BorderSide(color: Color(0xFFD4AF37), width: 1.5),
-                      ),
-                      elevation: 3,
-                    ),
-                    icon: const Icon(Icons.auto_awesome, color: Color(0xFFD4AF37), size: 18),
-                    label: const Text(
-                      '✨ Фотореалістична нейро-примірка (Deep AI 4K)',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.3),
-                    ),
-                    onPressed: _currentOutfit.isNotEmpty ? _showPhotorealisticTryOnSheet : null,
                   ),
                 ),
-
-                // Bottom Action Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        icon: const Icon(Icons.check_circle_rounded, size: 18),
-                        label: const Text('Вдягнути (+1)'),
-                        onPressed: _currentOutfit.isNotEmpty ? _wearFittedOutfit : null,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                      ),
-                      icon: const Icon(Icons.calendar_today_outlined, size: 16, color: AppTheme.accent),
-                      label: const Text('Календар'),
-                      onPressed: _currentOutfit.isNotEmpty ? _scheduleFittedOutfit : null,
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                        side: const BorderSide(color: Color(0xFFD4AF37)),
-                      ),
-                      icon: const Icon(Icons.auto_stories_outlined, size: 16, color: Color(0xFFD4AF37)),
-                      label: const Text('Постер', style: TextStyle(color: Color(0xFFD4AF37))),
-                      onPressed: _currentOutfit.isNotEmpty
-                          ? () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => EditorialStoryScreen(
-                                    items: _currentOutfit,
-                                    occasion: 'Virtual Try-On',
-                                    styleScore: _fittingResult?.overallFitScore ?? 9.5,
-                                    customQuote: _fittingResult?.stylistTip,
-                                  ),
-                                ),
-                              );
-                            }
-                          : null,
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              );
+            },
           ),
         ],
       ),

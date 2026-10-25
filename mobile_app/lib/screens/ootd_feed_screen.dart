@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../widgets/controller_scope.dart';
 import '../widgets/vestora_image.dart';
 import '../theme/app_theme.dart';
 
@@ -192,10 +193,7 @@ class _OotdFeedScreenState extends State<OotdFeedScreen> {
   }
 
   void _showCreatePostSheet() {
-    final captionCtrl = TextEditingController(text: 'Мій сьогоднішній гармонійний лук з улюбленими речами з шафи Vestora ✨');
     String selectedOccasion = 'Офіс / Діловий 💼';
-    final tag1Ctrl = TextEditingController(text: 'Massimo Dutti Блейзер');
-    final tag2Ctrl = TextEditingController(text: 'Zara Лляна сорочка');
 
     showModalBottomSheet(
       context: context,
@@ -203,115 +201,132 @@ class _OotdFeedScreenState extends State<OotdFeedScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder: (_) => ControllerScope(
+        create: () => [
+          TextEditingController(text: 'Мій сьогоднішній гармонійний лук з улюбленими речами з шафи Vestora ✨'),
+          TextEditingController(text: 'Massimo Dutti Блейзер'),
+          TextEditingController(text: 'Zara Лляна сорочка'),
+        ],
+        builder: (ctx, ctrls) {
+          final captionCtrl = ctrls[0];
+          final tag1Ctrl = ctrls[1];
+          final tag2Ctrl = ctrls[2];
+          final sheetDark = Theme.of(ctx).brightness == Brightness.dark;
+          final mutedColor = sheetDark ? AppTheme.darkMuted : AppTheme.muted;
+          return StatefulBuilder(
+            builder: (context, setSheetState) => Padding(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Опублікувати образ в OOTD',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Поділіться щоденним луком із капсульною спільнотою Vestora та отримайте оцінку від ШІ-стиліста.',
-                  style: TextStyle(fontSize: 12, color: AppTheme.muted),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: captionCtrl,
-                  maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Опис вашого образу'),
-                ),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedOccasion,
-                  decoration: const InputDecoration(labelText: 'Контекст / Подія'),
-                  items: const [
-                    DropdownMenuItem(value: 'Офіс / Діловий 💼', child: Text('Офіс / Діловий 💼')),
-                    DropdownMenuItem(value: 'Кав\'ярня / Прогулянка ☕', child: Text('Кав\'ярня / Прогулянка ☕')),
-                    DropdownMenuItem(value: 'Вечір / Театр ✨', child: Text('Вечір / Театр ✨')),
-                    DropdownMenuItem(value: 'Подорож / Дорога ✈️', child: Text('Подорож / Дорога ✈️')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) setSheetState(() => selectedOccasion = val);
-                  },
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: tag1Ctrl,
-                        decoration: const InputDecoration(labelText: 'Тег речі #1'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: tag2Ctrl,
-                        decoration: const InputDecoration(labelText: 'Тег речі #2'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      final tags = <String>[];
-                      if (tag1Ctrl.text.trim().isNotEmpty) tags.add(tag1Ctrl.text.trim());
-                      if (tag2Ctrl.text.trim().isNotEmpty) tags.add(tag2Ctrl.text.trim());
-
-                      final newPost = OotdPost(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        authorName: 'Ви (Власник капсули)',
-                        authorHandle: '@you_capsule',
-                        authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-                        occasion: selectedOccasion,
-                        weatherTag: '+16°C · Стильний день',
-                        imageUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=800',
-                        caption: captionCtrl.text.trim(),
-                        styleScore: 9.7,
-                        taggedItems: tags.isNotEmpty ? tags : ['Massimo Dutti Блейзер', 'Zara Сорочка'],
-                        likesCount: 1,
-                        isLiked: true,
-                      );
-
-                      setState(() {
-                        _posts.insert(0, newPost);
-                      });
-
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Ваш образ опубліковано у спільноті Vestora! ШІ оцінив його на 9.7/10 💎'),
-                          behavior: SnackBarBehavior.floating,
-                          backgroundColor: Color(0xFF16A34A),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Опублікувати образ в OOTD',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                          ),
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.send_rounded, size: 18),
-                    label: const Text('Опублікувати для спільноти'),
-                  ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Поділіться щоденним луком із капсульною спільнотою Vestora та отримайте оцінку від ШІ-стиліста.',
+                      style: TextStyle(fontSize: 12, color: mutedColor),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: captionCtrl,
+                      maxLines: 2,
+                      decoration: const InputDecoration(labelText: 'Опис вашого образу'),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      initialValue: selectedOccasion,
+                      decoration: const InputDecoration(labelText: 'Контекст / Подія'),
+                      items: const [
+                        DropdownMenuItem(value: 'Офіс / Діловий 💼', child: Text('Офіс / Діловий 💼', overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'Кав\'ярня / Прогулянка ☕', child: Text('Кав\'ярня / Прогулянка ☕', overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'Вечір / Театр ✨', child: Text('Вечір / Театр ✨', overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'Подорож / Дорога ✈️', child: Text('Подорож / Дорога ✈️', overflow: TextOverflow.ellipsis)),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setSheetState(() => selectedOccasion = val);
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: tag1Ctrl,
+                            decoration: const InputDecoration(labelText: 'Тег речі #1'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: tag2Ctrl,
+                            decoration: const InputDecoration(labelText: 'Тег речі #2'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          final tags = <String>[];
+                          if (tag1Ctrl.text.trim().isNotEmpty) tags.add(tag1Ctrl.text.trim());
+                          if (tag2Ctrl.text.trim().isNotEmpty) tags.add(tag2Ctrl.text.trim());
+
+                          final newPost = OotdPost(
+                            id: DateTime.now().millisecondsSinceEpoch.toString(),
+                            authorName: 'Ви (Власник капсули)',
+                            authorHandle: '@you_capsule',
+                            authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+                            occasion: selectedOccasion,
+                            weatherTag: '+16°C · Стильний день',
+                            imageUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=800',
+                            caption: captionCtrl.text.trim(),
+                            styleScore: 9.7,
+                            taggedItems: tags.isNotEmpty ? tags : ['Massimo Dutti Блейзер', 'Zara Сорочка'],
+                            likesCount: 1,
+                            isLiked: true,
+                          );
+
+                          setState(() {
+                            _posts.insert(0, newPost);
+                          });
+
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Ваш образ опубліковано у спільноті Vestora! ШІ оцінив його на 9.7/10 💎'),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: AppTheme.success,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.send_rounded, size: 18),
+                        label: const Text('Опублікувати для спільноти'),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -319,18 +334,19 @@ class _OotdFeedScreenState extends State<OotdFeedScreen> {
   @override
   Widget build(BuildContext context) {
     final filters = ['Усі', 'Офіс 💼', 'Кав\'ярня ☕', 'Вечірні ✨'];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('OOTD & Спільнота'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_photo_alternate_outlined, color: AppTheme.accent),
+            icon: Icon(Icons.add_photo_alternate_outlined, color: isDark ? AppTheme.darkAccent : AppTheme.accent),
             tooltip: 'Опублікувати лук в OOTD',
             onPressed: _showCreatePostSheet,
           ),
           IconButton(
-            icon: const Icon(Icons.person_add_alt_1_outlined, color: AppTheme.primary),
+            icon: Icon(Icons.person_add_alt_1_outlined, color: isDark ? Colors.white : AppTheme.primary),
             tooltip: 'Запросити стиліста (Crowd-Styling)',
             onPressed: _showCrowdStylingSheet,
           ),
@@ -370,13 +386,13 @@ class _OotdFeedScreenState extends State<OotdFeedScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(width: 6),
                 TextButton(
                   onPressed: _showCrowdStylingSheet,
                   style: TextButton.styleFrom(
                     backgroundColor: const Color(0xFF78350F),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    minimumSize: Size.zero,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   ),
                   child: const Text('Запросити', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
                 ),
@@ -384,19 +400,29 @@ class _OotdFeedScreenState extends State<OotdFeedScreen> {
             ),
           ),
 
-          // Filters
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
+          // Filters (Horizontally Scrollable for 320px viewports)
+          SizedBox(
+            height: 44,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               children: filters.map((f) {
                 final isSel = f == _activeFilter;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
-                    label: Text(f, style: TextStyle(fontSize: 11.5, color: isSel ? Colors.white : AppTheme.primary)),
+                    label: Text(
+                      f,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isSel
+                            ? (isDark ? Colors.black : Colors.white)
+                            : (isDark ? Colors.white : AppTheme.primary),
+                      ),
+                    ),
                     selected: isSel,
-                    selectedColor: AppTheme.primary,
-                    backgroundColor: AppTheme.background,
+                    selectedColor: isDark ? AppTheme.darkAccent : AppTheme.primary,
+                    backgroundColor: isDark ? AppTheme.darkCard : AppTheme.background,
                     onSelected: (val) {
                       if (val) setState(() => _activeFilter = f);
                     },
@@ -414,7 +440,7 @@ class _OotdFeedScreenState extends State<OotdFeedScreen> {
               itemCount: _posts.length,
               itemBuilder: (context, index) {
                 final post = _posts[index];
-                return _buildPostCard(post);
+                return _buildPostCard(post, isDark);
               },
             ),
           ),
@@ -423,13 +449,13 @@ class _OotdFeedScreenState extends State<OotdFeedScreen> {
     );
   }
 
-  Widget _buildPostCard(OotdPost post) {
+  Widget _buildPostCard(OotdPost post, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -449,7 +475,7 @@ class _OotdFeedScreenState extends State<OotdFeedScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(post.authorName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                      Text(post.authorHandle, style: const TextStyle(color: AppTheme.muted, fontSize: 11)),
+                      Text(post.authorHandle, style: TextStyle(color: isDark ? AppTheme.darkMuted : AppTheme.muted, fontSize: 11)),
                     ],
                   ),
                 ),
@@ -488,15 +514,21 @@ class _OotdFeedScreenState extends State<OotdFeedScreen> {
               Positioned(
                 top: 10,
                 left: 10,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${post.occasion} · ${post.weatherTag}',
-                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                right: 10,
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${post.occasion} · ${post.weatherTag}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
               ),
@@ -513,15 +545,21 @@ class _OotdFeedScreenState extends State<OotdFeedScreen> {
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF4F4F5),
+                    color: isDark ? AppTheme.darkSurface : const Color(0xFFF4F4F5),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.local_offer_outlined, size: 10, color: AppTheme.muted),
+                      Icon(Icons.local_offer_outlined, size: 10, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
                       const SizedBox(width: 4),
-                      Text(tag, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600)),
+                      Flexible(
+                        child: Text(
+                          tag,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600),
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -537,36 +575,44 @@ class _OotdFeedScreenState extends State<OotdFeedScreen> {
               children: [
                 Text(
                   post.caption,
-                  style: const TextStyle(fontSize: 12.5, color: AppTheme.secondary, height: 1.35),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: isDark ? const Color(0xFFE4E4E7) : AppTheme.secondary,
+                    height: 1.35,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     InkWell(
+                      borderRadius: BorderRadius.circular(8),
                       onTap: () {
                         setState(() {
                           post.isLiked = !post.isLiked;
                           post.likesCount += post.isLiked ? 1 : -1;
                         });
                       },
-                      child: Row(
-                        children: [
-                          Icon(
-                            post.isLiked ? Icons.favorite : Icons.favorite_border,
-                            color: post.isLiked ? Colors.red : AppTheme.muted,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${post.likesCount}',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
-                        ],
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        child: Row(
+                          children: [
+                            Icon(
+                              post.isLiked ? Icons.favorite : Icons.favorite_border,
+                              color: post.isLiked ? Colors.red : (isDark ? AppTheme.darkMuted : AppTheme.muted),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${post.likesCount}',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.bookmark_border_rounded, size: 20, color: AppTheme.muted),
+                      icon: Icon(Icons.bookmark_border_rounded, size: 20, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
                       tooltip: 'Зберегти в капсулу',
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(

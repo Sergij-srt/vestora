@@ -1,5 +1,5 @@
 name: smart_wardrobe
-description: "A new Flutter project."
+description: "Vestora — AI-Powered Smart Digital Closet, Capsule Matrix & Wardrobe Analytics."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -44,6 +44,7 @@ dependencies:
   intl: ^0.20.3
   image_picker: ^1.2.4
   supabase_flutter: ^2.18.3
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:
