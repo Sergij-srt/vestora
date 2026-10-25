@@ -64,6 +64,74 @@ class LocalizationService extends ChangeNotifier {
     return langMap[key] ?? _translations['en']?[key] ?? _translations['uk']?[key] ?? key;
   }
 
+  /// Returns standard currency symbol for a given 3-letter currency code.
+  static String currencySymbol([String? currencyCode]) {
+    final currency = (currencyCode ?? 'UAH').toUpperCase().trim();
+    return switch (currency) {
+      'UAH' || 'ГРН' => '₴',
+      'EUR' => '€',
+      'USD' => '\$',
+      'GBP' => '£',
+      'PLN' => 'zł',
+      'CHF' => 'CHF',
+      _ => currency,
+    };
+  }
+
+  /// Formats price amount with localized thousands separator and currency symbol placement.
+  /// Examples:
+  /// - UK/DE/FR/IT: "4 499 ₴", "1 250 €"
+  /// - EN: "$4,499", "£1,250", "4,499 ₴"
+  static String formatPrice(
+    double price, {
+    String? currencyCode,
+    AppLanguage? language,
+  }) {
+    final lang = language ?? instance._currentLanguage;
+    final symbol = currencySymbol(currencyCode);
+    final isWhole = price == price.roundToDouble();
+
+    final formattedNumber = _formatNumberWithSeparators(
+      price,
+      isWhole: isWhole,
+      useComma: lang == AppLanguage.en,
+    );
+
+    if (lang == AppLanguage.en && (symbol == '\$' || symbol == '£' || symbol == '€')) {
+      return '$symbol$formattedNumber';
+    }
+
+    return '$formattedNumber $symbol';
+  }
+
+  static String _formatNumberWithSeparators(
+    double number, {
+    required bool isWhole,
+    required bool useComma,
+  }) {
+    final parts = (isWhole ? number.toInt().toString() : number.toStringAsFixed(2)).split('.');
+    final integerPart = parts[0];
+    final decimalPart = parts.length > 1 ? parts[1] : null;
+
+    final separator = useComma ? ',' : ' ';
+    final buffer = StringBuffer();
+    final len = integerPart.length;
+
+    for (int i = 0; i < len; i++) {
+      if (i > 0 && (len - i) % 3 == 0) {
+        buffer.write(separator);
+      }
+      buffer.write(integerPart[i]);
+    }
+
+    if (decimalPart != null) {
+      buffer.write(useComma ? '.' : ',');
+      buffer.write(decimalPart);
+    }
+
+    return buffer.toString();
+  }
+
   static final Map<String, Map<String, String>> _translations = {
     // 1. Ukrainian (Default)
     'uk': {

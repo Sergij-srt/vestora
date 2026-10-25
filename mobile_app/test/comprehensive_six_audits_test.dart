@@ -494,6 +494,41 @@ void main() {
       expect(esMap['settings_change_pwd'], equals('Contraseña'));
       expect(esMap['settings_delete_account'], isNotEmpty);
     });
+
+    test('formatPrice and currencySymbol dynamically format amounts with correct placement and thousands separators', () {
+      // Currency symbols
+      expect(LocalizationService.currencySymbol('UAH'), equals('₴'));
+      expect(LocalizationService.currencySymbol('EUR'), equals('€'));
+      expect(LocalizationService.currencySymbol('USD'), equals('\$'));
+      expect(LocalizationService.currencySymbol('GBP'), equals('£'));
+      expect(LocalizationService.currencySymbol('PLN'), equals('zł'));
+
+      // Ukrainian locale: trailing symbol with space, space thousands separator
+      expect(
+        LocalizationService.formatPrice(4499, currencyCode: 'UAH', language: AppLanguage.uk),
+        equals('4 499 ₴'),
+      );
+      expect(
+        LocalizationService.formatPrice(1250000, currencyCode: 'UAH', language: AppLanguage.uk),
+        equals('1 250 000 ₴'),
+      );
+
+      // English locale: leading symbol for $, £, €, comma thousands separator
+      expect(
+        LocalizationService.formatPrice(4499, currencyCode: 'USD', language: AppLanguage.en),
+        equals('\$4,499'),
+      );
+      expect(
+        LocalizationService.formatPrice(950, currencyCode: 'GBP', language: AppLanguage.en),
+        equals('£950'),
+      );
+
+      // European French locale: trailing euro symbol with space, comma decimal
+      expect(
+        LocalizationService.formatPrice(1250.50, currencyCode: 'EUR', language: AppLanguage.fr),
+        equals('1 250,50 €'),
+      );
+    });
   });
 
   // =========================================================================
