@@ -11,3 +11,13 @@
 -dontwarn kotlinx.coroutines.**
 -dontwarn okhttp3.**
 -dontwarn okio.**
+
+# Google Play Core deferred components (referenced conditionally by Flutter engine)
+-dontwarn com.google.android.play.core.**
+-dontwarn com.google.android.gms.**
+-dontwarn io.flutter.embedding.engine.deferredcomponents.**
+
+# AndroidX & Security Crypto
+-dontwarn androidx.security.crypto.**
+-dontwarn androidx.**
+
