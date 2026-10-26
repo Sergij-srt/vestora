@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/clothing_item.dart';
@@ -35,7 +36,7 @@ class GeminiVisionService {
   }) async {
     final apiKey = (overrideApiKey ?? AiConfigService.apiKey)?.trim();
 
-    // If no API key configured and no ad credits, use the local algorithmic parser
+    // If no API key configured, use local parser
     if (apiKey == null || apiKey.isEmpty) {
       final localResult = _runLocalFallback(
         clothingPhotoUrl: clothingPhotoUrl,
@@ -45,11 +46,14 @@ class GeminiVisionService {
         rawReceiptText: rawReceiptText,
       );
 
+      final hasTextHint = (rawLabelText != null && rawLabelText.trim().isNotEmpty) ||
+          (rawReceiptText != null && rawReceiptText.trim().isNotEmpty);
+
       return GeminiVisionAnalysisResult(
         isSuccess: true,
         data: localResult,
         usedGemini: false,
-        modelUsed: 'Local Heuristic Parser',
+        modelUsed: hasTextHint ? 'Локальний парсер тексту' : 'Локальний режим (без ШІ)',
       );
     }
 
@@ -309,6 +313,23 @@ ${rawReceiptText != null && rawReceiptText.isNotEmpty ? 'Receipt OCR text hint: 
           });
           return;
         }
+      } else if (!kIsWeb && (photoUrl.startsWith('/') || photoUrl.startsWith('file://') || RegExp(r'^[a-zA-Z]:[/\\]').hasMatch(photoUrl))) {
+        final cleanPath = photoUrl.startsWith('file://') ? Uri.parse(photoUrl).toFilePath() : photoUrl;
+        final file = io.File(cleanPath);
+        if (await file.exists()) {
+          final bytes = await file.readAsBytes();
+          if (bytes.isNotEmpty) {
+            final base64Img = base64Encode(bytes);
+            final mime = _guessMimeType(cleanPath, null);
+            parts.add({
+              'inline_data': {
+                'mime_type': mime,
+                'data': base64Img,
+              }
+            });
+            return;
+          }
+        }
       }
     } catch (e) {
       if (kDebugMode) {
@@ -384,36 +405,21 @@ ${rawReceiptText != null && rawReceiptText.isNotEmpty ? 'Receipt OCR text hint: 
     String? rawReceiptText,
   }) {
     ParsedLabelData? labelData;
-    if (rawLabelText != null && rawLabelText.isNotEmpty) {
+    if (rawLabelText != null && rawLabelText.trim().isNotEmpty) {
       labelData = ClothingOcrService.parseLabelText(rawLabelText);
-    } else {
-      labelData = ClothingOcrService.parseLabelText('''
-MASSIMO DUTTI
-SIZE EUR 38 / US S
-100% PURE WOOL / 100% ВОВНА
-MADE IN PORTUGAL
-30°C GENTLE WASH / DRY CLEAN ONLY
-''');
     }
 
     ParsedReceiptData? receiptData;
-    if (rawReceiptText != null && rawReceiptText.isNotEmpty) {
+    if (rawReceiptText != null && rawReceiptText.trim().isNotEmpty) {
       receiptData = ClothingOcrService.parseReceiptText(rawReceiptText);
-    } else if (receiptPhotoUrl != null) {
-      receiptData = ClothingOcrService.parseReceiptText('''
-ТОВ "МАССІМО ДУТТІ УКРАЇНА" ТРЦ OCEAN PLAZA
-ФІСКАЛЬНИЙ ЧЕК
-ЖАКЕТ ВОВНЯНИЙ БЕЖ
-СУМА: 4 499.00 UAH
-''');
     }
 
     return ClothingOcrService.mergeInsights(
       labelData: labelData,
       receiptData: receiptData,
-      itemPhotoUrl: clothingPhotoUrl ?? 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=700&auto=format&fit=crop&q=80',
-      labelPhotoUrl: labelPhotoUrl ?? 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600&auto=format&fit=crop&q=80',
-      receiptPhotoUrl: receiptPhotoUrl ?? 'https://images.unsplash.com/photo-1554415707-9e49017a1430?w=600&auto=format&fit=crop&q=80',
+      itemPhotoUrl: clothingPhotoUrl ?? '',
+      labelPhotoUrl: labelPhotoUrl,
+      receiptPhotoUrl: receiptPhotoUrl,
     );
   }
 }

@@ -310,39 +310,49 @@ class ClothingOcrService {
     final fromLabel = <String, String>{};
     final fromReceipt = <String, String>{};
 
-    String brand = labelData?.brand ?? receiptData?.storeName ?? 'Massimo Dutti';
-    if (labelData?.brand != null) fromLabel['Бренд'] = labelData!.brand!;
+    String brand = labelData?.brand ?? receiptData?.storeName ?? '';
+    if (labelData?.brand != null && labelData!.brand!.isNotEmpty) {
+      fromLabel['Бренд'] = labelData.brand!;
+    }
 
-    String title = receiptData?.itemTitle ?? (brand.isNotEmpty ? '$brand Класична річ' : 'Стильний елемент гардероба');
-    if (receiptData?.itemTitle != null) fromReceipt['Назва'] = receiptData!.itemTitle!;
+    String title = receiptData?.itemTitle ?? (brand.isNotEmpty ? '$brand Одяг' : 'Новий елемент гардероба');
+    if (receiptData?.itemTitle != null && receiptData!.itemTitle!.isNotEmpty) {
+      fromReceipt['Назва'] = receiptData.itemTitle!;
+    }
 
     ClothingCategory category = labelData?.category ?? ClothingCategory.tops;
-    if (labelData?.category != null) fromLabel['Категорія'] = labelData!.category!.label;
+    if (labelData?.category != null) {
+      fromLabel['Категорія'] = labelData!.category!.label;
+    }
 
-    double price = receiptData?.price ?? 2490.0;
-    if (receiptData?.price != null) fromReceipt['Ціна'] = '${price.toStringAsFixed(0)} ₴';
+    double price = receiptData?.price ?? 0.0;
+    if (receiptData?.price != null && receiptData!.price! > 0) {
+      fromReceipt['Ціна'] = '${price.toStringAsFixed(0)} ₴';
+    }
 
-    String? storeName = receiptData?.storeName ?? labelData?.brand;
-    if (receiptData?.storeName != null) fromReceipt['Магазин'] = receiptData!.storeName!;
+    String? storeName = receiptData?.storeName ?? (brand.isNotEmpty ? brand : null);
+    if (receiptData?.storeName != null && receiptData!.storeName!.isNotEmpty) {
+      fromReceipt['Магазин'] = receiptData.storeName!;
+    }
 
     String? fabric = labelData?.fabricComposition;
-    if (fabric != null) fromLabel['Склад тканини'] = fabric;
+    if (fabric != null && fabric.isNotEmpty) fromLabel['Склад тканини'] = fabric;
 
     String? size = labelData?.size;
-    if (size != null) fromLabel['Розмір'] = size;
+    if (size != null && size.isNotEmpty) fromLabel['Розмір'] = size;
 
     String? care = labelData?.careInstructions;
-    if (care != null) fromLabel['Догляд'] = care;
+    if (care != null && care.isNotEmpty) fromLabel['Догляд'] = care;
 
     String? origin = labelData?.countryOfOrigin;
-    if (origin != null) fromLabel['Країна'] = origin;
+    if (origin != null && origin.isNotEmpty) fromLabel['Країна'] = origin;
 
-    // Harmonize title based on brand and category
-    if (title.contains('Класична річ') || title.contains('Стильний')) {
-      if (category == ClothingCategory.outerwear) title = '$brand Вовняний оверсайз блейзер';
-      if (category == ClothingCategory.tops) title = '$brand Лляна сорочка Regular Fit';
-      if (category == ClothingCategory.bottoms) title = '$brand Класичні брюки палаццо';
-      if (category == ClothingCategory.shoes) title = '$brand Шкіряні лофери ручної роботи';
+    // Harmonize title based on brand and category if brand is known
+    if (brand.isNotEmpty && (title == '$brand Одяг' || title.contains('Класична річ') || title.contains('Стильний'))) {
+      if (category == ClothingCategory.outerwear) title = '$brand Верхній одяг';
+      if (category == ClothingCategory.tops) title = '$brand Сорочка / Футболка';
+      if (category == ClothingCategory.bottoms) title = '$brand Брюки / Джинси';
+      if (category == ClothingCategory.shoes) title = '$brand Взуття';
     }
 
     return OcrCombinedResult(
@@ -350,14 +360,14 @@ class ClothingOcrService {
       brand: brand,
       category: category,
       season: Season.allSeason,
-      color: labelData?.color ?? 'Бежевий',
+      color: labelData?.color ?? '',
       price: price,
-      size: size ?? 'EUR 38 / M',
-      fabricComposition: fabric ?? '100% Натуральна преміум вовна',
-      storeName: storeName ?? 'Офіційний магазин $brand',
-      careInstructions: care ?? 'Делікатне прання 30°C · Хімчистка',
-      countryOfOrigin: origin ?? 'Made in Portugal',
-      itemPhoto: itemPhotoUrl ?? 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=700&auto=format&fit=crop&q=80',
+      size: size ?? '',
+      fabricComposition: fabric ?? '',
+      storeName: storeName ?? '',
+      careInstructions: care ?? '',
+      countryOfOrigin: origin ?? '',
+      itemPhoto: itemPhotoUrl ?? '',
       labelPhoto: labelPhotoUrl,
       receiptPhoto: receiptPhotoUrl,
       detectedFromLabel: fromLabel,

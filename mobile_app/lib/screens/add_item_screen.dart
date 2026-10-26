@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
@@ -110,7 +111,10 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                       imageQuality: 78,
                     );
                     if (photo != null && mounted) {
-                      setState(() => onPicked(photo.path));
+                      final bytes = await photo.readAsBytes();
+                      final mime = photo.mimeType ?? 'image/jpeg';
+                      final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
+                      setState(() => onPicked(dataUri));
                     }
                   } catch (_) {}
                 },
@@ -129,7 +133,10 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                       imageQuality: 78,
                     );
                     if (photo != null && mounted) {
-                      setState(() => onPicked(photo.path));
+                      final bytes = await photo.readAsBytes();
+                      final mime = photo.mimeType ?? 'image/jpeg';
+                      final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
+                      setState(() => onPicked(dataUri));
                     }
                   } catch (_) {}
                 },
@@ -182,6 +189,34 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
   }
 
   Future<void> _runAiOcrAnalysis() async {
+    // 1. Ensure at least one photo or text is provided
+    final hasAnyPhoto = (_clothingPhotoUrl != null && _clothingPhotoUrl!.isNotEmpty) ||
+        (_labelPhotoUrl != null && _labelPhotoUrl!.isNotEmpty) ||
+        (_receiptPhotoUrl != null && _receiptPhotoUrl!.isNotEmpty);
+
+    final hasTextPreset = _labelRawOcrText.isNotEmpty || _receiptRawOcrText.isNotEmpty;
+
+    if (!hasAnyPhoto && !hasTextPreset) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('📸 Будь ласка, зробіть або оберіть фото вашого одягу чи етикетки.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // 2. If user is scanning their own photos without an API key, guide them
+    if (!hasTextPreset && !AiConfigService.hasCustomKey) {
+      final choice = await _showAiKeyPromptDialog();
+      if (choice == null) return; // User closed modal
+      if (choice == 'manual') {
+        _openManualVerificationScreen();
+        return;
+      }
+      // If 'saved', user configured key; continue to AI vision below
+    }
+
     setState(() => _isOcrProcessing = true);
 
     final result = await GeminiVisionService.analyzePhotos(
@@ -196,7 +231,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
 
     if (!mounted) return;
 
-    if (result.data != null) {
+    if (result.isSuccess && result.data != null) {
       final saved = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
@@ -211,7 +246,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
       if (saved == true && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('🎉 Річ успішно розпізнано та додано у ваш гардероб!'),
+            content: Text('🎉 Річ успішно збережено у ваш гардероб!'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -226,6 +261,205 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
         ),
       );
     }
+  }
+
+  void _openManualVerificationScreen() async {
+    final manualData = OcrCombinedResult(
+      title: 'Нова річ',
+      brand: '',
+      category: ClothingCategory.tops,
+      season: Season.allSeason,
+      color: '',
+      price: 0.0,
+      size: '',
+      fabricComposition: '',
+      storeName: '',
+      careInstructions: '',
+      countryOfOrigin: '',
+      itemPhoto: _clothingPhotoUrl ?? '',
+      labelPhoto: _labelPhotoUrl,
+      receiptPhoto: _receiptPhotoUrl,
+    );
+
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PhotoVerificationScreen(
+          initialData: manualData,
+          isAiVision: false,
+          engineName: 'Ручне введення',
+        ),
+      ),
+    );
+
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🎉 Річ успішно збережено у ваш гардероб!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      widget.onSaved();
+    }
+  }
+
+  Future<String?> _showAiKeyPromptDialog() async {
+    final keyController = TextEditingController();
+    bool isTesting = false;
+    String? validationError;
+
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            final isDark = Theme.of(ctx).brightness == Brightness.dark;
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 24,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF27272A) : const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.auto_awesome, color: AppTheme.accent, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Розпізнавання через ШІ Gemini',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              'Потрібен ключ Google Gemini API',
+                              style: TextStyle(fontSize: 12, color: AppTheme.muted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Щоб нейромережа прочитала бренд, склад тканини (бавовна, льон тощо), розмір та інструкції прання з вашого реального фото, підключіть безкоштовний ключ Google Gemini API або заповніть дані вручну.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? Colors.white70 : const Color(0xFF4B5563),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: keyController,
+                    decoration: InputDecoration(
+                      hintText: 'Вставте ваш Gemini API ключ (AIzaSy...)',
+                      prefixIcon: const Icon(Icons.vpn_key_rounded, size: 18),
+                      errorText: validationError,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: isTesting
+                          ? null
+                          : () async {
+                              final text = keyController.text.trim();
+                              if (text.isEmpty) {
+                                setModalState(() => validationError = 'Введіть або вставте ваш ключ');
+                                return;
+                              }
+                              setModalState(() {
+                                isTesting = true;
+                                validationError = null;
+                              });
+                              final check = await AiConfigService.testApiKey(text);
+                              if (!check.isValid) {
+                                setModalState(() {
+                                  isTesting = false;
+                                  validationError = check.message;
+                                });
+                                return;
+                              }
+                              await AiConfigService.setApiKey(text);
+                              if (sheetCtx.mounted) {
+                                Navigator.pop(sheetCtx, 'saved');
+                              }
+                            },
+                      icon: isTesting
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.check_circle_outline),
+                      label: Text(isTesting ? 'Перевірка ключа...' : 'Зберегти ключ і розпізнати фото'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: isDark ? AppTheme.darkAccent : AppTheme.primary,
+                        foregroundColor: isDark ? Colors.black : Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(sheetCtx);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const SettingsAiScreen()),
+                            ).then((_) {
+                              if (mounted) setState(() {});
+                            });
+                          },
+                          icon: const Icon(Icons.settings_outlined, size: 16),
+                          label: const Text('Налаштування ШІ', style: TextStyle(fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextButton.icon(
+                          onPressed: () => Navigator.pop(sheetCtx, 'manual'),
+                          icon: const Icon(Icons.edit_note_rounded, size: 18),
+                          label: const Text('Заповнити вручну', style: TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _applyScanPreset(PhotoScanPreset preset) {
@@ -518,6 +752,61 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                         fontSize: 12,
                         color: isDark ? const Color(0xFFE4E4E7) : const Color(0xFF78350F),
                         height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const SettingsAiScreen()),
+                        ).then((_) {
+                          if (mounted) setState(() {});
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF18181B) : Colors.white.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AiConfigService.hasCustomKey
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFF59E0B),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              AiConfigService.hasCustomKey
+                                  ? Icons.verified_rounded
+                                  : Icons.vpn_key_outlined,
+                              size: 14,
+                              color: AiConfigService.hasCustomKey
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFFD97706),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                AiConfigService.hasCustomKey
+                                    ? 'Gemini Vision активний'
+                                    : 'Потрібен Gemini API ключ • Натисніть для налаштування',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AiConfigService.hasCustomKey
+                                      ? const Color(0xFF047857)
+                                      : const Color(0xFFB45309),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],

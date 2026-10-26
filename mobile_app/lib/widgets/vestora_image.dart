@@ -1,5 +1,6 @@
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:io' as io;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -159,6 +160,19 @@ class VestoraImage extends StatelessWidget {
         },
         errorBuilder: (ctx, error, _) => _buildFallbackError(ctx, error),
       );
+    } else if (imageUrl.startsWith('/') ||
+        imageUrl.startsWith('file://') ||
+        RegExp(r'^[a-zA-Z]:[/\\]').hasMatch(imageUrl)) {
+      final cleanPath = imageUrl.startsWith('file://') ? Uri.parse(imageUrl).toFilePath() : imageUrl;
+      image = Image.file(
+        io.File(cleanPath),
+        width: width,
+        height: height,
+        fit: fit,
+        cacheWidth: targetCacheWidth,
+        cacheHeight: targetCacheHeight,
+        errorBuilder: (ctx, err, _) => _buildFallbackError(ctx, err),
+      );
     } else {
       image = CachedNetworkImage(
         imageUrl: imageUrl,
@@ -217,6 +231,13 @@ ImageProvider vestoraImageProvider(String url) {
       return MemoryImage(bytes);
     }
     return MemoryImage(_kTransparentPixelPng);
+  }
+  if (!kIsWeb &&
+      (clean.startsWith('/') ||
+          clean.startsWith('file://') ||
+          RegExp(r'^[a-zA-Z]:[/\\]').hasMatch(clean))) {
+    final cleanPath = clean.startsWith('file://') ? Uri.parse(clean).toFilePath() : clean;
+    return FileImage(io.File(cleanPath));
   }
   if (kIsWeb) {
     return NetworkImage(clean);

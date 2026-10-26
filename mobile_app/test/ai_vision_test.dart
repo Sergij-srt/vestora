@@ -98,5 +98,22 @@ MADE IN PORTUGAL
       expect(result.data!.fabricComposition, contains('100%'));
       expect(result.data!.countryOfOrigin, equals('Made in Portugal'));
     });
+
+    test('Does not fabricate Massimo Dutti fake data when user uploads photos without API key or OCR text', () async {
+      final result = await GeminiVisionService.analyzePhotos(
+        clothingPhotoUrl: 'data:image/jpeg;base64,dGVzdA==',
+        labelPhotoUrl: 'data:image/jpeg;base64,dGVzdDI=',
+      );
+
+      expect(result.isSuccess, isTrue);
+      expect(result.usedGemini, isFalse);
+      expect(result.data, isNotNull);
+      // Must NOT contain hardcoded Massimo Dutti or 100% Wool
+      expect(result.data!.brand, isNot(equals('Massimo Dutti')));
+      expect(result.data!.brand, isEmpty);
+      expect(result.data!.fabricComposition, isEmpty);
+      expect(result.data!.itemPhoto, equals('data:image/jpeg;base64,dGVzdA=='));
+      expect(result.data!.labelPhoto, equals('data:image/jpeg;base64,dGVzdDI='));
+    });
   });
 }
