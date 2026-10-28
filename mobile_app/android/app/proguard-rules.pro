@@ -21,3 +21,10 @@
 -dontwarn androidx.security.crypto.**
 -dontwarn androidx.**
 
+# Preserve image_picker package classes, Pigeon platform channels, and Parcelables
+-keep class io.flutter.plugins.imagepicker.** { *; }
+-keep class dev.flutter.pigeon.image_picker_android.** { *; }
+-keepclassmembers class * implements android.os.Parcelable {
+    static android.os.Parcelable$Creator CREATOR;
+}
+

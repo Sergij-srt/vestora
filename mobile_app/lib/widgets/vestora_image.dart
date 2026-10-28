@@ -69,6 +69,7 @@ class VestoraImage extends StatelessWidget {
   });
 
   int? _computeTargetCacheWidth(BuildContext context) {
+    if (kIsWeb) return null; // Web Image.memory does not support ResizeImage cacheWidth
     final w = width;
     final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
     if (w != null && w.isFinite && w > 0) {
@@ -86,6 +87,7 @@ class VestoraImage extends StatelessWidget {
   }
 
   int? _computeTargetCacheHeight(BuildContext context, int? resolvedCacheWidth) {
+    if (kIsWeb) return null; // Web Image.memory does not support ResizeImage cacheHeight
     if (resolvedCacheWidth != null) {
       // Only set one decode dimension so Flutter preserves original aspect ratio without stretching
       return null;

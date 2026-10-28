@@ -60,6 +60,24 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
     AiConfigService.initialize().then((_) {
       if (mounted) setState(() {});
     });
+    _checkLostImageData();
+  }
+
+  Future<void> _checkLostImageData() async {
+    try {
+      final picker = ImagePicker();
+      final response = await picker.retrieveLostData();
+      if (!response.isEmpty && response.file != null && mounted) {
+        final bytes = await response.file!.readAsBytes();
+        if (bytes.isNotEmpty) {
+          final mime = response.file!.mimeType ?? 'image/jpeg';
+          final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
+          setState(() {
+            _clothingPhotoUrl ??= dataUri;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   @override
@@ -102,21 +120,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                 title: const Text('Зробити знімок на камеру'),
                 onTap: () async {
                   Navigator.pop(ctx);
-                  try {
-                    final picker = ImagePicker();
-                    final photo = await picker.pickImage(
-                      source: ImageSource.camera,
-                      maxWidth: 1024,
-                      maxHeight: 1024,
-                      imageQuality: 78,
-                    );
-                    if (photo != null && mounted) {
-                      final bytes = await photo.readAsBytes();
-                      final mime = photo.mimeType ?? 'image/jpeg';
-                      final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
-                      setState(() => onPicked(dataUri));
-                    }
-                  } catch (_) {}
+                  await _captureImage(ImageSource.camera, onPicked);
                 },
               ),
               ListTile(
@@ -124,21 +128,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                 title: const Text('Обрати з галереї'),
                 onTap: () async {
                   Navigator.pop(ctx);
-                  try {
-                    final picker = ImagePicker();
-                    final photo = await picker.pickImage(
-                      source: ImageSource.gallery,
-                      maxWidth: 1024,
-                      maxHeight: 1024,
-                      imageQuality: 78,
-                    );
-                    if (photo != null && mounted) {
-                      final bytes = await photo.readAsBytes();
-                      final mime = photo.mimeType ?? 'image/jpeg';
-                      final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
-                      setState(() => onPicked(dataUri));
-                    }
-                  } catch (_) {}
+                  await _captureImage(ImageSource.gallery, onPicked);
                 },
               ),
               ListTile(
@@ -154,6 +144,45 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
         );
       },
     );
+  }
+
+  Future<void> _captureImage(ImageSource source, Function(String) onPicked) async {
+    try {
+      final picker = ImagePicker();
+      final photo = await picker.pickImage(
+        source: source,
+        maxWidth: 900,
+        maxHeight: 900,
+        imageQuality: 78,
+      );
+      if (photo != null) {
+        final bytes = await photo.readAsBytes();
+        if (bytes.isNotEmpty) {
+          final mime = photo.mimeType ?? 'image/jpeg';
+          final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
+          if (mounted) {
+            setState(() => onPicked(dataUri));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('📸 Фото успішно прикріплено!'),
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Помилка відкриття камери/галереї: $e'),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _showUrlInputDialog(String targetName, Function(String) onPicked) {
