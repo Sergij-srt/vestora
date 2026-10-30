@@ -18,7 +18,7 @@ class VestoraImage extends StatelessWidget {
 
   static void clearMemoryCache() => _base64LruCache.clear();
 
-  /// Decodes a `data:image/...;base64,...` URI once and caches it in a bounded LRU map.
+  /// Decodes a `data:image/...;base64,...` or `data:...;base64,...` URI once and caches it in a bounded LRU map.
   static Uint8List? decodeDataUriCached(String dataUri) {
     final existing = _base64LruCache.remove(dataUri);
     if (existing != null) {
@@ -33,7 +33,11 @@ class VestoraImage extends StatelessWidget {
     }
 
     try {
-      final rawBase64 = dataUri.substring(commaIndex + 1).trim();
+      var rawBase64 = dataUri.substring(commaIndex + 1).replaceAll(RegExp(r'\s+'), '');
+      final remainder = rawBase64.length % 4;
+      if (remainder != 0) {
+        rawBase64 += '=' * (4 - remainder);
+      }
       final bytes = base64Decode(rawBase64);
       if (bytes.isEmpty) return null;
 
@@ -120,7 +124,7 @@ class VestoraImage extends StatelessWidget {
 
     if (imageUrl.trim().isEmpty) {
       image = _buildFallbackError(context, 'Empty imageUrl');
-    } else if (imageUrl.startsWith('data:image/')) {
+    } else if (imageUrl.startsWith('data:')) {
       final bytes = decodeDataUriCached(imageUrl);
       if (bytes == null) {
         image = _buildFallbackError(context, 'Malformed data URI');
@@ -227,7 +231,7 @@ ImageProvider vestoraImageProvider(String url) {
   if (clean.isEmpty) {
     return MemoryImage(_kTransparentPixelPng);
   }
-  if (clean.startsWith('data:image/')) {
+  if (clean.startsWith('data:')) {
     final bytes = VestoraImage.decodeDataUriCached(clean);
     if (bytes != null) {
       return MemoryImage(bytes);

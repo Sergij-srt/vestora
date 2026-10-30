@@ -42,6 +42,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
   String _labelRawOcrText = '';
   String _receiptRawOcrText = '';
   bool _isOcrProcessing = false;
+  bool _isPickingPhoto = false;
 
   // Manual form controllers
   final _manualTitleController = TextEditingController();
@@ -70,7 +71,8 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
       if (!response.isEmpty && response.file != null && mounted) {
         final bytes = await response.file!.readAsBytes();
         if (bytes.isNotEmpty) {
-          final mime = response.file!.mimeType ?? 'image/jpeg';
+          final rawMime = response.file!.mimeType;
+          final mime = (rawMime != null && rawMime.trim().isNotEmpty) ? rawMime.trim() : 'image/jpeg';
           final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
           setState(() {
             _clothingPhotoUrl ??= dataUri;
@@ -147,18 +149,20 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
   }
 
   Future<void> _captureImage(ImageSource source, Function(String) onPicked) async {
+    setState(() => _isPickingPhoto = true);
     try {
       final picker = ImagePicker();
       final photo = await picker.pickImage(
         source: source,
-        maxWidth: 900,
-        maxHeight: 900,
-        imageQuality: 78,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 75,
       );
       if (photo != null) {
         final bytes = await photo.readAsBytes();
         if (bytes.isNotEmpty) {
-          final mime = photo.mimeType ?? 'image/jpeg';
+          final rawMime = photo.mimeType;
+          final mime = (rawMime != null && rawMime.trim().isNotEmpty) ? rawMime.trim() : 'image/jpeg';
           final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
           if (mounted) {
             setState(() => onPicked(dataUri));
@@ -181,6 +185,10 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
             behavior: SnackBarBehavior.floating,
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isPickingPhoto = false);
       }
     }
   }
@@ -870,6 +878,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                   targetName: 'фото одягу',
                   onPicked: (path) => _clothingPhotoUrl = path,
                 ),
+                onClear: () => setState(() => _clothingPhotoUrl = null),
               ),
             ),
             const SizedBox(width: 10),
@@ -883,6 +892,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                   targetName: 'фото етикетки/бірки',
                   onPicked: (path) => _labelPhotoUrl = path,
                 ),
+                onClear: () => setState(() => _labelPhotoUrl = null),
               ),
             ),
             const SizedBox(width: 10),
@@ -896,6 +906,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                   targetName: 'фото чека',
                   onPicked: (path) => _receiptPhotoUrl = path,
                 ),
+                onClear: () => setState(() => _receiptPhotoUrl = null),
               ),
             ),
           ],
@@ -1005,7 +1016,9 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
     required String? imageUrl,
     required IconData icon,
     required VoidCallback onTap,
+    VoidCallback? onClear,
   }) {
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -1015,13 +1028,13 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
           color: isDark ? AppTheme.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: imageUrl != null ? AppTheme.accent : (isDark ? AppTheme.darkBorder : AppTheme.border),
-            width: imageUrl != null ? 1.5 : 1,
+            color: hasImage ? AppTheme.accent : (isDark ? AppTheme.darkBorder : AppTheme.border),
+            width: hasImage ? 1.5 : 1,
           ),
           boxShadow: isDark ? const [] : AppTheme.softShadow,
         ),
         clipBehavior: Clip.antiAlias,
-        child: imageUrl != null
+        child: hasImage
             ? Stack(
                 fit: StackFit.expand,
                 children: [
@@ -1030,7 +1043,39 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                     width: double.infinity,
                     height: double.infinity,
                     fit: BoxFit.cover,
-                    errorWidget: (context, url, error) => Center(child: Icon(icon, color: AppTheme.muted)),
+                    errorWidget: (context, url, error) => Container(
+                      color: isDark ? const Color(0xFF27272A) : const Color(0xFFF3F4F6),
+                      child: const Center(
+                        child: Icon(Icons.broken_image_outlined, color: AppTheme.accent, size: 24),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 5,
+                    left: 5,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF059669),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text('✓ Додано', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: onClear ?? onTap,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close, size: 14, color: Colors.white),
+                      ),
+                    ),
                   ),
                   Positioned(
                     bottom: 0,
@@ -1070,11 +1115,22 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '+ Додати',
-                        style: TextStyle(fontSize: 9.5, color: isDark ? AppTheme.darkMuted : AppTheme.muted, fontWeight: FontWeight.w600),
-                      ),
+                      if (_isPickingPhoto)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 4.0),
+                          child: SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accent),
+                          ),
+                        )
+                      else ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          '+ Додати',
+                          style: TextStyle(fontSize: 9.5, color: isDark ? AppTheme.darkMuted : AppTheme.muted, fontWeight: FontWeight.w600),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -1549,10 +1605,98 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
           controller: _manualFabricController,
           decoration: const InputDecoration(labelText: 'Склад тканини (опціонально)', hintText: '100% бавовна, вовна...'),
         ),
+        const SizedBox(height: 16),
+        // Manual Photo Picker Preview
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Фото речі (з камери або галереї)',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () => _pickImageFor(
+                targetName: 'фото одягу',
+                onPicked: (path) {
+                  setState(() {
+                    _manualImageController.text = path;
+                  });
+                },
+              ),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                height: 130,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppTheme.darkCard
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _manualImageController.text.trim().isNotEmpty
+                        ? AppTheme.accent
+                        : (Theme.of(context).brightness == Brightness.dark
+                            ? AppTheme.darkBorder
+                            : AppTheme.border),
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: _manualImageController.text.trim().isNotEmpty
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          VestoraImage(
+                            imageUrl: _manualImageController.text.trim(),
+                            fit: BoxFit.cover,
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: GestureDetector(
+                              onTap: () => setState(() => _manualImageController.clear()),
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.close, size: 16, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? AppTheme.darkSurface
+                                    : const Color(0xFFF4F4F5),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.add_a_photo_outlined, color: AppTheme.accent, size: 24),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Натисніть, щоб зробити фото або обрати з галереї',
+                              style: TextStyle(fontSize: 12, color: AppTheme.muted),
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 12),
         TextField(
           controller: _manualImageController,
-          decoration: const InputDecoration(labelText: 'URL картинки (опціонально)', hintText: 'https://...'),
+          decoration: const InputDecoration(labelText: 'URL або Base64 картинки', hintText: 'https://... або знімок вище'),
         ),
         const SizedBox(height: 24),
         SizedBox(

@@ -421,7 +421,12 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
               width: double.infinity,
               height: double.infinity,
               fit: BoxFit.cover,
-              errorWidget: (context, url, error) => Center(child: Icon(icon, color: AppTheme.muted)),
+              errorWidget: (context, url, error) => Container(
+                color: isDark ? const Color(0xFF27272A) : const Color(0xFFF3F4F6),
+                child: const Center(
+                  child: Icon(Icons.broken_image_outlined, color: AppTheme.accent, size: 28),
+                ),
+              ),
             )
           else
             Center(child: Icon(icon, color: AppTheme.muted, size: 28)),
