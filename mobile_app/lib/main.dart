@@ -20,14 +20,29 @@ import 'screens/auth_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SecureVaultService.migrateFromSharedPreferences();
-  await AuthService.initialize();
-  await AiConfigService.initialize();
-  await UserProfileService.initialize();
-  await ThemeService.initialize();
-  await LocalizationService.initialize();
-  await OutfitCalendarService.initialize();
-  await SupabaseService.initialize();
+
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('Global FlutterError: ${details.exceptionAsString()}');
+  };
+
+  Future<void> safeInit(String name, Future<void> Function() initFn) async {
+    try {
+      await initFn();
+    } catch (e, stack) {
+      debugPrint('Startup warning in $name: $e\n$stack');
+    }
+  }
+
+  await safeInit('SecureVault', () => SecureVaultService.migrateFromSharedPreferences());
+  await safeInit('Auth', () => AuthService.initialize());
+  await safeInit('AiConfig', () => AiConfigService.initialize());
+  await safeInit('UserProfile', () => UserProfileService.initialize());
+  await safeInit('Theme', () => ThemeService.initialize());
+  await safeInit('Localization', () => LocalizationService.initialize());
+  await safeInit('OutfitCalendar', () => OutfitCalendarService.initialize());
+  await safeInit('Supabase', () => SupabaseService.initialize());
+
   runApp(const SmartWardrobeApp());
 }
 

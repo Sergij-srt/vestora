@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:image_picker/image_picker.dart';
@@ -154,12 +156,24 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
       final picker = ImagePicker();
       final photo = await picker.pickImage(
         source: source,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 75,
+        maxWidth: kIsWeb ? null : 1200,
+        maxHeight: kIsWeb ? null : 1200,
+        imageQuality: kIsWeb ? null : 85,
       );
       if (photo != null) {
-        final bytes = await photo.readAsBytes();
+        Uint8List bytes;
+        try {
+          bytes = await photo.readAsBytes();
+        } catch (_) {
+          // Web fallback: if cross_file's internal HttpRequest throws on a revoked blob,
+          // try fetching the path directly before throwing.
+          final res = await http.get(Uri.parse(photo.path));
+          if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
+            bytes = res.bodyBytes;
+          } else {
+            rethrow;
+          }
+        }
         if (bytes.isNotEmpty) {
           final rawMime = photo.mimeType;
           final mime = (rawMime != null && rawMime.trim().isNotEmpty) ? rawMime.trim() : 'image/jpeg';

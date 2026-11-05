@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -131,12 +133,18 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                         final picker = ImagePicker();
                         final photo = await picker.pickImage(
                           source: ImageSource.camera,
-                          maxWidth: 1024,
-                          maxHeight: 1024,
-                          imageQuality: 78,
+                          maxWidth: kIsWeb ? null : 1024,
+                          maxHeight: kIsWeb ? null : 1024,
+                          imageQuality: kIsWeb ? null : 78,
                         );
                         if (photo != null && mounted) {
-                          _updateFace(photo.path);
+                          final bytes = await photo.readAsBytes();
+                          if (bytes.isNotEmpty) {
+                            final rawMime = photo.mimeType;
+                            final mime = (rawMime != null && rawMime.trim().isNotEmpty) ? rawMime.trim() : 'image/jpeg';
+                            final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
+                            _updateFace(dataUri);
+                          }
                         }
                       } catch (_) {}
                     },
@@ -156,12 +164,18 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                         final picker = ImagePicker();
                         final photo = await picker.pickImage(
                           source: ImageSource.gallery,
-                          maxWidth: 1024,
-                          maxHeight: 1024,
-                          imageQuality: 78,
+                          maxWidth: kIsWeb ? null : 1024,
+                          maxHeight: kIsWeb ? null : 1024,
+                          imageQuality: kIsWeb ? null : 78,
                         );
                         if (photo != null && mounted) {
-                          _updateFace(photo.path);
+                          final bytes = await photo.readAsBytes();
+                          if (bytes.isNotEmpty) {
+                            final rawMime = photo.mimeType;
+                            final mime = (rawMime != null && rawMime.trim().isNotEmpty) ? rawMime.trim() : 'image/jpeg';
+                            final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
+                            _updateFace(dataUri);
+                          }
                         }
                       } catch (_) {}
                     },
