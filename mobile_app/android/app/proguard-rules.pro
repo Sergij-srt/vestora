@@ -8,7 +8,6 @@
 
 # App Activities & Entrypoints
 -keep class com.vestora.app.MainActivity { *; }
--keep class com.smartwardrobe.smart_wardrobe.MainActivity { *; }
 
 # Keep Kotlin coroutines & serialization metadata used by supabase_flutter / app_links
 -keepattributes *Annotation*,InnerClasses,Signature,EnclosingMethod,SourceFile,LineNumberTable
