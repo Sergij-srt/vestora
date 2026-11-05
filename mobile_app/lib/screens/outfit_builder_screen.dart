@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/clothing_item.dart';
 import '../services/wardrobe_provider.dart';
+import '../services/nav_service.dart';
 import '../services/weather_stylist_service.dart';
 import '../services/style_check_service.dart';
 import '../widgets/outfit_moodboard.dart';
@@ -544,33 +545,44 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
 
     if (wardrobe.items.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('AI Стиліст Vestora')),
+        appBar: AppBar(title: Text(context.tr('stylist_title'))),
         body: Center(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.style_outlined, size: 64, color: AppTheme.muted),
                 const SizedBox(height: 16),
                 const Text(
-                  'Додайте спочатку декілька речей у гардероб',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  'Стилісту потрібні ваші речі',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Або завантажте готову демо-капсулу на головному екрані',
-                  style: TextStyle(fontSize: 13, color: AppTheme.muted),
+                  'Додайте хоча б 2–3 речі (верх і низ) — і Стиліст запропонує образи під погоду та привід.',
+                  style: TextStyle(fontSize: 13, color: AppTheme.muted, height: 1.4),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
-                ElevatedButton.icon(
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => AppNav.goToTab(AppNav.tabAdd),
+                    icon: const Icon(Icons.add_a_photo_outlined),
+                    label: const Text('Додати першу річ'),
+                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
                   onPressed: () {
                     context.read<WardrobeProvider>().loadDemoCapsule();
                   },
-                  icon: const Icon(Icons.auto_awesome),
-                  label: const Text('Завантажити демо-капсулу'),
+                  icon: const Icon(Icons.visibility_outlined, size: 18),
+                  label: const Text('Лише подивитись: додати демо-речі'),
                 ),
               ],
             ),
@@ -691,8 +703,11 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
       ),
       body: Column(
         children: [
-          // Natural Language AI Prompt & Context Bar
-          Container(
+          // Natural Language AI Prompt & Context Bar (scrolls on its own when text is huge)
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.35),
+            child: SingleChildScrollView(
+              child: Container(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
             color: surfaceColor,
             child: Column(
@@ -807,6 +822,8 @@ class _OutfitBuilderScreenState extends State<OutfitBuilderScreen> {
                   ),
                 ],
               ],
+            ),
+          ),
             ),
           ),
           Divider(height: 1, color: borderColor),

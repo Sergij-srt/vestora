@@ -9,6 +9,7 @@ import 'services/localization_service.dart';
 import 'services/supabase_service.dart';
 import 'services/outfit_calendar_service.dart';
 import 'services/secure_vault_service.dart';
+import 'services/nav_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/closet_screen.dart';
 import 'screens/add_item_screen.dart';
@@ -117,37 +118,76 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
 
+  /// Tabs that were opened at least once. Visited tabs stay alive inside the [IndexedStack] so that
+  /// switching tabs never throws away user work (e.g. 3 freshly taken photos on the Add tab).
+  final Set<int> _visitedTabs = <int>{0};
+
+  /// Bumped after a successful save so the Add tab starts from a clean form next time.
+  int _addFormGeneration = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    AppNav.tabRequest.addListener(_handleTabRequest);
+  }
+
+  @override
+  void dispose() {
+    AppNav.tabRequest.removeListener(_handleTabRequest);
+    super.dispose();
+  }
+
+  void _handleTabRequest() {
+    final requested = AppNav.tabRequest.value;
+    if (requested == null) return;
+    AppNav.tabRequest.value = null;
+    if (requested >= 0 && requested <= 4 && mounted) {
+      _selectTab(requested);
+    }
+  }
+
+  void _selectTab(int index) {
+    setState(() {
+      _currentIndex = index;
+      _visitedTabs.add(index);
+    });
+  }
+
+  Widget _buildTab(int index) {
+    if (!_visitedTabs.contains(index)) return const SizedBox.shrink();
+    switch (index) {
+      case 0:
+        return const ClosetScreen();
+      case 1:
+        return const OutfitBuilderScreen();
+      case 2:
+        return AddItemScreen(
+          key: ValueKey<int>(_addFormGeneration),
+          onSaved: () {
+            setState(() {
+              _addFormGeneration++; // fresh form next time
+              _currentIndex = AppNav.tabCloset; // reveal the saved item
+              _visitedTabs.add(AppNav.tabCloset);
+            });
+          },
+        );
+      case 3:
+        return const OotdFeedScreen();
+      default:
+        return const AnalyticsScreen();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = context.watch<LocalizationService>();
     final theme = context.watch<ThemeService>();
     final isDark = theme.isDarkMode(context);
 
-    final screens = [
-      const ClosetScreen(),
-      const OutfitBuilderScreen(),
-      AddItemScreen(onSaved: () {
-        setState(() => _currentIndex = 0); // Switch to closet upon saving
-      }),
-      const OotdFeedScreen(),
-      const AnalyticsScreen(),
-    ];
-
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
-        },
-        child: KeyedSubtree(
-          key: ValueKey<int>(_currentIndex),
-          child: screens[_currentIndex],
-        ),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: List<Widget>.generate(5, _buildTab),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -164,9 +204,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
           indicatorColor: isDark ? const Color(0xFF2E2E38) : const Color(0xFFFEF3C7),
           elevation: 0,
-          onDestinationSelected: (index) {
-            setState(() => _currentIndex = index);
-          },
+          onDestinationSelected: _selectTab,
           destinations: [
             NavigationDestination(
               icon: const Icon(Icons.checkroom_outlined),
@@ -193,9 +231,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               label: loc.translate('tab_add'),
             ),
             NavigationDestination(
-              icon: const Icon(Icons.auto_awesome_outlined),
+              icon: const Icon(Icons.groups_outlined),
               selectedIcon: Icon(
-                Icons.auto_awesome_rounded,
+                Icons.groups_rounded,
                 color: isDark ? AppTheme.darkAccent : AppTheme.accent,
               ),
               label: loc.translate('tab_community'),

@@ -300,9 +300,26 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
     }
   }
 
+  /// Goes straight to the review form with the user's own photos — no API key, no dead-end.
+  void _continueWithoutAi() {
+    final hasAnyPhoto = (_clothingPhotoUrl ?? '').isNotEmpty ||
+        (_labelPhotoUrl ?? '').isNotEmpty ||
+        (_receiptPhotoUrl ?? '').isNotEmpty;
+    if (!hasAnyPhoto) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('📸 Спершу сфотографуйте річ або виберіть фото з галереї.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    _openManualVerificationScreen();
+  }
+
   void _openManualVerificationScreen() async {
     final manualData = OcrCombinedResult(
-      title: 'Нова річ',
+      title: '',
       brand: '',
       category: ClothingCategory.tops,
       season: Season.allSeason,
@@ -667,6 +684,125 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
+        const Text(
+          'Додайте річ',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Достатньо одного фото речі. Фото бірки допоможе заповнити склад і догляд, а чек — ціну.',
+          style: TextStyle(fontSize: 13, color: isDark ? AppTheme.darkMuted : AppTheme.muted, height: 1.35),
+        ),
+        const SizedBox(height: 14),
+        // 3 Photo Pickers
+        Row(
+          children: [
+            Expanded(
+              child: _buildPhotoSlot(
+                isDark: isDark,
+                title: '1. Фото речі',
+                imageUrl: _clothingPhotoUrl,
+                icon: Icons.checkroom_rounded,
+                onTap: () => _pickImageFor(
+                  targetName: 'фото одягу',
+                  onPicked: (path) => _clothingPhotoUrl = path,
+                ),
+                onClear: () => setState(() => _clothingPhotoUrl = null),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildPhotoSlot(
+                isDark: isDark,
+                title: '2. Етикетка',
+                imageUrl: _labelPhotoUrl,
+                icon: Icons.label_important_outline,
+                onTap: () => _pickImageFor(
+                  targetName: 'фото етикетки/бірки',
+                  onPicked: (path) => _labelPhotoUrl = path,
+                ),
+                onClear: () => setState(() => _labelPhotoUrl = null),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildPhotoSlot(
+                isDark: isDark,
+                title: '3. Чек (опція)',
+                imageUrl: _receiptPhotoUrl,
+                icon: Icons.receipt_long_rounded,
+                onTap: () => _pickImageFor(
+                  targetName: 'фото чека',
+                  onPicked: (path) => _receiptPhotoUrl = path,
+                ),
+                onClear: () => setState(() => _receiptPhotoUrl = null),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Primary action adapts to whether AI is available, so the flow is NEVER a dead-end.
+        Builder(
+          builder: (context) {
+            final hasAi = AiConfigService.hasCustomKey;
+            final hasPhoto = (_clothingPhotoUrl ?? '').isNotEmpty ||
+                (_labelPhotoUrl ?? '').isNotEmpty ||
+                (_receiptPhotoUrl ?? '').isNotEmpty;
+            return Column(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isOcrProcessing ? null : (hasAi ? _runAiOcrAnalysis : _continueWithoutAi),
+                    icon: _isOcrProcessing
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : Icon(hasAi ? Icons.auto_awesome : Icons.arrow_forward_rounded),
+                    label: Text(
+                      _isOcrProcessing
+                          ? 'ШІ зчитує текст та атрибути...'
+                          : (hasAi ? 'Розпізнати через ШІ та перевірити' : 'Далі: заповнити дані та зберегти'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                      backgroundColor: isDark ? AppTheme.darkAccent : AppTheme.primary,
+                      foregroundColor: isDark ? Colors.black : Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                if (hasAi)
+                  TextButton(
+                    onPressed: _isOcrProcessing ? null : _continueWithoutAi,
+                    child: const Text('Заповнити вручну без ШІ'),
+                  )
+                else
+                  TextButton.icon(
+                    onPressed: _isOcrProcessing ? null : _runAiOcrAnalysis,
+                    icon: const Icon(Icons.auto_awesome, size: 16),
+                    label: const Text('Автозаповнення через ШІ (безкоштовний ключ)'),
+                  ),
+                if (!hasPhoto)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      'Спершу додайте хоча б одне фото',
+                      style: TextStyle(fontSize: 12, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 18),
+
         // AI Engine Mode & BYOK Status Pill
         Container(
           margin: const EdgeInsets.only(bottom: 14),
@@ -751,198 +887,16 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                   );
                   if (mounted) setState(() {});
                 },
-                child: const Text('Змінити ⚙️', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                child: Text(AiConfigService.hasCustomKey ? 'Змінити' : 'Увімкнути', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
               ),
             ],
-          ),
-        ),
-
-        // Intro banner
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF27272A) : const Color(0xFFFEF3C7).withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isDark ? const Color(0xFF78350F) : const Color(0xFFFDE68A)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.auto_awesome, color: isDark ? AppTheme.darkAccent : AppTheme.accent, size: 22),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'AI Фото-Сканер Речей, Етикеток та Чеків',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                        color: isDark ? AppTheme.darkAccent : const Color(0xFF92400E),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Сфотографуйте річ, її внутрішню етикетку та касовий чек. ШІ вичитає бренд, розмір, склад тканини, догляд і ціну, подасть на перевірку та збереже в гардероб.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? const Color(0xFFE4E4E7) : const Color(0xFF78350F),
-                        height: 1.35,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const SettingsAiScreen()),
-                        ).then((_) {
-                          if (mounted) setState(() {});
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF18181B) : Colors.white.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: AiConfigService.hasCustomKey
-                                ? const Color(0xFF10B981)
-                                : const Color(0xFFF59E0B),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              AiConfigService.hasCustomKey
-                                  ? Icons.verified_rounded
-                                  : Icons.vpn_key_outlined,
-                              size: 14,
-                              color: AiConfigService.hasCustomKey
-                                  ? const Color(0xFF10B981)
-                                  : const Color(0xFFD97706),
-                            ),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                AiConfigService.hasCustomKey
-                                    ? 'Gemini Vision активний'
-                                    : 'Потрібен Gemini API ключ • Натисніть для налаштування',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: AiConfigService.hasCustomKey
-                                      ? const Color(0xFF047857)
-                                      : const Color(0xFFB45309),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        Text(
-          'ДОДАЙТЕ ФОТО ДЛЯ АНАЛІЗУ',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.1,
-            color: isDark ? AppTheme.darkMuted : AppTheme.muted,
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // 3 Photo Pickers
-        Row(
-          children: [
-            Expanded(
-              child: _buildPhotoSlot(
-                isDark: isDark,
-                title: '1. Фото речі',
-                imageUrl: _clothingPhotoUrl,
-                icon: Icons.checkroom_rounded,
-                onTap: () => _pickImageFor(
-                  targetName: 'фото одягу',
-                  onPicked: (path) => _clothingPhotoUrl = path,
-                ),
-                onClear: () => setState(() => _clothingPhotoUrl = null),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildPhotoSlot(
-                isDark: isDark,
-                title: '2. Етикетка',
-                imageUrl: _labelPhotoUrl,
-                icon: Icons.label_important_outline,
-                onTap: () => _pickImageFor(
-                  targetName: 'фото етикетки/бірки',
-                  onPicked: (path) => _labelPhotoUrl = path,
-                ),
-                onClear: () => setState(() => _labelPhotoUrl = null),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildPhotoSlot(
-                isDark: isDark,
-                title: '3. Чек (опція)',
-                imageUrl: _receiptPhotoUrl,
-                icon: Icons.receipt_long_rounded,
-                onTap: () => _pickImageFor(
-                  targetName: 'фото чека',
-                  onPicked: (path) => _receiptPhotoUrl = path,
-                ),
-                onClear: () => setState(() => _receiptPhotoUrl = null),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-
-        // Main CTA Button
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: _isOcrProcessing ? null : _runAiOcrAnalysis,
-            icon: _isOcrProcessing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                  )
-                : const Icon(Icons.auto_awesome),
-            label: Text(
-              _isOcrProcessing ? 'ШІ зчитує текст та атрибути...' : 'Розпізнати через ШІ та перевірити',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-              backgroundColor: isDark ? AppTheme.darkAccent : AppTheme.primary,
-              foregroundColor: isDark ? Colors.black : Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            ),
           ),
         ),
         const SizedBox(height: 28),
 
         // Quick 1-Click Testing Presets
         Text(
-          'ШВИДКІ ПРИКЛАДИ ДЛЯ ТЕСТУВАННЯ (1 КЛІК)',
+          'ПОДИВИТИСЬ НА ПРИКЛАДІ (ДЕМО-ДАНІ)',
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w800,
@@ -1019,11 +973,12 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
     VoidCallback? onClear,
   }) {
     final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+    final slotHeight = 125.0 * MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.8);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        height: 125,
+        height: slotHeight,
         decoration: BoxDecoration(
           color: isDark ? AppTheme.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -1096,7 +1051,9 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
             : Center(
                 child: Padding(
                   padding: const EdgeInsets.all(6.0),
-                  child: Column(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
@@ -1132,6 +1089,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                         ),
                       ],
                     ],
+                  ),
                   ),
                 ),
               ),
@@ -1626,7 +1584,8 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
               ),
               borderRadius: BorderRadius.circular(16),
               child: Container(
-                height: 130,
+                height: _manualImageController.text.trim().isNotEmpty ? 160 : null,
+                constraints: const BoxConstraints(minHeight: 130),
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: Theme.of(context).brightness == Brightness.dark
@@ -1656,12 +1615,12 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                             child: GestureDetector(
                               onTap: () => setState(() => _manualImageController.clear()),
                               child: Container(
-                                padding: const EdgeInsets.all(6),
+                                padding: const EdgeInsets.all(10),
                                 decoration: const BoxDecoration(
                                   color: Colors.black54,
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.close, size: 16, color: Colors.white),
+                                child: const Icon(Icons.close, size: 18, color: Colors.white),
                               ),
                             ),
                           ),

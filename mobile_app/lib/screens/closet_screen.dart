@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/clothing_item.dart';
 import '../services/wardrobe_provider.dart';
+import '../services/nav_service.dart';
 import '../services/gamification_service.dart';
 import '../services/localization_service.dart';
 import '../services/daily_stylist_service.dart';
@@ -10,16 +11,11 @@ import '../services/user_profile_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/controller_scope.dart';
 import '../widgets/vestora_image.dart';
-import 'purchase_advisor_screen.dart';
+import '../widgets/tools_sheet.dart';
 import 'brand_story_dialog.dart';
-import 'travel_capsule_screen.dart';
-import 'color_analysis_dialog.dart';
-import 'declutter_hub_screen.dart';
 import 'settings_hub_screen.dart';
 import 'outfit_calendar_screen.dart';
 import 'virtual_fitting_screen.dart';
-import 'capsule_matrix_screen.dart';
-import 'fabric_care_screen.dart';
 
 class ClosetScreen extends StatelessWidget {
   const ClosetScreen({super.key});
@@ -77,124 +73,6 @@ class ClosetScreen extends StatelessWidget {
               );
             },
           ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded),
-            tooltip: 'Більше інструментів',
-            onSelected: (value) {
-              switch (value) {
-                case 'tryon':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const VirtualFittingScreen()),
-                  );
-                  break;
-                case 'matrix':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const CapsuleMatrixScreen()),
-                  );
-                  break;
-                case 'care':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const FabricCareScreen()),
-                  );
-                  break;
-                case 'travel':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const TravelCapsuleScreen()),
-                  );
-                  break;
-                case 'palette':
-                  showColorAnalysisDialog(context);
-                  break;
-                case 'advisor':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const PurchaseAdvisorScreen()),
-                  );
-                  break;
-                case 'reset':
-                  context.read<WardrobeProvider>().setCategoryFilter(null);
-                  context.read<WardrobeProvider>().setSearchQuery('');
-                  break;
-              }
-            },
-            itemBuilder: (ctx) => [
-              const PopupMenuItem(
-                value: 'tryon',
-                child: Row(
-                  children: [
-                    Icon(Icons.face_retouching_natural_rounded, color: AppTheme.accent, size: 20),
-                    SizedBox(width: 10),
-                    Text('AI Примірочна (Try-On)'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'matrix',
-                child: Row(
-                  children: [
-                    Icon(Icons.grid_on_rounded, color: AppTheme.accent, size: 20),
-                    SizedBox(width: 10),
-                    Text('Капсульна Матриця 3x3'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'care',
-                child: Row(
-                  children: [
-                    Icon(Icons.dry_cleaning_outlined, color: AppTheme.accent, size: 20),
-                    SizedBox(width: 10),
-                    Text('Догляд за тканинами'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'travel',
-                child: Row(
-                  children: [
-                    Icon(Icons.flight_takeoff_rounded, color: AppTheme.accent, size: 20),
-                    SizedBox(width: 10),
-                    Text('Капсула у подорож'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'palette',
-                child: Row(
-                  children: [
-                    Icon(Icons.palette_outlined, color: AppTheme.accent, size: 20),
-                    SizedBox(width: 10),
-                    Text('Мій кольоротип'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'advisor',
-                child: Row(
-                  children: [
-                    Icon(Icons.shield_outlined, color: AppTheme.accent, size: 20),
-                    SizedBox(width: 10),
-                    Text('Радник покупок'),
-                  ],
-                ),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
-                value: 'reset',
-                child: Row(
-                  children: [
-                    Icon(Icons.refresh_rounded, size: 20),
-                    SizedBox(width: 10),
-                    Text('Скинути фільтри'),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ],
       ),
       body: wardrobe.isLoading
@@ -209,7 +87,7 @@ class ClosetScreen extends StatelessWidget {
                       children: [
                         // Main Bento Card
                         Container(
-                          padding: const EdgeInsets.all(18),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [Color(0xFF18181B), Color(0xFF27272A)],
@@ -219,103 +97,74 @@ class ClosetScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: AppTheme.softShadow,
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
                             children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      context.tr('closet_title'),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Color(0xFFA1A1AA),
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 1.2,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF3F3F46),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Text('🔥', style: TextStyle(fontSize: 12)),
-                                          const SizedBox(width: 4),
-                                          Flexible(
-                                            child: Text(
-                                              '${wardrobe.streakDays} ${context.tr('closet_streak')}',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                color: Color(0xFFFDE68A),
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 11,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                alignment: WrapAlignment.spaceBetween,
-                                crossAxisAlignment: WrapCrossAlignment.end,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${wardrobe.totalWardrobeValue.toStringAsFixed(0)} ₴',
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        LocalizationService.formatPrice(wardrobe.totalWardrobeValue),
                                         maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           color: Colors.white,
-                                          fontSize: 26,
+                                          fontSize: 24,
                                           fontWeight: FontWeight.w800,
                                         ),
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '${wardrobe.totalItemsCount} ${context.tr('closet_active_items')}',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 12),
-                                      ),
-                                    ],
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFD97706),
-                                      borderRadius: BorderRadius.circular(10),
                                     ),
-                                    child: Text(
-                                      '${context.tr('closet_health')} ${wardrobe.healthReport.healthScore}/100',
-                                      maxLines: 1,
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${wardrobe.totalItemsCount} ${context.tr('closet_active_items')} · 🔥 ${wardrobe.streakDays} ${context.tr('closet_streak')}',
+                                      maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 11.5,
-                                      ),
+                                      style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 12, height: 1.3),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Flexible(
+                                child: Semantics(
+                                button: true,
+                                label: 'Здоров\'я гардероба ${wardrobe.healthReport.healthScore} зі 100. Натисніть, щоб дізнатися більше',
+                                excludeSemantics: true,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: () => _showHealthDialog(context, wardrobe),
+                                  child: Container(
+                                    constraints: const BoxConstraints(minHeight: 44),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.accent, // 5:1 contrast with white text (WCAG AA)
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            '${context.tr('closet_health')} ${wardrobe.healthReport.healthScore}/100',
+                                            maxLines: 3,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Icon(Icons.info_outline_rounded, size: 14, color: Colors.white),
+                                      ],
                                     ),
                                   ),
-                                ],
+                                ),
+                              ),
                               ),
                             ],
                           ),
@@ -330,165 +179,60 @@ class ClosetScreen extends StatelessWidget {
                   child: DailyStylistDigestBanner(),
                 ),
 
-                // 2. Search Bar
+                // 2. Search Bar + Tools button (all secondary features live in ONE labelled place)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: TextField(
-                      onChanged: (val) => context.read<WardrobeProvider>().setSearchQuery(val),
-                      decoration: InputDecoration(
-                        hintText: context.tr('closet_search_hint'),
-                        prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.muted),
-                        suffixIcon: wardrobe.searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.close_rounded, size: 20),
-                                onPressed: () => context.read<WardrobeProvider>().setSearchQuery(''),
-                              )
-                            : null,
-                      ),
-                    ),
-                  ),
-                ),
-
-                // 3. "Should I Buy This?" Quick Advisor Banner
-                SliverToBoxAdapter(
-                  child: Builder(
-                    builder: (context) {
-                      final isDark = Theme.of(context).brightness == Brightness.dark;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const PurchaseAdvisorScreen()),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                            decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF064E3B).withValues(alpha: 0.4) : const Color(0xFFF0FDF4),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: isDark ? const Color(0xFF047857) : const Color(0xFFBBF7D0),
+                    child: Builder(
+                      builder: (context) {
+                        final media = MediaQuery.of(context);
+                        final compactTools = media.size.width < 360 || media.textScaler.scale(14) > 19;
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                onChanged: (val) => context.read<WardrobeProvider>().setSearchQuery(val),
+                                decoration: InputDecoration(
+                                  hintText: context.tr('closet_search_hint'),
+                                  prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.muted),
+                                  suffixIcon: wardrobe.searchQuery.isNotEmpty
+                                      ? IconButton(
+                                          icon: const Icon(Icons.close_rounded, size: 20),
+                                          tooltip: 'Очистити пошук',
+                                          onPressed: () => context.read<WardrobeProvider>().setSearchQuery(''),
+                                        )
+                                      : null,
+                                ),
                               ),
                             ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.shield_outlined, color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A), size: 20),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    context.tr('closet_purchase_banner'),
-                                    style: TextStyle(
-                                      color: isDark ? const Color(0xFFDCFCE7) : const Color(0xFF166534),
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            const SizedBox(width: 8),
+                            if (compactTools)
+                              IconButton.filledTonal(
+                                onPressed: () => showToolsSheet(context),
+                                icon: const Icon(Icons.apps_rounded),
+                                tooltip: 'Інструменти: примірочна, календар, радник покупок та інше',
+                                constraints: const BoxConstraints(minWidth: 52, minHeight: 52),
+                              )
+                            else
+                              Tooltip(
+                                message: 'Примірочна, календар, радник покупок, догляд та інше',
+                                child: FilledButton.tonalIcon(
+                                  onPressed: () => showToolsSheet(context),
+                                  icon: const Icon(Icons.apps_rounded, size: 20),
+                                  label: const Text('Інструменти', maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  style: FilledButton.styleFrom(
+                                    minimumSize: const Size(0, 52),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14),
                                   ),
                                 ),
-                                Icon(Icons.chevron_right_rounded, color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A), size: 18),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                // 3b. Smart Assistant Quick Pills (Travel Capsule, Color Season, Declutter Hub)
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 38,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      children: [
-                        _buildAssistPill(
-                          label: '🪞 AI Примірочна',
-                          color: const Color(0xFFFEF3C7),
-                          textColor: const Color(0xFF92400E),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const VirtualFittingScreen()),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        _buildAssistPill(
-                          label: '🔲 Матриця 3x3',
-                          color: const Color(0xFFF3E8FF),
-                          textColor: const Color(0xFF6B21A8),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const CapsuleMatrixScreen()),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        _buildAssistPill(
-                          label: '🏷️ Догляд & Бірки',
-                          color: const Color(0xFFCCFBF1),
-                          textColor: const Color(0xFF0F766E),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const FabricCareScreen()),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        _buildAssistPill(
-                          label: '📅 Календар образів',
-                          color: const Color(0xFFEFF6FF),
-                          textColor: const Color(0xFF1D4ED8),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const OutfitCalendarScreen()),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        _buildAssistPill(
-                          label: '🧳 Капсула у подорож',
-                          color: const Color(0xFFFEF3C7),
-                          textColor: const Color(0xFF92400E),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const TravelCapsuleScreen()),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        _buildAssistPill(
-                          label: '🎨 Мій кольоротип',
-                          color: const Color(0xFFF3E8FF),
-                          textColor: const Color(0xFF6B21A8),
-                          onTap: () => showColorAnalysisDialog(context),
-                        ),
-                        const SizedBox(width: 8),
-                        _buildAssistPill(
-                          label: '♻️ Розхламлення & Еко',
-                          color: const Color(0xFFDCFCE7),
-                          textColor: const Color(0xFF166534),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const DeclutterHubScreen()),
-                            );
-                          },
-                        ),
-                      ],
+                              ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 6)),
+
 
                 // 4. Category Filter Pills
                 SliverToBoxAdapter(
@@ -554,7 +298,7 @@ class ClosetScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(10),
                                   onTap: () => _showSeasonFilterDialog(context),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                                     decoration: BoxDecoration(
                                       color: wardrobe.selectedSeason != null ? const Color(0xFFFEF3C7) : chipBg,
                                       borderRadius: BorderRadius.circular(10),
@@ -592,7 +336,7 @@ class ClosetScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(10),
                                   onTap: () => _showSortDialog(context),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                                     decoration: BoxDecoration(
                                       color: wardrobe.sortOption != WardrobeSortOption.newest
                                           ? const Color(0xFFEFF6FF)
@@ -656,67 +400,7 @@ class ClosetScreen extends StatelessWidget {
 
                 // 5. Grid or Zero Dead-Ends Setup Hero Card
                 wardrobe.items.isEmpty
-                    ? SliverToBoxAdapter(
-                        child: Builder(
-                          builder: (context) {
-                            final isDark = Theme.of(context).brightness == Brightness.dark;
-                            return Container(
-                              margin: const EdgeInsets.all(16),
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: isDark ? AppTheme.darkSurface : Colors.white,
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
-                                boxShadow: AppTheme.softShadow,
-                              ),
-                              child: Column(
-                                children: [
-                                  Container(
-                                    width: 64,
-                                    height: 64,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFFFEF3C7),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Center(
-                                      child: Icon(Icons.checkroom_rounded, size: 32, color: AppTheme.accent),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  const Text(
-                                    'Ваш гардероб поки що порожній',
-                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  const Text(
-                                    'Спробуйте магію Vestora миттєво: завантажте готову дизайнерську демо-капсулу (Zara, Massimo Dutti, COS) або додайте власні речі за посиланням.',
-                                    style: TextStyle(fontSize: 13, color: AppTheme.muted, height: 1.4),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 20),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton.icon(
-                                      onPressed: () {
-                                        context.read<WardrobeProvider>().loadDemoCapsule();
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Готову дизайнерську капсулу завантажено!'),
-                                            behavior: SnackBarBehavior.floating,
-                                          ),
-                                        );
-                                      },
-                                      icon: const Icon(Icons.auto_awesome, size: 18),
-                                      label: const Text('Завантажити готову капсулу (1 клік)'),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      )
+                    ? SliverToBoxAdapter(child: _buildEmptyHero(context))
                     : wardrobe.filteredItems.isEmpty
                         ? SliverFillRemaining(
                             hasScrollBody: false,
@@ -790,27 +474,141 @@ class ClosetScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAssistPill({
-    required String label,
-    required Color color,
-    required Color textColor,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
+  /// First-run hero: the PRIMARY action is adding the user's own first garment; demo data is clearly secondary.
+  Widget _buildEmptyHero(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final muted = isDark ? AppTheme.darkMuted : AppTheme.muted;
+
+    Widget step(int number, IconData icon, String title, String subtitle) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF27272A) : AppTheme.accentLight,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 18, color: isDark ? AppTheme.darkAccent : AppTheme.accent),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$number. $title',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: TextStyle(fontSize: 12.5, color: muted, height: 1.3)),
+                ],
+              ),
+            ),
+          ],
         ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(color: textColor, fontWeight: FontWeight.w700, fontSize: 11.5),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.border),
+        boxShadow: isDark ? const [] : AppTheme.softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Почнімо з вашої першої речі',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Це займає хвилину. Додайте речі, які вже є в шафі, — і Vestora складатиме образи, нагадуватиме про догляд та показуватиме, що ви справді носите.',
+            style: TextStyle(fontSize: 13, color: muted, height: 1.4),
+          ),
+          const SizedBox(height: 18),
+          step(1, Icons.photo_camera_outlined, 'Сфотографуйте річ', 'Камерою або виберіть фото з галереї.'),
+          step(2, Icons.label_outline_rounded, 'Додайте бірку (за бажанням)', 'З неї беруться склад, розмір і правила догляду.'),
+          step(3, Icons.style_outlined, 'Складайте образи', 'Стиліст підбере комбінації під погоду та привід.'),
+          const SizedBox(height: 6),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => AppNav.goToTab(AppNav.tabAdd),
+              icon: const Icon(Icons.add_a_photo_outlined, size: 20),
+              label: const Text('Додати першу річ'),
+              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton.icon(
+              onPressed: () {
+                context.read<WardrobeProvider>().loadDemoCapsule();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Додано демо-речі для ознайомлення. Їх можна видалити будь-коли.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.visibility_outlined, size: 18),
+              label: const Text('Лише подивитись: додати демо-речі', textAlign: TextAlign.center),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Explains what the wardrobe health score means and what to do to improve it.
+  void _showHealthDialog(BuildContext context, WardrobeProvider wardrobe) {
+    final report = wardrobe.healthReport;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Здоров\'я гардероба: ${report.healthScore}/100'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(report.healthStatus, style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 10),
+              Text(
+                'Ви носите ${report.utilizationRate.toStringAsFixed(0)}% речей. '
+                'Без діла лежать: ${report.dormantItemsCount} шт.',
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Бал росте, коли ви реально користуєтесь речами та регулярно відзначаєте образи.',
+                style: TextStyle(fontSize: 12.5, color: AppTheme.muted),
+              ),
+              if (report.suggestions.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                const Text('Що зробити:', style: TextStyle(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 6),
+                for (final tip in report.suggestions)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text('• $tip'),
+                  ),
+              ],
+            ],
           ),
         ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Зрозуміло')),
+        ],
       ),
     );
   }
@@ -1891,14 +1689,25 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                   icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
                   tooltip: 'Видалити',
                   onPressed: () {
-                    context.read<WardrobeProvider>().removeItem(item.id);
+                    // Capture everything BEFORE popping the sheet: its context dies with the route.
+                    final wardrobe = context.read<WardrobeProvider>();
+                    final messenger = ScaffoldMessenger.of(context);
+                    final removed = item;
+                    wardrobe.removeItem(removed.id);
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Річ видалено з гардероба'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                    messenger
+                      ..clearSnackBars()
+                      ..showSnackBar(
+                        SnackBar(
+                          content: Text('«${removed.title}» видалено з гардероба'),
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 6),
+                          action: SnackBarAction(
+                            label: 'Скасувати',
+                            onPressed: () => wardrobe.addItem(removed),
+                          ),
+                        ),
+                      );
                   },
                 ),
               ],
@@ -1921,6 +1730,7 @@ class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
   DailyOutfitDigest? _digest;
   bool _isLoading = true;
   bool _isDismissed = false;
+  bool _expanded = false; // collapsed by default so the wardrobe grid stays above the fold
 
   @override
   void initState() {
@@ -2115,6 +1925,71 @@ class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
     );
   }
 
+  /// One-line summary of today's suggested look. Tap to expand into the full morning-stylist card.
+  Widget _buildCollapsed(DailyOutfitDigest digest) {
+    final media = MediaQuery.of(context);
+    final thumbs = media.textScaler.scale(14) > 19 ? 0 : (media.size.width < 340 ? 1 : 3);
+    final shown = digest.outfitItems.take(thumbs).toList();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Material(
+        color: const Color(0xFF1C1917),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: const Color(0xFFD4AF37).withValues(alpha: 0.4), width: 1.2),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => setState(() => _expanded = true),
+          child: Semantics(
+            button: true,
+            label: 'Лук дня. ${digest.weatherSummary}. Натисніть, щоб розгорнути',
+            excludeSemantics: true,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Row(
+                children: [
+                  const Icon(Icons.auto_awesome, color: Color(0xFFD4AF37), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Лук дня',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800),
+                        ),
+                        Text(
+                          digest.isWorn ? '✓ Вже вдягнено сьогодні' : digest.weatherSummary,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Color(0xFFD6D3D1), fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  for (final item in shown)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: VestoraImage(imageUrl: item.imageUrl, width: 40, height: 40, fit: BoxFit.cover),
+                      ),
+                    ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.expand_more_rounded, color: Color(0xFFD6D3D1), size: 24),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isDismissed || _isLoading || _digest == null || _digest!.outfitItems.isEmpty) {
@@ -2123,6 +1998,7 @@ class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
 
     final wardrobe = context.watch<WardrobeProvider>();
     final digest = _digest!;
+    if (!_expanded) return _buildCollapsed(digest);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -2212,24 +2088,32 @@ class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.refresh_rounded, color: Color(0xFFA8A29E), size: 18),
-                      tooltip: 'Оновити прогноз погоди (Live Open-Meteo)',
+                      icon: const Icon(Icons.refresh_rounded, color: Color(0xFFA8A29E), size: 20),
+                      tooltip: 'Оновити прогноз погоди',
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                       onPressed: () => _loadDigest(forceRefresh: true),
                     ),
-                    const SizedBox(width: 10),
                     IconButton(
-                      icon: const Icon(Icons.notifications_active_outlined, color: Color(0xFFFDE68A), size: 18),
-                      tooltip: 'Надіслати ранкове сповіщення (Push)',
+                      icon: const Icon(Icons.notifications_active_outlined, color: Color(0xFFFDE68A), size: 20),
+                      tooltip: 'Надіслати ранкове сповіщення',
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                       onPressed: _triggerPush,
                     ),
-                    const SizedBox(width: 10),
-                    InkWell(
-                      onTap: () => setState(() => _isDismissed = true),
-                      child: const Icon(Icons.close_rounded, color: Color(0xFFA8A29E), size: 18),
+                    IconButton(
+                      icon: const Icon(Icons.expand_less_rounded, color: Color(0xFFA8A29E), size: 22),
+                      tooltip: 'Згорнути',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                      onPressed: () => setState(() => _expanded = false),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Color(0xFFA8A29E), size: 20),
+                      tooltip: 'Сховати до завтра',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                      onPressed: () => setState(() => _isDismissed = true),
                     ),
                   ],
                 ),
@@ -2307,7 +2191,7 @@ class _DailyStylistDigestBannerState extends State<DailyStylistDigestBanner> {
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 8.5,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
