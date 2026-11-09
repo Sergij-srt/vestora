@@ -36,6 +36,9 @@ void main() async {
 
   await safeInit('SecureVault', () => SecureVaultService.migrateFromSharedPreferences());
   await safeInit('Auth', () => AuthService.initialize());
+  if (!AuthService.instance.isLoggedIn && !AuthService.hasExplicitlySignedOut) {
+    await safeInit('LocalAutoStart', () => AuthService.instance.signInAsGuest());
+  }
   await safeInit('AiConfig', () => AiConfigService.initialize());
   await safeInit('UserProfile', () => UserProfileService.initialize());
   await safeInit('Theme', () => ThemeService.initialize());

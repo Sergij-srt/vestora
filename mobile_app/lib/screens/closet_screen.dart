@@ -1,5 +1,8 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../models/clothing_item.dart';
 import '../services/wardrobe_provider.dart';
@@ -1123,6 +1126,9 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
 
   void _showEditDialog(BuildContext context, ClothingItem item) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    String editedImageUrl = item.imageUrl;
+    ClothingCategory editedCategory = item.category;
+    Season editedSeason = item.season;
 
     showModalBottomSheet(
       context: context,
@@ -1147,108 +1153,244 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
           final sizeCtrl = ctrls[3];
           final fabricCtrl = ctrls[4];
           final colorCtrl = ctrls[5];
-          return Padding(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          return StatefulBuilder(
+            builder: (modalCtx, setModalState) {
+              Future<void> pickReplacementPhoto(ImageSource source) async {
+                try {
+                  final file = await ImagePicker().pickImage(
+                    source: source,
+                    maxWidth: kIsWeb ? null : 1200,
+                    maxHeight: kIsWeb ? null : 1200,
+                    imageQuality: kIsWeb ? null : 85,
+                  );
+                  if (file == null) return;
+                  final bytes = await file.readAsBytes();
+                  if (bytes.isEmpty) return;
+                  final lowerName = file.name.toLowerCase();
+                  final mimeType = lowerName.endsWith('.png')
+                      ? 'image/png'
+                      : lowerName.endsWith('.webp')
+                          ? 'image/webp'
+                          : 'image/jpeg';
+                  setModalState(() {
+                    editedImageUrl = 'data:$mimeType;base64,${base64Encode(bytes)}';
+                  });
+                } catch (_) {
+                  if (modalCtx.mounted) {
+                    ScaffoldMessenger.of(modalCtx).showSnackBar(
+                      const SnackBar(content: Text('Не вдалося оновити фото')),
+                    );
+                  }
+                }
+              }
+
+              return Padding(
+                padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Expanded(
-                        child: Text(
-                          'Редагувати річ',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: titleCtrl,
-                    decoration: const InputDecoration(labelText: 'Назва товару'),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: brandCtrl,
-                          decoration: const InputDecoration(labelText: 'Бренд'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: priceCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Ціна (₴)'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: sizeCtrl,
-                          decoration: const InputDecoration(labelText: 'Розмір (EUR / US)'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: colorCtrl,
-                          decoration: const InputDecoration(labelText: 'Колір'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: fabricCtrl,
-                    decoration: const InputDecoration(labelText: 'Склад тканини (з етикетки)'),
-                  ),
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        final updated = item.copyWith(
-                          title: titleCtrl.text.trim().isNotEmpty ? titleCtrl.text.trim() : item.title,
-                          brand: brandCtrl.text.trim().isNotEmpty ? brandCtrl.text.trim() : item.brand,
-                          price: double.tryParse(priceCtrl.text.trim()) ?? item.price,
-                          color: colorCtrl.text.trim().isNotEmpty ? colorCtrl.text.trim() : item.color,
-                          size: sizeCtrl.text.trim().isNotEmpty ? sizeCtrl.text.trim() : item.size,
-                          fabricComposition: fabricCtrl.text.trim().isNotEmpty ? fabricCtrl.text.trim() : item.fabricComposition,
-                        );
-                        context.read<WardrobeProvider>().updateItem(updated);
-                        Navigator.pop(ctx);
-                        Navigator.pop(context); // Close bottom sheet
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Дані речі успішно оновлено!'),
-                            behavior: SnackBarBehavior.floating,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Редагувати річ',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                            ),
                           ),
-                        );
-                      },
-                      child: const Text('Зберегти зміни'),
-                    ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(ctx),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      // Photo preview & 1-tap replacement
+                      Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: VestoraImage(
+                              imageUrl: editedImageUrl,
+                              width: 64,
+                              height: 64,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: () => pickReplacementPhoto(ImageSource.gallery),
+                                  icon: const Icon(Icons.photo_library_outlined, size: 16),
+                                  label: const Text('Змінити фото', style: TextStyle(fontSize: 12)),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  ),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: () => pickReplacementPhoto(ImageSource.camera),
+                                  icon: const Icon(Icons.camera_alt_outlined, size: 16),
+                                  label: const Text('Камера', style: TextStyle(fontSize: 12)),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: titleCtrl,
+                        decoration: const InputDecoration(labelText: 'Назва речі'),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<ClothingCategory>(
+                              isExpanded: true,
+                              initialValue: editedCategory,
+                              decoration: const InputDecoration(
+                                labelText: 'Категорія',
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              ),
+                              items: ClothingCategory.values.map((cat) {
+                                return DropdownMenuItem(
+                                  value: cat,
+                                  child: Text(
+                                    '${cat.icon} ${cat.label}',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12.5),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) setModalState(() => editedCategory = val);
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<Season>(
+                              isExpanded: true,
+                              initialValue: editedSeason,
+                              decoration: const InputDecoration(
+                                labelText: 'Сезон',
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              ),
+                              items: Season.values.map((s) {
+                                return DropdownMenuItem(
+                                  value: s,
+                                  child: Text(
+                                    s.label,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12.5),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) setModalState(() => editedSeason = val);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: brandCtrl,
+                              decoration: const InputDecoration(labelText: 'Бренд'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: priceCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(labelText: 'Ціна (₴)'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: sizeCtrl,
+                              decoration: const InputDecoration(labelText: 'Розмір (EUR / US)'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: colorCtrl,
+                              decoration: const InputDecoration(labelText: 'Колір'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: fabricCtrl,
+                        decoration: const InputDecoration(labelText: 'Склад тканини (з етикетки)'),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            final updated = item.copyWith(
+                              title: titleCtrl.text.trim().isNotEmpty ? titleCtrl.text.trim() : item.title,
+                              brand: brandCtrl.text.trim().isNotEmpty ? brandCtrl.text.trim() : item.brand,
+                              price: double.tryParse(priceCtrl.text.trim()) ?? item.price,
+                              color: colorCtrl.text.trim().isNotEmpty ? colorCtrl.text.trim() : item.color,
+                              size: sizeCtrl.text.trim().isNotEmpty ? sizeCtrl.text.trim() : item.size,
+                              fabricComposition:
+                                  fabricCtrl.text.trim().isNotEmpty ? fabricCtrl.text.trim() : item.fabricComposition,
+                              imageUrl: editedImageUrl,
+                              category: editedCategory,
+                              season: editedSeason,
+                            );
+                            context.read<WardrobeProvider>().updateItem(updated);
+                            Navigator.pop(ctx);
+                            Navigator.pop(context); // Close bottom sheet
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Дані речі успішно оновлено!'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          child: const Text('Зберегти зміни'),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           );
         },
       ),
     );
+  }
+
+  String _nonEmptyOr(String? value, String fallback) {
+    if (value != null && value.trim().isNotEmpty) {
+      return value.trim();
+    }
+    return fallback;
   }
 
   Widget _buildSpecItem(IconData icon, String label, String value, {required bool isDark}) {
@@ -1437,12 +1579,12 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
               children: [
-                _buildSpecItem(Icons.straighten_rounded, 'Розмір', item.size ?? 'EUR 38 / M', isDark: isDark),
-                _buildSpecItem(Icons.public_rounded, 'Походження', item.countryOfOrigin ?? 'Made in Portugal', isDark: isDark),
-                _buildSpecItem(Icons.texture_rounded, 'Склад тканини', item.fabricComposition ?? '100% Вовна', isDark: isDark),
-                _buildSpecItem(Icons.local_laundry_service_outlined, 'Правила догляду', item.careInstructions ?? 'Делікатне прання', isDark: isDark),
-                _buildSpecItem(Icons.palette_outlined, 'Колір & Сезон', '${item.color} · ${item.season.label}', isDark: isDark),
-                _buildSpecItem(Icons.storefront_outlined, 'Місце покупки', item.storeName ?? item.brand, isDark: isDark),
+                _buildSpecItem(Icons.straighten_rounded, 'Розмір', _nonEmptyOr(item.size, 'Не вказано'), isDark: isDark),
+                _buildSpecItem(Icons.public_rounded, 'Походження', _nonEmptyOr(item.countryOfOrigin, 'Не вказано'), isDark: isDark),
+                _buildSpecItem(Icons.texture_rounded, 'Склад тканини', _nonEmptyOr(item.fabricComposition, 'Не вказано'), isDark: isDark),
+                _buildSpecItem(Icons.local_laundry_service_outlined, 'Правила догляду', _nonEmptyOr(item.careInstructions, 'Не вказано'), isDark: isDark),
+                _buildSpecItem(Icons.palette_outlined, 'Колір & Сезон', '${_nonEmptyOr(item.color, 'Базовий')} · ${item.season.label}', isDark: isDark),
+                _buildSpecItem(Icons.storefront_outlined, 'Місце покупки', _nonEmptyOr(item.storeName, item.brand), isDark: isDark),
               ],
             ),
             const SizedBox(height: 14),
@@ -1541,7 +1683,7 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                     children: [
                       const Expanded(
                         child: Text(
-                          'СИМУЛЯТОР ОКУПНОСТІ (CPW)',
+                          'ЦІНА ОДНОГО ОДЯГАННЯ (ОКУПНІСТЬ)',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

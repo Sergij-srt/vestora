@@ -88,6 +88,7 @@ class AuthService extends ChangeNotifier {
   static const _keySessionToken = 'vestora_auth_session_token';
   static const _keySessionExpiresAt = 'vestora_auth_session_expires_at';
   static const _keyRegisteredUsers = 'vestora_auth_registered_users_map';
+  static const _keyExplicitSignOut = 'vestora_auth_explicit_sign_out';
 
   static const int _kdfIterations = 12000;
   static const Duration _sessionTtl = Duration(days: 30);
@@ -96,8 +97,10 @@ class AuthService extends ChangeNotifier {
   String? _sessionToken;
   DateTime? _sessionExpiresAt;
   bool _isLoggedIn = false;
+  bool _explicitSignOut = false;
 
   bool get isLoggedIn => _isLoggedIn && _currentUser != null && isSessionValid;
+  static bool get hasExplicitlySignedOut => instance._explicitSignOut;
   AuthUser? get currentUser => _currentUser;
   AuthMethod get currentMethod => _currentUser?.method ?? AuthMethod.guest;
   String? get currentSessionToken => _sessionToken;
@@ -162,6 +165,7 @@ class AuthService extends ChangeNotifier {
   static Future<void> initialize() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      instance._explicitSignOut = prefs.getBool(_keyExplicitSignOut) ?? false;
       final hasLoggedIn = prefs.getBool(_keyIsLoggedIn);
       final userJsonStr = prefs.getString(_keyCurrentUser);
       final token = (await SecureVaultService.read(_keySessionToken)) ?? prefs.getString(_keySessionToken);
@@ -483,10 +487,12 @@ class AuthService extends ChangeNotifier {
     _sessionToken = null;
     _sessionExpiresAt = null;
     _isLoggedIn = false;
+    _explicitSignOut = true;
     try {
       await SecureVaultService.delete(_keySessionToken);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_keyIsLoggedIn, false);
+      await prefs.setBool(_keyExplicitSignOut, true);
       await prefs.remove(_keyCurrentUser);
       await prefs.remove(_keySessionToken);
       await prefs.remove(_keySessionExpiresAt);
@@ -541,9 +547,11 @@ class AuthService extends ChangeNotifier {
       _sessionToken = null;
       _sessionExpiresAt = null;
       _isLoggedIn = false;
+      _explicitSignOut = true;
 
       await SecureVaultService.delete(_keySessionToken);
       await prefs.setBool(_keyIsLoggedIn, false);
+      await prefs.setBool(_keyExplicitSignOut, true);
       await prefs.remove(_keyCurrentUser);
       await prefs.remove(_keySessionToken);
       await prefs.remove(_keySessionExpiresAt);
@@ -566,10 +574,12 @@ class AuthService extends ChangeNotifier {
     final expiresAt = DateTime.now().toUtc().add(_sessionTtl);
     _sessionToken = token;
     _sessionExpiresAt = expiresAt;
+    _explicitSignOut = false;
     try {
       await SecureVaultService.write(_keySessionToken, token);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_keyIsLoggedIn, true);
+      await prefs.setBool(_keyExplicitSignOut, false);
       await prefs.setString(_keyCurrentUser, json.encode(user.toJson()));
       await prefs.remove(_keySessionToken);
       await prefs.setString(_keySessionExpiresAt, expiresAt.toIso8601String());

@@ -70,22 +70,32 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
   }
 
   void _saveToWardrobe() {
-    if (_titleController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Введіть назву речі')),
-      );
-      return;
-    }
+    final rawTitle = _titleController.text.trim();
+    final colorText = _colorController.text.trim();
+    final defaultTitle = switch (_category) {
+      ClothingCategory.outerwear => 'Верхній одяг',
+      ClothingCategory.tops => 'Базовий верх',
+      ClothingCategory.bottoms => 'Низ',
+      ClothingCategory.dresses => 'Сукня / Костюм',
+      ClothingCategory.shoes => 'Взуття',
+      ClothingCategory.bags => 'Сумка',
+      ClothingCategory.accessories => 'Аксесуар',
+    };
+    final finalTitle = rawTitle.isNotEmpty
+        ? rawTitle
+        : (colorText.isNotEmpty && colorText != 'Базовий'
+            ? '$defaultTitle ($colorText)'
+            : defaultTitle);
 
     final price = double.tryParse(_priceController.text.replaceAll(' ', '')) ?? 0.0;
     final item = ClothingItem(
       id: const Uuid().v4(),
-      title: _titleController.text.trim(),
+      title: finalTitle,
       brand: _brandController.text.trim().isEmpty ? 'Невідомий бренд' : _brandController.text.trim(),
       imageUrl: widget.initialData.itemPhoto ?? '',
       category: _category,
       season: _season,
-      color: _colorController.text.trim(),
+      color: colorText.isEmpty ? 'Базовий' : colorText,
       price: price,
       currency: 'UAH',
       storeName: _storeController.text.trim(),
@@ -226,78 +236,69 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 2. AI Confidence Badges
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF272011) : const Color(0xFFFEF3C7),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark ? AppTheme.accent.withValues(alpha: 0.4) : const Color(0xFFFDE68A),
+          // 2. AI Confidence / Manual Mode Hint
+          if (widget.isAiVision)
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF272011) : const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? AppTheme.accent.withValues(alpha: 0.4) : const Color(0xFFFDE68A),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.auto_awesome, color: AppTheme.accent, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ШІ автоматично розпізнав атрибути',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Бренд, розмір, склад тканини вичитано з бірки; ціну та магазин витягнуто з чека. Перевірте дані нижче.',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: isDark ? const Color(0xFFE4E4E7) : const Color(0xFF78350F),
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                'Вкажіть основні дані (якщо залишити назву порожньою, вона підставиться автоматично за категорією).',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: isDark ? Colors.white70 : AppTheme.muted,
+                ),
               ),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.auto_awesome, color: AppTheme.accent, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ШІ автоматично розпізнав атрибути',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        'Бренд, розмір, склад тканини вичитано з бірки; ціну, дату та магазин витягнуто з чека. Будь ласка, перевірте дані нижче.',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: isDark ? const Color(0xFFE4E4E7) : const Color(0xFF78350F),
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
           // 3. Form Fields
           _buildSectionHeader('ОСНОВНА ІНФОРМАЦІЯ'),
           const SizedBox(height: 8),
           _buildTextField(
             controller: _titleController,
-            label: 'Назва товару',
+            label: 'Назва речі (необов\'язково — заповниться автоматично)',
             icon: Icons.edit_outlined,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(
-                  controller: _brandController,
-                  label: 'Бренд',
-                  icon: Icons.verified_outlined,
-                  helperTag: '🏷️ з етикетки',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildTextField(
-                  controller: _colorController,
-                  label: 'Колір',
-                  icon: Icons.palette_outlined,
-                ),
-              ),
-            ],
           ),
           const SizedBox(height: 12),
           Row(
@@ -311,72 +312,95 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
-
-          _buildSectionHeader('ДАНІ З ЕТИКЕТКИ ТА БІРКИ'),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: _buildTextField(
-                  controller: _sizeController,
-                  label: 'Розмір',
-                  icon: Icons.straighten_outlined,
-                  helperTag: '🏷️ з етикетки',
+                  controller: _brandController,
+                  label: 'Бренд',
+                  icon: Icons.verified_outlined,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildTextField(
-                  controller: _originController,
-                  label: 'Країна виробництва',
-                  icon: Icons.flag_outlined,
-                  helperTag: '🏷️ з бірки',
+                  controller: _colorController,
+                  label: 'Колір',
+                  icon: Icons.palette_outlined,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           _buildTextField(
-            controller: _fabricController,
-            label: 'Склад тканини (волокна)',
-            icon: Icons.texture_rounded,
-            helperTag: '🏷️ з етикетки',
+            controller: _priceController,
+            label: 'Ціна покупки (₴)',
+            icon: Icons.payments_outlined,
+            keyboardType: TextInputType.number,
           ),
-          const SizedBox(height: 12),
-          _buildTextField(
-            controller: _careController,
-            label: 'Рекомендації по догляду',
-            icon: Icons.local_laundry_service_outlined,
-            helperTag: '🏷️ з етикетки',
-          ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          _buildSectionHeader('ФІНАНСОВІ ДАНІ З ЧЕКА'),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(
-                  controller: _priceController,
-                  label: 'Ціна покупки (₴)',
-                  icon: Icons.payments_outlined,
-                  keyboardType: TextInputType.number,
-                  helperTag: '🧾 з чека',
+          // Secondary Details in Collapsible ExpansionTile
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(top: 8, bottom: 8),
+              initiallyExpanded: widget.isAiVision ||
+                  (d.fabricComposition?.isNotEmpty ?? false) ||
+                  (d.careInstructions?.isNotEmpty ?? false),
+              leading: const Icon(Icons.label_outline_rounded, size: 18, color: AppTheme.muted),
+              title: const Text(
+                'Додаткові деталі з бірки та чека (необов\'язково)',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.muted,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildTextField(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _sizeController,
+                        label: 'Розмір',
+                        icon: Icons.straighten_outlined,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _originController,
+                        label: 'Країна виробництва',
+                        icon: Icons.flag_outlined,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildTextField(
+                  controller: _fabricController,
+                  label: 'Склад тканини (волокна)',
+                  icon: Icons.texture_rounded,
+                ),
+                const SizedBox(height: 12),
+                _buildTextField(
+                  controller: _careController,
+                  label: 'Рекомендації по догляду',
+                  icon: Icons.local_laundry_service_outlined,
+                ),
+                const SizedBox(height: 12),
+                _buildTextField(
                   controller: _storeController,
                   label: 'Магазин / Локація',
                   icon: Icons.storefront_outlined,
-                  helperTag: '🧾 з чека',
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
 
           // Submit CTA
           SizedBox(

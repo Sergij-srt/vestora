@@ -8,10 +8,10 @@ import 'gamification_service.dart';
 enum WardrobeSortOption {
   newest('Найновіші спочатку 🕒'),
   mostWorn('Найчастіше ношені 🔥'),
-  leastWorn('Забуті речі (Dead stock) 💤'),
+  leastWorn('Давно не вдягали 💤'),
   priceDesc('Ціна: від найдорожчих 💎'),
   priceAsc('Ціна: від доступних 🏷️'),
-  bestCpw('Найкращий Cost-Per-Wear 📊');
+  bestCpw('Найвигідніші (ціна за 1 вихід) 📊');
 
   final String label;
   const WardrobeSortOption(this.label);

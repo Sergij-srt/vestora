@@ -295,6 +295,13 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
       );
 
       if (saved == true && mounted) {
+        setState(() {
+          _clothingPhotoUrl = null;
+          _labelPhotoUrl = null;
+          _receiptPhotoUrl = null;
+          _labelRawOcrText = '';
+          _receiptRawOcrText = '';
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('🎉 Річ успішно збережено у ваш гардероб!'),
@@ -331,11 +338,62 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
     _openManualVerificationScreen();
   }
 
+  void _quickSavePhotoItem() {
+    final primaryPhoto = (_clothingPhotoUrl != null && _clothingPhotoUrl!.isNotEmpty)
+        ? _clothingPhotoUrl!
+        : ((_labelPhotoUrl != null && _labelPhotoUrl!.isNotEmpty)
+            ? _labelPhotoUrl!
+            : (_receiptPhotoUrl ?? ''));
+    if (primaryPhoto.isEmpty) return;
+
+    final autoTitle = switch (_manualCategory) {
+      ClothingCategory.outerwear => 'Верхній одяг',
+      ClothingCategory.tops => 'Базовий верх',
+      ClothingCategory.bottoms => 'Низ',
+      ClothingCategory.dresses => 'Сукня / Костюм',
+      ClothingCategory.shoes => 'Взуття',
+      ClothingCategory.bags => 'Сумка',
+      ClothingCategory.accessories => 'Аксесуар',
+    };
+
+    final newItem = ClothingItem(
+      id: const Uuid().v4(),
+      title: autoTitle,
+      brand: 'Мій гардероб',
+      imageUrl: primaryPhoto,
+      labelPhotoUrl: _labelPhotoUrl,
+      receiptPhotoUrl: _receiptPhotoUrl,
+      category: _manualCategory,
+      season: Season.allSeason,
+      color: 'Базовий',
+      price: 0.0,
+      currency: 'UAH',
+      purchaseDate: DateTime.now(),
+      wearCount: 1,
+    );
+
+    context.read<WardrobeProvider>().addItem(newItem);
+    setState(() {
+      _clothingPhotoUrl = null;
+      _labelPhotoUrl = null;
+      _receiptPhotoUrl = null;
+      _labelRawOcrText = '';
+      _receiptRawOcrText = '';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('🎉 "$autoTitle" збережено у ваш гардероб!'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    widget.onSaved();
+  }
+
   void _openManualVerificationScreen() async {
     final manualData = OcrCombinedResult(
       title: '',
       brand: '',
-      category: ClothingCategory.tops,
+      category: _manualCategory,
       season: Season.allSeason,
       color: '',
       price: 0.0,
@@ -361,6 +419,13 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
     );
 
     if (saved == true && mounted) {
+      setState(() {
+        _clothingPhotoUrl = null;
+        _labelPhotoUrl = null;
+        _receiptPhotoUrl = null;
+        _labelRawOcrText = '';
+        _receiptRawOcrText = '';
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('🎉 Річ успішно збережено у ваш гардероб!'),
@@ -764,7 +829,66 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                 (_labelPhotoUrl ?? '').isNotEmpty ||
                 (_receiptPhotoUrl ?? '').isNotEmpty;
             return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (hasPhoto) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF064E3B).withValues(alpha: 0.4) : const Color(0xFFF0FDF4),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF059669) : const Color(0xFFBBF7D0),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Оберіть категорію та збережіть у 1 дотик:',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 8),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: ClothingCategory.values.map((cat) {
+                              final selected = _manualCategory == cat;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: ChoiceChip(
+                                  label: Text(cat.label, style: const TextStyle(fontSize: 12)),
+                                  selected: selected,
+                                  onSelected: (_) => setState(() => _manualCategory = cat),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _isOcrProcessing ? null : _quickSavePhotoItem,
+                            icon: const Icon(Icons.check_circle_rounded, size: 18),
+                            label: const Text(
+                              'Швидко зберегти в 1 клік',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.success,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -808,6 +932,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
                       'Спершу додайте хоча б одне фото',
+                      textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 12, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
                     ),
                   ),
@@ -906,74 +1031,81 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
             ],
           ),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 8),
 
-        // Quick 1-Click Testing Presets
-        Text(
-          'ПОДИВИТИСЬ НА ПРИКЛАДІ (ДЕМО-ДАНІ)',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.1,
-            color: isDark ? AppTheme.darkMuted : AppTheme.muted,
-          ),
-        ),
-        const SizedBox(height: 12),
-        ...ClothingOcrService.samplePresets.map((preset) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: borderColor),
-              boxShadow: isDark ? const [] : AppTheme.softShadow,
+        // Quick 1-Click Testing Presets (collapsed by default to avoid clutter or accidental clicks)
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: Text(
+              'Приклади розпізнавання етикеток (демо)',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: isDark ? AppTheme.darkMuted : AppTheme.muted,
+              ),
             ),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: VestoraImage(
-                    imageUrl: preset.itemImageUrl,
-                    width: 50,
-                    height: 50,
-                    fit: BoxFit.cover,
+            children: [
+              const SizedBox(height: 6),
+              ...ClothingOcrService.samplePresets.map((preset) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: borderColor),
+                    boxShadow: isDark ? const [] : AppTheme.softShadow,
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Text(
-                        preset.name,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: VestoraImage(
+                          imageUrl: preset.itemImageUrl,
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                        ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '🏷️ Бірка з розміром і складом + 🧾 Чек',
-                        style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              preset.name,
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '🏷️ Бірка з розміром і складом + 🧾 Чек',
+                              style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkMuted : AppTheme.muted),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () => _applyScanPreset(preset),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFEF3C7),
+                          foregroundColor: const Color(0xFF92400E),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        child: const Text('Скан', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => _applyScanPreset(preset),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFEF3C7),
-                    foregroundColor: const Color(0xFF92400E),
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  child: const Text('Скан', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                ),
-              ],
-            ),
-          );
-        }),
+                );
+              }),
+            ],
+          ),
+        ),
       ],
     );
   }

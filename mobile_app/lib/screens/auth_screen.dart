@@ -86,8 +86,8 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _obscureConfirm = true;
 
   final _nameCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController(text: 'olena.fashion@gmail.com');
-  final _passwordCtrl = TextEditingController(text: 'password123');
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
   final _confirmPassCtrl = TextEditingController();
 
   @override
