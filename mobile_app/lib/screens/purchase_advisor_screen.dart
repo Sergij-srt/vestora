@@ -67,6 +67,14 @@ class _PurchaseAdvisorScreenState extends State<PurchaseAdvisorScreen> {
       });
 
       _runEvaluation();
+      if (parsed.isInferredFallback && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Сайт обмежив авточитання — дані заповнено орієнтовно, перевірте ціну й категорію нижче.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } catch (e) {
       setState(() {
         _error = e.toString().replaceAll('Exception: ', '');

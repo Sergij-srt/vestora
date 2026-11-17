@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/ai_config_service.dart';
@@ -17,9 +16,7 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
   bool _isTestingKey = false;
   String? _testStatusMessage;
   bool? _isKeyValid;
-  int _adCredits = 3;
   String _selectedModel = 'gemini-2.5-flash';
-  bool _isWatchingAd = false;
 
   @override
   void initState() {
@@ -32,7 +29,6 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
     if (!mounted) return;
     setState(() {
       _apiKeyController.text = AiConfigService.apiKey ?? '';
-      _adCredits = AiConfigService.adCredits;
       _selectedModel = AiConfigService.preferredModel;
     });
   }
@@ -81,138 +77,12 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
       SnackBar(
         content: Text(key.isNotEmpty
             ? 'API-ключ Google Gemini успішно збережено!'
-            : 'Ключ видалено. Активовано локальний парсер / бонуси за рекламу.'),
+            : 'Ключ видалено. Активовано локальний режим без ШІ.'),
         behavior: SnackBarBehavior.floating,
         backgroundColor: key.isNotEmpty ? AppTheme.success : AppTheme.primary,
       ),
     );
     setState(() {});
-  }
-
-  void _simulateWatchRewardedAd() {
-    setState(() => _isWatchingAd = true);
-    Timer? countdownTimer;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        int secondsLeft = 4;
-        return StatefulBuilder(
-          builder: (dialogCtx, setModalState) {
-            countdownTimer ??= Timer.periodic(const Duration(seconds: 1), (timer) {
-              if (!dialogCtx.mounted) {
-                timer.cancel();
-                return;
-              }
-              if (secondsLeft > 1) {
-                setModalState(() => secondsLeft--);
-              } else {
-                setModalState(() => secondsLeft = 0);
-                timer.cancel();
-              }
-            });
-
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Row(
-                children: [
-                  Icon(Icons.play_circle_filled_rounded, color: AppTheme.accent, size: 28),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Спонсорське відео',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    height: 160,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF18181B),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.movie_filter_rounded, color: Colors.white70, size: 48),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Vestora Luxury Partners',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            secondsLeft > 0 ? 'Винагорода через: $secondsLeft сек' : '🎉 Відео переглянуто!',
-                            style: TextStyle(
-                              color: secondsLeft > 0 ? const Color(0xFFFDE68A) : const Color(0xFF86EFAC),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                if (secondsLeft == 0)
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
-                    onPressed: () async {
-                      Navigator.pop(dialogCtx);
-                      final updated = await AiConfigService.addRewardedAdCredits(3);
-                      if (mounted) {
-                        setState(() {
-                          _isWatchingAd = false;
-                          _adCredits = updated;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('🎉 Вам нараховано +3 повноцінних Vision ШІ-сканування!'),
-                            backgroundColor: AppTheme.success,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
-                    },
-                    child: const Text('Забрати +3 ШІ-сканування ✨'),
-                  )
-                else
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(dialogCtx);
-                      if (mounted) {
-                        setState(() => _isWatchingAd = false);
-                      }
-                    },
-                    child: Text(
-                      'Закрити без винагороди',
-                      style: TextStyle(
-                        color: Theme.of(dialogCtx).brightness == Brightness.dark
-                            ? AppTheme.darkMuted
-                            : AppTheme.muted,
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
-        );
-      },
-    ).whenComplete(() {
-      countdownTimer?.cancel();
-      if (mounted && _isWatchingAd) {
-        setState(() => _isWatchingAd = false);
-      }
-    });
   }
 
   @override
@@ -238,9 +108,7 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
               gradient: LinearGradient(
                 colors: hasKey
                     ? [const Color(0xFF064E3B), const Color(0xFF047857)]
-                    : (_adCredits > 0
-                        ? [const Color(0xFF78350F), const Color(0xFFB45309)]
-                        : [const Color(0xFF18181B), const Color(0xFF27272A)]),
+                    : [const Color(0xFF18181B), const Color(0xFF27272A)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -261,7 +129,7 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          hasKey ? 'АКТИВНИЙ ШІ: ВЛАСНИЙ КЛЮЧ' : (_adCredits > 0 ? 'БОНУСНИЙ ШІ' : 'ЛОКАЛЬНИЙ РЕЖИМ'),
+                          hasKey ? 'АКТИВНИЙ ШІ: ВЛАСНИЙ КЛЮЧ' : 'ЛОКАЛЬНИЙ РЕЖИМ (БЕЗ ШІ)',
                           style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -270,7 +138,7 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                     ),
                     const SizedBox(width: 8),
                     Icon(
-                      hasKey ? Icons.verified_rounded : (_adCredits > 0 ? Icons.stars_rounded : Icons.offline_bolt_rounded),
+                      hasKey ? Icons.verified_rounded : Icons.offline_bolt_rounded,
                       color: Colors.white,
                       size: 22,
                     ),
@@ -278,11 +146,7 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  hasKey
-                      ? 'Google Gemini 2.5 Flash Vision'
-                      : (_adCredits > 0
-                          ? 'Gemini Vision (Залишилося: $_adCredits)'
-                          : 'Локальний евристичний парсер'),
+                  hasKey ? 'Google Gemini 2.5 Flash Vision' : 'Локальне / ручне заповнення',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -293,9 +157,7 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                 Text(
                   hasKey
                       ? 'Підключено особистий ключ Google AI Studio. Доступно до 1 500 безкоштовних Vision-аналізів на добу.'
-                      : (_adCredits > 0
-                          ? 'У вас є безкоштовні сканування за перегляд реклами. Ви можете поповнити їх або додати власний ключ.'
-                          : 'Працює без інтернету за правилами регулярних виразів. Додайте ключ Gemini або подивіться спонсорське відео для переходу на нейромережу.'),
+                      : 'Ви можете додавати фото речей без жодного ключа. Якщо хочете, щоб ШІ сам зчитував етикетки та чеки — вставте безкоштовний ключ Google Gemini нижче.',
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.88), fontSize: 12, height: 1.4),
                 ),
               ],
@@ -558,119 +420,6 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // 4. Alternative: Rewarded Ad Scans (Free via Ads)
-          Text(
-            'БЕЗКОШТОВНІ СКАНУВАННЯ ЗА РЕКЛАМУ (REWARDED ADS)',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1, color: mutedColor),
-          ),
-          const SizedBox(height: 10),
-
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: borderColor),
-              boxShadow: isDark ? const [] : AppTheme.softShadow,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Бонусний баланс Vision ШІ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          const SizedBox(height: 2),
-                          Text('Залишилося: $_adCredits повноцінних сканувань', style: TextStyle(fontSize: 12, color: mutedColor)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEF3C7),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '$_adCredits ⚡',
-                        style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFFB45309)),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _isWatchingAd ? null : _simulateWatchRewardedAd,
-                    icon: const Icon(Icons.play_circle_outline_rounded, size: 20),
-                    label: const Text(
-                      'Переглянути коротке відео (+3 сканування)',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 10),
-                      backgroundColor: const Color(0xFF4F46E5),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // 5. Vestora Cloud VIP Tier Card
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF27272A), Color(0xFF09090B)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: AppTheme.softShadow,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Text('💎', style: TextStyle(fontSize: 22)),
-                ),
-                const SizedBox(width: 14),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Vestora VIP Cloud (Незабаром)',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Автоматичний доступ до Gemini Vision без введення ключів та без перегляду реклами.',
-                        style: TextStyle(color: Colors.white70, fontSize: 11.5, height: 1.3),
-                      ),
-                    ],
                   ),
                 ),
               ],

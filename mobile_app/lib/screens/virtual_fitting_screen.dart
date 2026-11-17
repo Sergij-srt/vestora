@@ -1,15 +1,13 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/clothing_item.dart';
+import '../services/photo_encode_service.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/user_profile_service.dart';
 import '../services/virtual_fitting_service.dart';
 import '../services/outfit_calendar_service.dart';
 import '../services/weather_stylist_service.dart';
-import '../services/ai_config_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vestora_image.dart';
 import 'outfit_calendar_screen.dart';
@@ -130,21 +128,9 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                     onPressed: () async {
                       Navigator.pop(ctx);
                       try {
-                        final picker = ImagePicker();
-                        final photo = await picker.pickImage(
-                          source: ImageSource.camera,
-                          maxWidth: kIsWeb ? null : 1024,
-                          maxHeight: kIsWeb ? null : 1024,
-                          imageQuality: kIsWeb ? null : 78,
-                        );
-                        if (photo != null && mounted) {
-                          final bytes = await photo.readAsBytes();
-                          if (bytes.isNotEmpty) {
-                            final rawMime = photo.mimeType;
-                            final mime = (rawMime != null && rawMime.trim().isNotEmpty) ? rawMime.trim() : 'image/jpeg';
-                            final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
-                            _updateFace(dataUri);
-                          }
+                        final dataUri = await PhotoEncodeService.pickAndEncode(ImageSource.camera);
+                        if (dataUri != null && dataUri.isNotEmpty && mounted) {
+                          _updateFace(dataUri);
                         }
                       } catch (_) {}
                     },
@@ -161,21 +147,9 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                     onPressed: () async {
                       Navigator.pop(ctx);
                       try {
-                        final picker = ImagePicker();
-                        final photo = await picker.pickImage(
-                          source: ImageSource.gallery,
-                          maxWidth: kIsWeb ? null : 1024,
-                          maxHeight: kIsWeb ? null : 1024,
-                          imageQuality: kIsWeb ? null : 78,
-                        );
-                        if (photo != null && mounted) {
-                          final bytes = await photo.readAsBytes();
-                          if (bytes.isNotEmpty) {
-                            final rawMime = photo.mimeType;
-                            final mime = (rawMime != null && rawMime.trim().isNotEmpty) ? rawMime.trim() : 'image/jpeg';
-                            final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
-                            _updateFace(dataUri);
-                          }
+                        final dataUri = await PhotoEncodeService.pickAndEncode(ImageSource.gallery);
+                        if (dataUri != null && dataUri.isNotEmpty && mounted) {
+                          _updateFace(dataUri);
                         }
                       } catch (_) {}
                     },
@@ -483,7 +457,7 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
     if (_currentOutfit.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Будь ласка, оберіть хоча б одну річ для нейро-примірки!'),
+          content: Text('Будь ласка, оберіть хоча б одну річ для перегляду образу!'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -491,8 +465,6 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
     }
 
     TryOnEnvironment selectedEnv = TryOnEnvironment.parisianCafe;
-    bool isGenerating = false;
-    String statusStep = 'Підготовка образу...';
     PhotorealisticTryOnResult? result;
 
     showModalBottomSheet(
@@ -525,36 +497,17 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  const Row(
                     children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.auto_awesome, color: Color(0xFFD4AF37), size: 22),
-                          SizedBox(width: 8),
-                          Text(
-                            'Нейро-примірка 4K',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF27272A),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.5)),
-                        ),
+                      Icon(Icons.auto_awesome, color: Color(0xFFD4AF37), size: 22),
+                      SizedBox(width: 8),
+                      Expanded(
                         child: Text(
-                          AiConfigService.hasCustomKey ? 'BYOK Gemini ⚡' : '${AiConfigService.adCredits} кредитів',
-                          style: const TextStyle(
-                            color: Color(0xFFFDE68A),
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
+                          'Студійний колаж образу',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
@@ -562,15 +515,15 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Генеративний фотореалістичний синтез образу в реалістичному освітленні та інтер\'єрі:',
+                    'Зберіть ваші реальні речі й портрет на вибраному фоні та оформте як постер:',
                     style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 12),
                   ),
                   const SizedBox(height: 16),
 
-                  if (result == null && !isGenerating) ...[
+                  if (result == null) ...[
                     // Environment Selection
                     const Text(
-                      'ОБЕРІТЬ ЛОКАЦІЮ ТА ОСВІТЛЕННЯ',
+                      'ОБЕРІТЬ ФОН ТА АТМОСФЕРУ',
                       style: TextStyle(
                         color: Color(0xFFD4AF37),
                         fontSize: 11,
@@ -691,7 +644,7 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
 
                     // Items Summary
                     const Text(
-                      'РЕЧІ ДЛЯ НЕЙРО-СИНТЕЗУ',
+                      'ОБРАНІ РЕЧІ ОБРАЗУ',
                       style: TextStyle(
                         color: Color(0xFFD4AF37),
                         fontSize: 11,
@@ -730,7 +683,7 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Generate Button
+                    // Compose Button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
@@ -740,122 +693,132 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
-                        icon: const Icon(Icons.auto_awesome, size: 20, color: Colors.black),
+                        icon: const Icon(Icons.auto_awesome_mosaic_rounded, size: 20, color: Colors.black),
                         label: const Text(
-                          'Створити нейро-фото (Deep AI)',
+                          'Сформувати колаж образу',
                           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
                         ),
                         onPressed: () async {
-                          setSheetState(() {
-                            isGenerating = true;
-                            statusStep = '1/3 · Аналіз зовнішності та освітлення...';
-                          });
-                          await Future.delayed(const Duration(milliseconds: 500));
-                          setSheetState(() => statusStep = '2/3 · Синтез драпірування та текстури...');
-                          await Future.delayed(const Duration(milliseconds: 500));
-                          setSheetState(() => statusStep = '3/3 · 4K рендеринг у високій якості...');
-
                           final gen = await VirtualFittingService.generatePhotorealisticTryOn(
                             faceUrl: _activeFaceUrl,
                             outfitItems: _currentOutfit,
                             environment: selectedEnv,
                           );
 
-                          setSheetState(() {
-                            isGenerating = false;
-                            result = gen;
-                          });
+                          if (ctx.mounted) {
+                            setSheetState(() {
+                              result = gen;
+                            });
+                          }
                         },
                       ),
                     ),
-                  ] else if (isGenerating) ...[
-                    // Generation In Progress
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 40),
-                        child: Column(
-                          children: [
-                            const SizedBox(
-                              width: 48,
-                              height: 48,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 3,
-                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD4AF37)),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              statusStep,
-                              style: const TextStyle(
-                                color: Color(0xFFFDE68A),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Imagen 3 · Gemini Vision Neural Synthesis',
-                              style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ] else if (result != null) ...[
-                    // Result View
+                  ] else ...[
+                    // Honest Collage Result View built from the user's actual face + actual clothes
                     Container(
-                      height: 340,
                       width: double.infinity,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(color: const Color(0xFFD4AF37), width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
-                            blurRadius: 18,
-                            spreadRadius: 2,
-                          ),
-                        ],
+                        color: const Color(0xFF18181B),
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(17),
                         child: Stack(
                           children: [
                             Positioned.fill(
-                              child: VestoraImage(
-                                imageUrl: result!.generatedImageUrl,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            Positioned(
-                              top: 12,
-                              left: 12,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.7),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: const Color(0xFFD4AF37)),
-                                ),
-                                child: Text(
-                                  result!.environment.label,
-                                  style: const TextStyle(color: Color(0xFFFDE68A), fontSize: 11, fontWeight: FontWeight.bold),
+                              child: Opacity(
+                                opacity: 0.28,
+                                child: VestoraImage(
+                                  imageUrl: result!.environment.backgroundUrl,
+                                  fit: BoxFit.cover,
                                 ),
                               ),
                             ),
-                            Positioned(
-                              top: 12,
-                              right: 12,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF16A34A),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Text(
-                                  '4K ULTRA HD',
-                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
-                                ),
+                            Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Flexible(
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(alpha: 0.72),
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(color: const Color(0xFFD4AF37)),
+                                          ),
+                                          child: Text(
+                                            result!.environment.label,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(color: Color(0xFFFDE68A), fontSize: 11, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      CircleAvatar(
+                                        radius: 22,
+                                        backgroundColor: const Color(0xFFD4AF37),
+                                        child: ClipOval(
+                                          child: VestoraImage(
+                                            imageUrl: _activeFaceUrl,
+                                            width: 40,
+                                            height: 40,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  GridView.builder(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: _currentOutfit.length == 1 ? 1 : 2,
+                                      crossAxisSpacing: 8,
+                                      mainAxisSpacing: 8,
+                                      childAspectRatio: _currentOutfit.length == 1 ? 1.5 : 1.05,
+                                    ),
+                                    itemCount: _currentOutfit.length,
+                                    itemBuilder: (_, idx) {
+                                      final g = _currentOutfit[idx];
+                                      return Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.black54,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.white24),
+                                        ),
+                                        clipBehavior: Clip.antiAlias,
+                                        child: Stack(
+                                          fit: StackFit.expand,
+                                          children: [
+                                            VestoraImage(imageUrl: g.imageUrl, fit: BoxFit.cover),
+                                            Positioned(
+                                              bottom: 0,
+                                              left: 0,
+                                              right: 0,
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                                color: Colors.black.withValues(alpha: 0.72),
+                                                child: Text(
+                                                  g.title,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w700),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -880,7 +843,7 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                               Icon(Icons.auto_awesome, color: Color(0xFFD4AF37), size: 16),
                               SizedBox(width: 6),
                               Text(
-                                'ЕКСПЕРТИЗА СТИЛІСТА VESTORA',
+                                'ОЦІНКА ПОЄДНАННЯ',
                                 style: TextStyle(
                                   color: Color(0xFFD4AF37),
                                   fontSize: 10.5,
@@ -931,42 +894,23 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                               side: const BorderSide(color: Color(0xFFD4AF37)),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
-                            icon: const Icon(Icons.download_rounded, size: 18),
-                            label: const Text('Зберегти'),
+                            icon: const Icon(Icons.auto_stories_outlined, size: 18),
+                            label: const Text('Постер PNG'),
                             onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('✨ Нейро-фото 4K збережено у фотоальбом лукбуку!'),
-                                  backgroundColor: Color(0xFF16A34A),
-                                  behavior: SnackBarBehavior.floating,
+                              Navigator.pop(sheetCtx);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => EditorialStoryScreen(
+                                    items: _currentOutfit,
+                                    occasion: result!.environment.label,
+                                    styleScore: 9.8,
+                                    customQuote: result!.editorialVerdict,
+                                  ),
                                 ),
                               );
                             },
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          style: IconButton.styleFrom(
-                            backgroundColor: const Color(0xFF27272A),
-                            side: const BorderSide(color: Color(0xFF3F3F46)),
-                            padding: const EdgeInsets.all(12),
-                          ),
-                          icon: const Icon(Icons.auto_stories_outlined, color: Color(0xFFD4AF37), size: 18),
-                          tooltip: 'Постер у журнал',
-                          onPressed: () {
-                            Navigator.pop(sheetCtx);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => EditorialStoryScreen(
-                                  items: _currentOutfit,
-                                  occasion: result!.environment.label,
-                                  styleScore: 9.8,
-                                  customQuote: result!.editorialVerdict,
-                                ),
-                              ),
-                            );
-                          },
                         ),
                       ],
                     ),
@@ -989,13 +933,13 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
-          'AI Примірочна · Virtual Try-On',
+          'Примірочна · Образи',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.auto_awesome, color: Color(0xFFFDE68A)),
-            tooltip: 'Фотореалістична нейро-примірка (Deep AI 4K)',
+            icon: const Icon(Icons.auto_awesome_mosaic_rounded, color: Color(0xFFFDE68A)),
+            tooltip: 'Студійний колаж образу',
             onPressed: _showPhotorealisticTryOnSheet,
           ),
           IconButton(
@@ -1424,9 +1368,9 @@ class _VirtualFittingScreenState extends State<VirtualFittingScreen> {
                               ),
                               elevation: 3,
                             ),
-                            icon: const Icon(Icons.auto_awesome, color: Color(0xFFD4AF37), size: 18),
+                            icon: const Icon(Icons.auto_awesome_mosaic_rounded, color: Color(0xFFD4AF37), size: 18),
                             label: const Text(
-                              '✨ Фотореалістична нейро-примірка (Deep AI 4K)',
+                              '✨ Студійний колаж образу',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.3),

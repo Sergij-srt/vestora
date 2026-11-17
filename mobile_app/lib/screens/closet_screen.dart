@@ -1,10 +1,9 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../models/clothing_item.dart';
+import '../services/photo_encode_service.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/nav_service.dart';
 import '../services/gamification_service.dart';
@@ -456,8 +455,10 @@ class ClosetScreen extends StatelessWidget {
                         : SliverPadding(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             sliver: SliverGrid(
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: MediaQuery.sizeOf(context).width >= 820
+                                    ? 4
+                                    : (MediaQuery.sizeOf(context).width >= 560 ? 3 : 2),
                                 childAspectRatio: 0.65,
                                 crossAxisSpacing: 12,
                                 mainAxisSpacing: 12,
@@ -1157,24 +1158,12 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
             builder: (modalCtx, setModalState) {
               Future<void> pickReplacementPhoto(ImageSource source) async {
                 try {
-                  final file = await ImagePicker().pickImage(
-                    source: source,
-                    maxWidth: kIsWeb ? null : 1200,
-                    maxHeight: kIsWeb ? null : 1200,
-                    imageQuality: kIsWeb ? null : 85,
-                  );
-                  if (file == null) return;
-                  final bytes = await file.readAsBytes();
-                  if (bytes.isEmpty) return;
-                  final lowerName = file.name.toLowerCase();
-                  final mimeType = lowerName.endsWith('.png')
-                      ? 'image/png'
-                      : lowerName.endsWith('.webp')
-                          ? 'image/webp'
-                          : 'image/jpeg';
-                  setModalState(() {
-                    editedImageUrl = 'data:$mimeType;base64,${base64Encode(bytes)}';
-                  });
+                  final encoded = await PhotoEncodeService.pickAndEncode(source);
+                  if (encoded != null && modalCtx.mounted) {
+                    setModalState(() {
+                      editedImageUrl = encoded;
+                    });
+                  }
                 } catch (_) {
                   if (modalCtx.mounted) {
                     ScaffoldMessenger.of(modalCtx).showSnackBar(
@@ -1349,7 +1338,8 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: () {
+                          onPressed: () async {
+                            final wardrobe = context.read<WardrobeProvider>();
                             final updated = item.copyWith(
                               title: titleCtrl.text.trim().isNotEmpty ? titleCtrl.text.trim() : item.title,
                               brand: brandCtrl.text.trim().isNotEmpty ? brandCtrl.text.trim() : item.brand,
@@ -1362,15 +1352,19 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
                               category: editedCategory,
                               season: editedSeason,
                             );
-                            context.read<WardrobeProvider>().updateItem(updated);
+                            await wardrobe.updateItem(updated);
+                            final warning = wardrobe.consumeLastQuotaWarning();
+                            if (!ctx.mounted) return;
                             Navigator.pop(ctx);
-                            Navigator.pop(context); // Close bottom sheet
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Дані речі успішно оновлено!'),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
+                            if (context.mounted) {
+                              Navigator.pop(context); // Close bottom sheet
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(warning ?? 'Дані речі успішно оновлено!'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
                           },
                           child: const Text('Зберегти зміни'),
                         ),

@@ -31,5 +31,12 @@ void main() {
       expect(result.color, equals('Білий'));
       expect(result.fabricComposition?.toLowerCase(), contains('льон'));
     });
+
+    test('Unknown store URL fallback uses parsed host instead of hardcoded AltaMen', () async {
+      final result = await UrlParserService.parseProductUrl('https://www.unknownboutique.example/item/black-dress');
+      expect(result, isNotNull);
+      expect(result!.brand, equals('unknownboutique.example'));
+      expect(result.isInferredFallback, isTrue);
+    });
   });
 }

@@ -323,7 +323,7 @@
       }
     };
 
-    // 4. File download helper for wardrobe backup (.vestora / .json)
+    // 4. File download helpers for wardrobe backup (.vestora / .json) & PNG posters
     window.vestoraDownloadFile = function(filename, content) {
       try {
         const blob = new Blob([content], { type: 'application/json;charset=utf-8;' });
@@ -338,6 +338,91 @@
       } catch (e) {
         console.error('[Vestora] Error downloading file:', e);
       }
+    };
+
+    window.vestoraDownloadBinary = function(filename, base64Data, mimeType) {
+      try {
+        const binary = atob(base64Data);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: mimeType || 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (e) {
+        console.error('[Vestora] Error downloading binary:', e);
+      }
+    };
+
+    // 4b. Client-side Canvas JPEG compression so camera photos on mobile Web fit cleanly in localStorage
+    window.vestoraCompressImage = function(dataUrl, maxDim, maxChars) {
+      return new Promise((resolve) => {
+        try {
+          if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
+            resolve(dataUrl || '');
+            return;
+          }
+          if (dataUrl.length <= maxChars) {
+            resolve(dataUrl);
+            return;
+          }
+          const img = new Image();
+          const timer = setTimeout(() => resolve(dataUrl), 4000);
+          img.onload = function() {
+            clearTimeout(timer);
+            try {
+              const targetDim = maxDim || 1024;
+              const dims = [targetDim, Math.min(targetDim, 768), 540];
+              const qualities = [0.82, 0.72, 0.60, 0.48, 0.36];
+              let best = dataUrl;
+              for (let d = 0; d < dims.length; d++) {
+                const limit = dims[d];
+                let w = img.naturalWidth || img.width;
+                let h = img.naturalHeight || img.height;
+                if (w <= 0 || h <= 0) break;
+                const scale = Math.min(1, limit / Math.max(w, h));
+                const cw = Math.max(1, Math.round(w * scale));
+                const ch = Math.max(1, Math.round(h * scale));
+                const canvas = document.createElement('canvas');
+                canvas.width = cw;
+                canvas.height = ch;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) break;
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, cw, ch);
+                ctx.drawImage(img, 0, 0, cw, ch);
+                for (let q = 0; q < qualities.length; q++) {
+                  const candidate = canvas.toDataURL('image/jpeg', qualities[q]);
+                  if (candidate && candidate.length < best.length) {
+                    best = candidate;
+                  }
+                  if (candidate && candidate.length <= maxChars) {
+                    resolve(candidate);
+                    return;
+                  }
+                }
+              }
+              resolve(best);
+            } catch (err) {
+              resolve(dataUrl);
+            }
+          };
+          img.onerror = function() {
+            clearTimeout(timer);
+            resolve(dataUrl);
+          };
+          img.src = dataUrl;
+        } catch (e) {
+          resolve(dataUrl || '');
+        }
+      });
     };
 
     // 5. Web Push & Notification helpers

@@ -63,5 +63,32 @@ void main() {
       expect(provider.sortOption, WardrobeSortOption.newest);
       expect(provider.filteredItems.length, provider.items.length);
     });
+
+    test('First-run wardrobe starts empty until user adds items or loads demo capsule', () async {
+      await provider.initialized;
+      expect(provider.items, isEmpty);
+      expect(provider.streakDays, equals(0));
+
+      await provider.loadDemoCapsule();
+      expect(provider.items, isNotEmpty);
+      expect(provider.streakDays, equals(14));
+    });
+
+    test('consumeLastQuotaWarning surfaces and clears storage warning once read', () async {
+      final oversized = ClothingItem(
+        id: 'quota_test_1',
+        title: 'Big Photo',
+        brand: 'Test',
+        price: 500,
+        category: ClothingCategory.tops,
+        color: 'Чорний',
+        imageUrl: 'data:image/jpeg;base64,${'A' * (600 * 1024)}',
+      );
+      await provider.addItem(oversized);
+      final firstRead = provider.consumeLastQuotaWarning();
+      expect(firstRead, isNotNull);
+      expect(firstRead, contains('512'));
+      expect(provider.consumeLastQuotaWarning(), isNull);
+    });
   });
 }

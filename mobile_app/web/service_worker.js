@@ -1,6 +1,6 @@
-// Vestora PWA Service Worker v1.2.0 (Isolated Shell Cache + Bounded Runtime Cache + Wasm Ready)
-const SHELL_CACHE = 'vestora-shell-v1.2.0';
-const RUNTIME_CACHE = 'vestora-runtime-v1.2.0';
+// Vestora PWA Service Worker v1.2.1 (Isolated Shell Cache + Bounded Runtime Cache + Wasm Ready)
+const SHELL_CACHE = 'vestora-shell-v1.2.1';
+const RUNTIME_CACHE = 'vestora-runtime-v1.2.1';
 const ACTIVE_CACHES = [SHELL_CACHE, RUNTIME_CACHE];
 const MAX_RUNTIME_ENTRIES = 80;
 

@@ -1,7 +1,4 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,6 +6,7 @@ import '../models/clothing_item.dart';
 import '../services/url_parser_service.dart';
 import '../services/receipt_scanner_service.dart';
 import '../services/clothing_ocr_service.dart';
+import '../services/photo_encode_service.dart';
 import '../services/wardrobe_provider.dart';
 import '../services/ai_config_service.dart';
 import '../services/gemini_vision_service.dart';
@@ -71,11 +69,8 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
       final picker = ImagePicker();
       final response = await picker.retrieveLostData();
       if (!response.isEmpty && response.file != null && mounted) {
-        final bytes = await response.file!.readAsBytes();
-        if (bytes.isNotEmpty) {
-          final rawMime = response.file!.mimeType;
-          final mime = (rawMime != null && rawMime.trim().isNotEmpty) ? rawMime.trim() : 'image/jpeg';
-          final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
+        final dataUri = await PhotoEncodeService.encodeXFile(response.file!);
+        if (dataUri != null && dataUri.isNotEmpty && mounted) {
           setState(() {
             _clothingPhotoUrl ??= dataUri;
           });
@@ -153,42 +148,16 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
   Future<void> _captureImage(ImageSource source, Function(String) onPicked) async {
     setState(() => _isPickingPhoto = true);
     try {
-      final picker = ImagePicker();
-      final photo = await picker.pickImage(
-        source: source,
-        maxWidth: kIsWeb ? null : 1200,
-        maxHeight: kIsWeb ? null : 1200,
-        imageQuality: kIsWeb ? null : 85,
-      );
-      if (photo != null) {
-        Uint8List bytes;
-        try {
-          bytes = await photo.readAsBytes();
-        } catch (_) {
-          // Web fallback: if cross_file's internal HttpRequest throws on a revoked blob,
-          // try fetching the path directly before throwing.
-          final res = await http.get(Uri.parse(photo.path));
-          if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
-            bytes = res.bodyBytes;
-          } else {
-            rethrow;
-          }
-        }
-        if (bytes.isNotEmpty) {
-          final rawMime = photo.mimeType;
-          final mime = (rawMime != null && rawMime.trim().isNotEmpty) ? rawMime.trim() : 'image/jpeg';
-          final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
-          if (mounted) {
-            setState(() => onPicked(dataUri));
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('📸 Фото успішно прикріплено!'),
-                duration: Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-        }
+      final dataUri = await PhotoEncodeService.pickAndEncode(source);
+      if (dataUri != null && dataUri.isNotEmpty && mounted) {
+        setState(() => onPicked(dataUri));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('📸 Фото успішно прикріплено!'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -338,7 +307,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
     _openManualVerificationScreen();
   }
 
-  void _quickSavePhotoItem() {
+  Future<void> _quickSavePhotoItem() async {
     final primaryPhoto = (_clothingPhotoUrl != null && _clothingPhotoUrl!.isNotEmpty)
         ? _clothingPhotoUrl!
         : ((_labelPhotoUrl != null && _labelPhotoUrl!.isNotEmpty)
@@ -372,7 +341,10 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
       wearCount: 1,
     );
 
-    context.read<WardrobeProvider>().addItem(newItem);
+    final wardrobe = context.read<WardrobeProvider>();
+    await wardrobe.addItem(newItem);
+    final warning = wardrobe.consumeLastQuotaWarning();
+    if (!mounted) return;
     setState(() {
       _clothingPhotoUrl = null;
       _labelPhotoUrl = null;
@@ -382,7 +354,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('🎉 "$autoTitle" збережено у ваш гардероб!'),
+        content: Text(warning ?? '🎉 "$autoTitle" збережено у ваш гардероб!'),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -641,7 +613,7 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
     }
   }
 
-  void _saveParsedItem() {
+  Future<void> _saveParsedItem() async {
     if (_parsedResult == null) return;
     const uuid = Uuid();
     final img = _selectedImageUrl.isNotEmpty ? _selectedImageUrl : _parsedResult!.imageUrl;
@@ -663,14 +635,53 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
       wearCount: 0,
     );
 
-    context.read<WardrobeProvider>().addItem(newItem);
+    final wardrobe = context.read<WardrobeProvider>();
+    await wardrobe.addItem(newItem);
+    final warning = wardrobe.consumeLastQuotaWarning();
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Річ "${newItem.title}" додана в гардероб!')),
+      SnackBar(content: Text(warning ?? 'Річ "${newItem.title}" додана в гардероб!')),
     );
     widget.onSaved();
   }
 
-  void _saveManualItem() {
+  Future<void> _editParsedItemBeforeSaving() async {
+    final p = _parsedResult;
+    if (p == null) return;
+    final img = _selectedImageUrl.isNotEmpty ? _selectedImageUrl : p.imageUrl;
+    final ocr = OcrCombinedResult(
+      title: p.title,
+      brand: p.brand,
+      category: p.category,
+      season: p.season,
+      color: p.color,
+      price: p.price,
+      fabricComposition: p.fabricComposition,
+      storeName: p.store.name,
+      itemPhoto: img,
+    );
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PhotoVerificationScreen(
+          initialData: ocr,
+          isAiVision: false,
+          engineName: 'Імпорт за посиланням',
+        ),
+      ),
+    );
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🎉 Річ збережено у ваш гардероб!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      widget.onSaved();
+    }
+  }
+
+  Future<void> _saveManualItem() async {
     final title = _manualTitleController.text.trim();
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -704,9 +715,12 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
       wearCount: 0,
     );
 
-    context.read<WardrobeProvider>().addItem(newItem);
+    final wardrobe = context.read<WardrobeProvider>();
+    await wardrobe.addItem(newItem);
+    final warning = wardrobe.consumeLastQuotaWarning();
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Річ "$title" збережена!')),
+      SnackBar(content: Text(warning ?? 'Річ "$title" збережена!')),
     );
     widget.onSaved();
   }
@@ -942,38 +956,28 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
         ),
         const SizedBox(height: 18),
 
-        // AI Engine Mode & BYOK Status Pill
+        // AI Engine Mode & BYOK Status Pill (honest local vs BYOK Gemini status)
         Container(
           margin: const EdgeInsets.only(bottom: 14),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
             color: AiConfigService.hasCustomKey
                 ? (isDark ? const Color(0xFF064E3B) : const Color(0xFFF0FDF4))
-                : (AiConfigService.adCredits > 0
-                    ? (isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7))
-                    : (isDark ? AppTheme.darkSurface : const Color(0xFFF4F4F5))),
+                : (isDark ? AppTheme.darkSurface : const Color(0xFFF4F4F5)),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: AiConfigService.hasCustomKey
                   ? (isDark ? const Color(0xFF059669) : const Color(0xFFBBF7D0))
-                  : (AiConfigService.adCredits > 0
-                      ? (isDark ? const Color(0xFFD97706) : const Color(0xFFFDE68A))
-                      : borderColor),
+                  : borderColor,
             ),
           ),
           child: Row(
             children: [
               Icon(
-                AiConfigService.hasCustomKey
-                    ? Icons.verified_user_rounded
-                    : (AiConfigService.adCredits > 0
-                        ? Icons.stars_rounded
-                        : Icons.memory_rounded),
+                AiConfigService.hasCustomKey ? Icons.verified_user_rounded : Icons.memory_rounded,
                 color: AiConfigService.hasCustomKey
                     ? (isDark ? const Color(0xFF4ADE80) : AppTheme.success)
-                    : (AiConfigService.adCredits > 0
-                        ? (isDark ? AppTheme.darkAccent : AppTheme.accent)
-                        : AppTheme.muted),
+                    : AppTheme.muted,
                 size: 20,
               ),
               const SizedBox(width: 10),
@@ -984,32 +988,24 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                     Text(
                       AiConfigService.hasCustomKey
                           ? 'Google Gemini Vision · Власний ключ'
-                          : (AiConfigService.adCredits > 0
-                              ? 'Gemini Vision · ${AiConfigService.adCredits} сканувань за рекламу'
-                              : 'Локальний парсер · Без нейромережі'),
+                          : 'Локальний режим · Ручне заповнення',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: AiConfigService.hasCustomKey
                             ? (isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534))
-                            : (AiConfigService.adCredits > 0
-                                ? (isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E))
-                                : (isDark ? Colors.white : const Color(0xFF27272A))),
+                            : (isDark ? Colors.white : const Color(0xFF27272A)),
                       ),
                     ),
                     Text(
                       AiConfigService.hasCustomKey
                           ? '1 500 безкоштовних Vision-запитів на добу'
-                          : (AiConfigService.adCredits > 0
-                              ? 'Поповнити за рекламу або ввести ключ'
-                              : 'Натисніть, щоб додати безкоштовний ключ Gemini'),
+                          : 'За бажанням увімкніть безкоштовний ключ Gemini для авточитання бірок',
                       style: TextStyle(
                         fontSize: 10.5,
                         color: AiConfigService.hasCustomKey
                             ? (isDark ? const Color(0xFF86EFAC) : AppTheme.success)
-                            : (AiConfigService.adCredits > 0
-                                ? (isDark ? AppTheme.darkAccent : AppTheme.accent)
-                                : (isDark ? AppTheme.darkMuted : AppTheme.muted)),
+                            : (isDark ? AppTheme.darkMuted : AppTheme.muted),
                       ),
                     ),
                   ],
@@ -1026,7 +1022,10 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                   );
                   if (mounted) setState(() {});
                 },
-                child: Text(AiConfigService.hasCustomKey ? 'Змінити' : 'Увімкнути', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                child: Text(
+                  AiConfigService.hasCustomKey ? 'Змінити' : 'Увімкнути',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -1389,6 +1388,34 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (p.isInferredFallback) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF451A03).withValues(alpha: 0.45) : const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: isDark ? const Color(0xFFD97706) : const Color(0xFFFDE68A)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 16, color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Магазин обмежив автоматичне читання сторінки в браузері — поля заповнено орієнтовно за адресою посилання. За потреби уточніть деталі перед збереженням.',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        height: 1.3,
+                        color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF78350F),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1425,8 +1452,10 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${p.price.toStringAsFixed(0)} ${p.currency}',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? AppTheme.darkAccent : AppTheme.primary),
+                      p.isInferredFallback
+                          ? '~${p.price.toStringAsFixed(0)} ${p.currency} (орієнтовно)'
+                          : '${p.price.toStringAsFixed(0)} ${p.currency}',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: isDark ? AppTheme.darkAccent : AppTheme.primary),
                     ),
                     if (p.fabricComposition != null) ...[
                       const SizedBox(height: 4),
@@ -1442,7 +1471,18 @@ class _AddItemScreenState extends State<AddItemScreen> with SingleTickerProvider
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+          if (p.isInferredFallback) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _editParsedItemBeforeSaving,
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Уточнити назву, ціну або фото'),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(

@@ -43,7 +43,7 @@ class WardrobeProvider with ChangeNotifier {
   Season? _selectedSeason;
   WardrobeSortOption _sortOption = WardrobeSortOption.newest;
   String _searchQuery = '';
-  int _streakDays = 14;
+  int _streakDays = 0;
   bool _quotaGuardTriggered = false;
   String? _lastQuotaWarning;
 
@@ -58,6 +58,13 @@ class WardrobeProvider with ChangeNotifier {
   int get streakDays => _streakDays;
   bool get quotaGuardTriggered => _quotaGuardTriggered;
   String? get lastQuotaWarning => _lastQuotaWarning;
+
+  /// Returns and clears the most recent storage quota warning after surfacing it in the UI.
+  String? consumeLastQuotaWarning() {
+    final msg = _lastQuotaWarning;
+    _lastQuotaWarning = null;
+    return msg;
+  }
 
   WardrobeHealthReport get healthReport =>
       GamificationService.evaluateWardrobeHealth(items: _items, streakDays: _streakDays);
@@ -399,7 +406,7 @@ class WardrobeProvider with ChangeNotifier {
   Future<void> _loadFromStorage() async {
     try {
       final prefs = await _getPrefs();
-      _streakDays = prefs.getInt(_streakKey) ?? 14;
+      _streakDays = prefs.getInt(_streakKey) ?? 0;
 
       final deletedList = prefs.getStringList(_deletedIdsKey);
       if (deletedList != null) {
@@ -424,14 +431,12 @@ class WardrobeProvider with ChangeNotifier {
           _items.add(ClothingItem.fromMap(Map<String, dynamic>.from(map as Map)));
         }
       } else {
-        _items.addAll(_sampleItems());
-        await _saveToStorage();
+        // First-run: keep wardrobe empty so ClosetScreen._buildEmptyHero guides the user
+        // directly to add their own clothes (with optional "Load demo" button).
+        _items.clear();
       }
     } catch (e) {
       if (kDebugMode) print('Помилка завантаження гардероба: $e');
-      if (_items.isEmpty) {
-        _items.addAll(_sampleItems());
-      }
     } finally {
       _isLoading = false;
       notifyListeners();

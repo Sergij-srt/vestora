@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +8,8 @@ import '../models/clothing_item.dart';
 import '../services/color_analysis_service.dart';
 import '../services/outfit_calendar_service.dart';
 import '../services/weather_stylist_service.dart';
+import '../services/web_platform_stub.dart'
+    if (dart.library.js_interop) '../services/web_platform_web.dart' as platform;
 import '../widgets/vestora_image.dart';
 import 'virtual_fitting_screen.dart';
 import 'outfit_calendar_screen.dart';
@@ -137,36 +142,84 @@ class _EditorialStoryScreenState extends State<EditorialStoryScreen> {
   Future<void> _exportStoryPoster() async {
     setState(() => _isSaving = true);
     try {
-      // Simulate/trigger RepaintBoundary capture safely
+      Uint8List? pngBytes;
       final boundary = _cardKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary != null) {
         try {
-          await boundary.toImage(pixelRatio: 2.0);
+          final image = await boundary.toImage(pixelRatio: 2.0);
+          final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+          if (byteData != null) {
+            pngBytes = byteData.buffer.asUint8List();
+          }
         } catch (_) {
-          // Fallback if cross-origin images on web prevent canvas read
+          // Cross-origin stock URLs on Web can taint the canvas; handled gracefully below.
         }
       }
 
       final copyText = _generateStoryCopy();
       await Clipboard.setData(ClipboardData(text: copyText));
 
-      if (mounted) {
+      if (!mounted) return;
+
+      if (pngBytes != null && kIsWeb) {
+        platform.triggerBinaryDownload(
+          'vestora_story.png',
+          base64Encode(pngBytes),
+          'image/png',
+        );
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
+                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Постер збережено! Стильний опис скопійовано для Instagram Stories ✨',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    'PNG-постер завантажено, а опис скопійовано у буфер обміну ✨',
+                    style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
             ),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: const Color(0xFF16A34A),
+            backgroundColor: Color(0xFF16A34A),
+          ),
+        );
+      } else if (pngBytes != null) {
+        await showDialog<void>(
+          context: context,
+          builder: (dlgCtx) => AlertDialog(
+            title: const Text('Постер готовий'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 360),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.memory(pngBytes!, fit: BoxFit.contain),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Опис скопійовано у буфер обміну. Зробіть скриншот постера вище для публікації.',
+                  style: TextStyle(fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dlgCtx), child: const Text('Готово')),
+            ],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Опис скопійовано! Щоб завантажити постер як PNG, використовуйте власні завантажені фото.',
+            ),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }

@@ -69,7 +69,7 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
     super.dispose();
   }
 
-  void _saveToWardrobe() {
+  Future<void> _saveToWardrobe() async {
     final rawTitle = _titleController.text.trim();
     final colorText = _colorController.text.trim();
     final defaultTitle = switch (_category) {
@@ -109,7 +109,15 @@ class _PhotoVerificationScreenState extends State<PhotoVerificationScreen> {
       wearCount: 1, // Ready to wear
     );
 
-    context.read<WardrobeProvider>().addItem(item);
+    final wardrobe = context.read<WardrobeProvider>();
+    await wardrobe.addItem(item);
+    final warning = wardrobe.consumeLastQuotaWarning();
+    if (!mounted) return;
+    if (warning != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(warning), behavior: SnackBarBehavior.floating),
+      );
+    }
 
     Navigator.pop(context, true); // Return success
   }

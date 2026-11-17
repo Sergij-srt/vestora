@@ -32,6 +32,7 @@ class ParsedProductInfo {
   final String? fabricComposition;
   final String sourceUrl;
   final StoreMetadata store;
+  final bool isInferredFallback;
 
   ParsedProductInfo({
     required this.title,
@@ -48,6 +49,7 @@ class ParsedProductInfo {
     this.fabricComposition,
     required this.sourceUrl,
     required this.store,
+    this.isInferredFallback = false,
   }) : galleryImages = galleryImages ?? (imageUrl.isNotEmpty ? [imageUrl] : []);
 }
 
@@ -194,7 +196,10 @@ class UrlParserService {
       color = 'Зелений';
     }
 
-    final brandName = store.name != 'Онлайн-магазин' ? store.name : 'AltaMen';
+    final fallbackHost = uri?.host.replaceFirst(RegExp(r'^www\.'), '');
+    final brandName = store.name != 'Онлайн-магазин'
+        ? store.name
+        : ((fallbackHost != null && fallbackHost.isNotEmpty) ? fallbackHost : 'Онлайн-магазин');
 
     return ParsedProductInfo(
       title: title,
@@ -206,9 +211,10 @@ class UrlParserService {
       category: category,
       season: season,
       color: color,
-      fabricComposition: fabric ?? '100% Льон',
+      fabricComposition: fabric,
       sourceUrl: rawUrl,
       store: store,
+      isInferredFallback: true,
     );
   }
 

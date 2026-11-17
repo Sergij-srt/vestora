@@ -90,10 +90,9 @@ class ResponsiveAppWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isDesktop = screenWidth > 520;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (!isDesktop) {
+    if (screenWidth <= 680) {
       return child;
     }
 
@@ -101,7 +100,7 @@ class ResponsiveAppWrapper extends StatelessWidget {
       backgroundColor: isDark ? const Color(0xFF09090B) : const Color(0xFFF0F0F3),
       body: Center(
         child: Container(
-          width: 440,
+          width: screenWidth > 1000 ? 920 : 620,
           margin: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
             color: isDark ? AppTheme.darkBackground : Colors.white,
